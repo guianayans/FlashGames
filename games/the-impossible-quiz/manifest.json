@@ -1,0 +1,15 @@
+{
+  "slug": "the-impossible-quiz",
+  "title": "The Impossible Quiz",
+  "description": "Um quiz que trapaceia descaradamente: as respostas certas raramente sao as obvias. Humor absurdo, pegadinhas e um numero limitado de vidas.",
+  "category": "puzzle",
+  "tags": ["humor", "pegadinha", "quiz"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 550,
+  "height": 400,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  }
+}

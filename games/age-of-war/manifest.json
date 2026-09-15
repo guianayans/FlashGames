@@ -1,0 +1,15 @@
+{
+  "slug": "age-of-war",
+  "title": "Age of War",
+  "description": "Evolua da pedra lascada aos robos gigantes numa guerra sem fim: gaste energia em unidades, avance de era e nao deixe o inimigo chegar na sua base.",
+  "category": "estrategia",
+  "tags": ["rts", "evolucao", "base"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 650,
+  "height": 450,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  }
+}

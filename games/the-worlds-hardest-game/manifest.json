@@ -1,0 +1,18 @@
+{
+  "slug": "the-worlds-hardest-game",
+  "title": "The World's Hardest Game",
+  "description": "Guie um quadrado vermelho ate a saida desviando de bolinhas azuis que nao perdoam. O nome nao e exagero: um erro e volta tudo do zero.",
+  "category": "arcade",
+  "tags": ["precisao", "desafio"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 550,
+  "height": 400,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  },
+  "controls": {
+    "dpad": { "up": "ArrowUp", "down": "ArrowDown", "left": "ArrowLeft", "right": "ArrowRight" }
+  }
+}

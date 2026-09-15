@@ -75,10 +75,13 @@ FlashGames/
 
 ## Jogos inclusos
 
-10 jogos originais (sem IP de terceiros tipo Disney/Nintendo/Sega), todos
-baixados de itens publicos do Internet Archive verificados contra malware
-pela curadoria do IA — o link de origem de cada um esta no campo `source`
-do respectivo `manifest.json`:
+22 jogos originais (sem IP de terceiros tipo Disney/Nintendo/Sega): 10 vieram
+de itens publicos do Internet Archive verificados contra malware pela
+curadoria do IA, e mais 12 do repositorio publico
+[AmmarSAA/Flash-Games-Directory](https://github.com/AmmarSAA/Flash-Games-Directory)
+(integridade conferida batendo o tamanho de cada arquivo baixado com o do
+repositorio). O link de origem de cada um esta no campo `source` do
+respectivo `manifest.json`.
 
 | Jogo | Categoria |
 | --- | --- |
@@ -86,12 +89,24 @@ do respectivo `manifest.json`:
 | The Last Stand: Union City | Ação |
 | Bloons Tower Defense | Estratégia |
 | Stick War | Estratégia |
+| Age of War | Estratégia |
 | Snail Bob | Puzzle |
+| Bloxorz | Puzzle |
+| Don't Escape | Puzzle |
+| Riddle School | Puzzle |
+| The Impossible Quiz | Puzzle |
 | Fireboy and Watergirl: Forest Temple | Plataforma |
 | Achievement Unlocked | Plataforma |
+| The Fancy Pants Adventure | Plataforma |
+| N | Plataforma |
 | Learn to Fly | Arcade |
 | Toss the Turtle | Arcade |
 | Effing Worms | Arcade |
+| Interactive Buddy | Arcade |
+| The World's Hardest Game | Arcade |
+| Duck Life | Simulação |
+| Motherload | Simulação |
+| Penguin Diner | Simulação |
 
 Ver `games/README.md` pra detalhes sobre como as capas foram geradas e como
 adicionar mais jogos.

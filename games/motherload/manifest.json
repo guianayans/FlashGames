@@ -1,0 +1,18 @@
+{
+  "slug": "motherload",
+  "title": "Motherload",
+  "description": "Pilote uma escavadeira cada vez mais funda em busca de minerio precioso, venda tudo na superficie e reinvista em upgrades pra chegar ainda mais fundo.",
+  "category": "simulacao",
+  "tags": ["mineracao", "upgrades"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 550,
+  "height": 400,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  },
+  "controls": {
+    "dpad": { "up": "ArrowUp", "down": "ArrowDown", "left": "ArrowLeft", "right": "ArrowRight" }
+  }
+}

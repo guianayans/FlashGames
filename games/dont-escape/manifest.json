@@ -1,0 +1,15 @@
+{
+  "slug": "dont-escape",
+  "title": "Don't Escape",
+  "description": "Voce tem uma noite pra transformar uma cabana isolada numa fortaleza antes que algo la fora tente entrar. Explore, junte itens e barricade tudo. Aponte e clique.",
+  "category": "puzzle",
+  "tags": ["aponte-e-clique", "terror", "sobrevivencia"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 600,
+  "height": 450,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  }
+}

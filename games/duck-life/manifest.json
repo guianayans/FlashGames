@@ -1,0 +1,15 @@
+{
+  "slug": "duck-life",
+  "title": "Duck Life",
+  "description": "Treine um pato desengonçado em corrida, natacao e voo pra transforma-lo num campeao. Gerencie o tempo entre treinos e corridas pra evoluir cada atributo.",
+  "category": "simulacao",
+  "tags": ["treino", "corrida", "evolucao"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  }
+}

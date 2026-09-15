@@ -1,0 +1,21 @@
+{
+  "slug": "fancy-pants-adventure",
+  "title": "The Fancy Pants Adventure",
+  "description": "Um rabisco de giz ganhou pernas: corra, salto duplo e faca rolamentos suaves por cenarios desenhados a mao nesse platformer fluido e cult.",
+  "category": "plataforma",
+  "tags": ["desenhado-a-mao", "velocidade"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 720,
+  "height": 480,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  },
+  "controls": {
+    "dpad": { "up": "ArrowUp", "down": "ArrowDown", "left": "ArrowLeft", "right": "ArrowRight" },
+    "buttons": [
+      { "id": "attack", "label": "X", "key": "x", "position": "action-1" }
+    ]
+  }
+}

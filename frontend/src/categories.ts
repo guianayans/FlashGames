@@ -10,6 +10,7 @@ export const CATEGORY_META: Record<string, CategoryMeta> = {
   puzzle: { label: "Puzzle", color: "#b453ff", icon: "●" },
   plataforma: { label: "Plataforma", color: "#39ff8f", icon: "■" },
   arcade: { label: "Arcade", color: "#ffb020", icon: "✦" },
+  simulacao: { label: "Simulação", color: "#14e6c9", icon: "▼" },
   outros: { label: "Outros", color: "#8b8ba7", icon: "○" },
 };
 

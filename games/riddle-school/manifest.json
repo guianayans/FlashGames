@@ -1,0 +1,15 @@
+{
+  "slug": "riddle-school",
+  "title": "Riddle School",
+  "description": "Phil Chaz foi parar de castigo na escola e so quer voltar pra casa. Explore a escola, resolva puzzles e escape antes do sinal. Aponte e clique.",
+  "category": "puzzle",
+  "tags": ["aponte-e-clique", "aventura", "humor"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 550,
+  "height": 400,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  }
+}

@@ -40,7 +40,7 @@ titulo/descricao.
 
 As categorias (e cores/icones dos chips e badges) ficam mapeadas em
 `frontend/src/categories.ts`. Hoje sao: `acao`, `estrategia`, `puzzle`,
-`plataforma`, `arcade`. Pra adicionar uma categoria nova, so acrescentar uma
+`plataforma`, `arcade`, `simulacao`. Pra adicionar uma categoria nova, so acrescentar uma
 entrada nesse arquivo (label acentuado, cor neon em hex, icone) e usar o
 mesmo slug (minusculo, sem acento) no `category` do manifest.
 
@@ -77,16 +77,24 @@ logado. Nao e necessario fazer nada especial no manifest para isso funcionar.
 
 ## De onde vieram os jogos e as capas inclusos
 
-Os 10 jogos que ja vem no catalogo sao todos jogos originais (nao usam marca
-registrada de terceiros tipo Disney/Nintendo/Sega) baixados de itens publicos
-do Internet Archive, verificados contra malware pela curadoria do proprio IA
-(cada `manifest.json` tem um campo `source` com o link do item original).
+Os jogos que ja vem no catalogo sao todos jogos originais (nao usam marca
+registrada de terceiros tipo Disney/Nintendo/Sega/Valve/Capcom) — dois lotes:
+
+- 10 baixados de itens publicos do Internet Archive, verificados contra
+  malware pela curadoria do proprio IA.
+- 12 baixados do repositorio publico
+  [AmmarSAA/Flash-Games-Directory](https://github.com/AmmarSAA/Flash-Games-Directory)
+  (integridade conferida comparando o tamanho de cada `.swf` baixado com o
+  tamanho do blob no repositorio).
+
+Cada `manifest.json` tem um campo `source` com o link de onde o jogo veio.
 
 As capas (`cover.jpg`) nao sao screenshots crus: partem de uma imagem real do
-jogo (capturada do proprio item do Internet Archive) e passam por um
-tratamento duotone (cor por categoria) + scanlines + grain, pra ficarem
-visualmente consistentes com o resto da interface mesmo vindo de fontes bem
-diferentes entre si (menu de titulo, gameplay, render 3D etc).
+jogo (menu, tela de titulo ou gameplay, geralmente capturada de um item do
+Internet Archive mesmo quando o `.swf` veio do outro repositorio) e passam
+por um tratamento duotone (cor por categoria) + scanlines + grain, pra
+ficarem visualmente consistentes com o resto da interface mesmo vindo de
+fontes bem diferentes entre si (menu de titulo, gameplay, render 3D etc).
 
 ## Sobre os arquivos .swf e o repositorio publico
 

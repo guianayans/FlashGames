@@ -1,0 +1,18 @@
+{
+  "slug": "n-the-game",
+  "title": "N",
+  "description": "Um ninja feito de bonecos-palito precisa atravessar salas cheias de serras e minas usando so fisica precisa e muito timing. Minimalista e brutalmente dificil.",
+  "category": "plataforma",
+  "tags": ["fisica", "precisao", "minimalista"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 792,
+  "height": 600,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  },
+  "controls": {
+    "dpad": { "up": "ArrowUp", "down": "ArrowDown", "left": "ArrowLeft", "right": "ArrowRight" }
+  }
+}

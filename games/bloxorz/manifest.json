@@ -1,0 +1,15 @@
+{
+  "slug": "bloxorz",
+  "title": "Bloxorz",
+  "description": "Role um bloco retangular pelo tabuleiro ate encaixa-lo em pe no buraco quadrado, sem cair pra fora. Puzzle minimalista que fica dificil rapido.",
+  "category": "puzzle",
+  "tags": ["logica", "tabuleiro", "minimalista"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 550,
+  "height": 300,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  }
+}

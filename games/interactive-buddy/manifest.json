@@ -1,0 +1,15 @@
+{
+  "slug": "interactive-buddy",
+  "title": "Interactive Buddy",
+  "description": "Um boneco de fisica realista so esperando voce mexer com ele: arraste, jogue objetos, ligue ventiladores e veja como ele reage a cada bagunca.",
+  "category": "arcade",
+  "tags": ["fisica", "sandbox", "humor"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 550,
+  "height": 400,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  }
+}

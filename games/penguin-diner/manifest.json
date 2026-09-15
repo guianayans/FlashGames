@@ -1,0 +1,15 @@
+{
+  "slug": "penguin-diner",
+  "title": "Penguin Diner",
+  "description": "Anote os pedidos, sirva os pratos certos e nao deixe ninguem esperando: gerencie a lanchonete da pinguim no gelo correndo contra o relogio.",
+  "category": "simulacao",
+  "tags": ["gerenciamento-de-tempo", "casual"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 600,
+  "height": 400,
+  "source": {
+    "name": "Flash-Games-Directory (AmmarSAA)",
+    "url": "https://github.com/AmmarSAA/Flash-Games-Directory"
+  }
+}
