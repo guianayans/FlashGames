@@ -1,0 +1,33 @@
+{
+  "slug": "boxhead-2-play-rooms",
+  "title": "Boxhead 2Play: The Rooms",
+  "description": "Sobreviva a ondas de zumbis em salas cada vez mais dificeis. Mova-se com WASD, mire e atire com o mouse.",
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Internet Archive (open_source_software)",
+    "url": "https://archive.org/details/378950-boxhead-2-play-rooms"
+  },
+  "controls": {
+    "dpad": {
+      "up": "w",
+      "down": "s",
+      "left": "a",
+      "right": "d"
+    },
+    "aimJoystick": {
+      "label": "Mirar / Atirar",
+      "fireOnHold": true,
+      "radius": 140
+    },
+    "buttons": [
+      { "id": "reload", "label": "R", "key": "r", "position": "action-1" },
+      { "id": "weapon1", "label": "1", "key": "1", "position": "weapon-1" },
+      { "id": "weapon2", "label": "2", "key": "2", "position": "weapon-2" },
+      { "id": "weapon3", "label": "3", "key": "3", "position": "weapon-3" },
+      { "id": "weapon4", "label": "4", "key": "4", "position": "weapon-4" },
+      { "id": "enter", "label": "Enter", "key": "Enter", "position": "menu-confirm" }
+    ]
+  }
+}

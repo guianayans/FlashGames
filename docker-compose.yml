@@ -1,0 +1,57 @@
+# FlashGames — atras do Traefik (Coolify), no mesmo padrao dos outros apps em /pendriver.
+# Build a partir de /FlashGames; os jogos ficam em /FlashGames/games (bind mount,
+# da pra adicionar jogo novo sem rebuildar a imagem).
+
+services:
+  flashgames:
+    container_name: flashgames
+    build:
+      context: /FlashGames
+      dockerfile: Dockerfile
+    working_dir: /app
+    volumes:
+      - /FlashGames/games:/app/games
+      - flashgames_data:/app/data
+    environment:
+      NODE_ENV: production
+      PORT: "4070"
+      DATA_DIR: /app/data
+      GAMES_DIR: /app/games
+      SESSION_SECRET: ${SESSION_SECRET:?Defina SESSION_SECRET no Coolify/.env (string aleatoria longa)}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://flashgames.gvtserver.online}
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - "-e"
+        - "require('http').get('http://127.0.0.1:4070/health',r=>process.exit(r.statusCode>=200&&r.statusCode<500?0:1)).on('error',()=>process.exit(1));"
+      interval: 20s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    networks:
+      - coolify
+    labels:
+      - traefik.enable=true
+      - 'traefik.http.routers.flashgames.rule=Host(`flashgames.gvtserver.online`) || Host(`www.flashgames.gvtserver.online`)'
+      - traefik.http.routers.flashgames.entrypoints=https
+      - traefik.http.routers.flashgames.tls=true
+      - traefik.http.services.flashgames.loadbalancer.server.port=4070
+      - 'traefik.http.routers.flashgames.middlewares=flashgames-sec'
+      - traefik.http.middlewares.flashgames-sec.headers.forceSTSHeader=true
+      - traefik.http.middlewares.flashgames-sec.headers.stsSeconds=31536000
+      - traefik.http.middlewares.flashgames-sec.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.flashgames-sec.headers.stsPreload=true
+      - traefik.http.middlewares.flashgames-sec.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.flashgames-sec.headers.referrerPolicy=strict-origin-when-cross-origin
+      - traefik.http.middlewares.flashgames-sec.headers.customResponseHeaders.X-Frame-Options=SAMEORIGIN
+      - traefik.http.middlewares.flashgames-sec.headers.customResponseHeaders.Cross-Origin-Resource-Policy=same-site
+      - 'traefik.http.middlewares.flashgames-sec.headers.customResponseHeaders.Permissions-Policy=camera=(), microphone=(), geolocation=()'
+
+volumes:
+  flashgames_data:
+
+networks:
+  coolify:
+    external: true

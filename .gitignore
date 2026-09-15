@@ -1,0 +1,14 @@
+node_modules/
+frontend/dist/
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.env
+.DS_Store
+
+# Arquivos .swf dos jogos nao entram no repo publico (direitos autorais dos
+# jogos originais nao sao nossos pra redistribuir) - ficam so no servidor.
+# manifest.json de cada jogo continua versionado normalmente.
+games/**/*.swf
