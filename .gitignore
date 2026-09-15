@@ -12,3 +12,7 @@ data/
 # jogos originais nao sao nossos pra redistribuir) - ficam so no servidor.
 # manifest.json de cada jogo continua versionado normalmente.
 games/**/*.swf
+
+# Fonte bruta (1.4MB) da imagem de fundo do modo retrato - a versao otimizada
+# (.webp, ~55KB) que o app de fato usa fica em frontend/public/images/.
+/imagens/

@@ -40,9 +40,21 @@ FlashGames/
   restaura so as do usuario atual (evita vazar save de outra pessoa no mesmo
   navegador/dispositivo compartilhado).
 - **Controles no celular**: cada jogo pode declarar `controls` no
-  `manifest.json` (d-pad, analogico de mira/tiro, botoes extras). Em telas
-  touch os controles aparecem automaticamente sobre o jogo; tem um botao 🎮
-  pra ligar/desligar manualmente. Detalhes em `games/README.md`.
+  `manifest.json` (d-pad, d-pad duplo pra jogos de 2 jogadores, analogico de
+  mira/tiro, botoes extras). Em telas touch os controles aparecem
+  automaticamente; tem um botao 🎮 pra ligar/desligar manualmente. Detalhes
+  em `games/README.md`.
+  - **Celular na vertical**: o jogo fica no tamanho normal em cima e os
+    controles viram um "deck" de gamepad abaixo dele, com uma imagem de
+    fundo de um portatil de jogos futurista (`frontend/public/images/handheld-bg.webp`).
+  - **Celular na horizontal**: o jogo vai pra tela cheia (preservando a
+    proporcao original — sem esticar) e os controles sobrepoem o jogo,
+    redimensionados pra caber na tela curta.
+  - Os toques sao traduzidos pra eventos de verdade que o Ruffle escuta: teclado
+    (`keydown`/`keyup` em `window`, so processados quando o player esta em foco —
+    por isso todo toque tambem chama `.focus()` no player) e ponteiro
+    (`PointerEvent` disparado direto no `<canvas>` dentro da shadow root do
+    `<ruffle-player>`, nao um `MouseEvent` solto em qualquer elemento).
 - **Biblioteca de jogos dinamica**: o backend le `/app/games` (bind mount de
   `/pendriver/FlashGames/games`) a cada request de listagem — adicionar um
   jogo e so criar a pasta com `manifest.json` + `.swf`, sem rebuild. Ver

@@ -694,20 +694,32 @@ a {
   padding: 0 4px;
 }
 
-/* ---------- Touch controls overlay ---------- */
+/* ---------- Touch controls ---------- */
+/* layout-overlay: botoes flutuam absolutos por cima do jogo (paisagem/desktop).
+   layout-deck: fluxo normal, empilhados num painel abaixo do jogo (retrato). */
 
 .touch-controls {
+  user-select: none;
+}
+
+.touch-controls.layout-overlay {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 20;
-  user-select: none;
+}
+
+.touch-controls.layout-deck {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: auto;
 }
 
 .touch-dpad {
-  position: absolute;
-  left: 14px;
-  bottom: 14px;
   width: 150px;
   height: 150px;
   display: grid;
@@ -716,9 +728,24 @@ a {
   pointer-events: auto;
 }
 
-.touch-dpad2 {
+.layout-overlay .touch-dpad {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+}
+
+.layout-overlay .touch-dpad2 {
   left: auto;
   right: 14px;
+}
+
+.layout-deck .touch-dpad {
+  position: static;
+  order: 0;
+}
+
+.layout-deck .touch-dpad2 {
+  order: 3;
 }
 
 .dpad-btn {
@@ -763,9 +790,7 @@ a {
 }
 
 .touch-joystick {
-  position: absolute;
-  right: 24px;
-  bottom: 24px;
+  position: relative;
   width: 130px;
   height: 130px;
   border-radius: 50%;
@@ -777,6 +802,17 @@ a {
   align-items: center;
   justify-content: center;
   backdrop-filter: blur(6px);
+}
+
+.layout-overlay .touch-joystick {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+}
+
+.layout-deck .touch-joystick {
+  position: static;
+  order: 2;
 }
 
 .touch-joystick-knob {
@@ -798,7 +834,6 @@ a {
 }
 
 .touch-action-btn {
-  position: absolute;
   pointer-events: auto;
   touch-action: none;
   border: 1px solid rgba(139, 92, 246, 0.45);
@@ -817,43 +852,196 @@ a {
   background: rgba(139, 92, 246, 0.38);
 }
 
-.pos-action-1 {
+.layout-overlay .touch-action-btn {
+  position: absolute;
+}
+
+.layout-deck .touch-action-btn {
+  position: static;
+  order: 1;
+}
+
+.layout-overlay .pos-action-1 {
   right: 172px;
   bottom: 96px;
 }
-.pos-action-2 {
+.layout-overlay .pos-action-2 {
   right: 100px;
   bottom: 160px;
 }
-.pos-weapon-1 {
+.layout-overlay .pos-weapon-1 {
   top: 12px;
   left: 12px;
 }
-.pos-weapon-2 {
+.layout-overlay .pos-weapon-2 {
   top: 12px;
   left: 68px;
 }
-.pos-weapon-3 {
+.layout-overlay .pos-weapon-3 {
   top: 12px;
   left: 124px;
 }
-.pos-weapon-4 {
+.layout-overlay .pos-weapon-4 {
   top: 12px;
   left: 180px;
 }
-.pos-menu-confirm {
+.layout-overlay .pos-menu-confirm {
   top: 12px;
   right: 12px;
   width: 68px;
   border-radius: 10px;
 }
-.pos-pause {
+.layout-overlay .pos-pause {
   top: 12px;
   right: 90px;
   width: 44px;
   height: 44px;
   border-radius: 10px;
   font-size: 0.7rem;
+}
+
+.layout-deck .pos-menu-confirm,
+.layout-deck .pos-pause {
+  width: 68px;
+  border-radius: 10px;
+}
+
+/* ---------- Modo "handheld" (celular na vertical) ---------- */
+/* Fundo simulando um portatil de jogos futurista atras do jogo + deck de
+   controles abaixo, tipo um gamepad de verdade. */
+
+.handheld-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(ellipse at 50% 0%, rgba(10, 7, 20, 0.35), rgba(10, 7, 20, 0.85) 65%), url("/images/handheld-bg.webp");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+.player-page.is-handheld .player-stage-wrapper {
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.25), 0 24px 60px -16px rgba(0, 0, 0, 0.7), 0 0 60px -14px rgba(255, 46, 154, 0.35);
+}
+
+.gamepad-deck {
+  padding: 18px 16px 22px;
+  margin-top: 2px;
+}
+
+/* ---------- Modo tela cheia (celular na horizontal) ---------- */
+
+.mobile-landscape-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px;
+  pointer-events: none;
+}
+
+.mobile-landscape-bar .back-link,
+.mobile-landscape-bar .toggle-controls-btn {
+  pointer-events: auto;
+  background: rgba(10, 7, 20, 0.55);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+
+.player-page.is-mobile-landscape {
+  padding: 0;
+  gap: 0;
+  max-width: none;
+}
+
+.player-page.is-mobile-landscape .player-stage-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  max-width: none;
+  width: 100vw;
+  height: 100dvh;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  aspect-ratio: unset !important;
+}
+
+/* Letterbox: preserva a proporcao original do jogo (--game-ratio, setado
+   inline pelo React) dentro da tela cheia, sem esticar. */
+.player-page.is-mobile-landscape .player-stage {
+  position: absolute;
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(100vw, 100dvh * var(--game-ratio, 1.3333));
+  height: min(100dvh, 100vw / var(--game-ratio, 1.3333));
+}
+
+/* Controles um pouco menores em paisagem no celular, pra caber na altura curta da tela. */
+@media (orientation: landscape) and (pointer: coarse) {
+  .layout-overlay .touch-dpad {
+    width: 128px;
+    height: 128px;
+    grid-template-columns: 42px 42px 42px;
+    grid-template-rows: 42px 42px 42px;
+    left: 10px;
+    bottom: 10px;
+  }
+  .layout-overlay .touch-dpad2 {
+    left: auto;
+    right: 10px;
+  }
+  .layout-overlay .touch-joystick {
+    width: 108px;
+    height: 108px;
+    right: 18px;
+    bottom: 18px;
+  }
+  .layout-overlay .touch-joystick-knob {
+    width: 46px;
+    height: 46px;
+  }
+  .layout-overlay .touch-action-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 0.75rem;
+  }
+  .layout-overlay .pos-action-1 {
+    right: 148px;
+    bottom: 82px;
+  }
+  .layout-overlay .pos-action-2 {
+    right: 88px;
+    bottom: 138px;
+  }
+  .layout-overlay .pos-weapon-2 {
+    left: 58px;
+  }
+  .layout-overlay .pos-weapon-3 {
+    left: 104px;
+  }
+  .layout-overlay .pos-weapon-4 {
+    left: 150px;
+  }
+  /* Empurra os botoes do topo pra baixo da barra flutuante (voltar/toggle). */
+  .layout-overlay .pos-weapon-1,
+  .layout-overlay .pos-weapon-2,
+  .layout-overlay .pos-weapon-3,
+  .layout-overlay .pos-weapon-4 {
+    top: calc(env(safe-area-inset-top, 0px) + 54px);
+  }
+  .layout-overlay .pos-menu-confirm,
+  .layout-overlay .pos-pause {
+    top: calc(env(safe-area-inset-top, 0px) + 54px);
+  }
 }
 
 /* ---------- Responsive ---------- */
