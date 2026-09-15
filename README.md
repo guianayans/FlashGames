@@ -100,6 +100,16 @@ ja tem valor padrao (`CORS_ORIGIN` cai pro dominio do Traefik automaticamente).
 Se usar um dominio diferente de `flashgames.gvtserver.online`, troque nos
 labels do Traefik aqui no `docker-compose.yml` e no `CORS_ORIGIN`.
 
+### Roteamento via Coolify Proxy (alternativa aos labels)
+
+O `docker-compose.yml` ja tem os labels do Traefik e funciona sozinho — nao
+precisa de mais nada na maioria dos casos. Se preferir configurar o
+roteamento manualmente pela aba **Server > Proxy > Dynamic Configurations**
+do Coolify (em vez de depender dos labels do compose), use o
+`flashgames-proxy.yml` deste repositorio: cole o conteudo dele la. **Nao
+ative os dois ao mesmo tempo** para o mesmo dominio — duplica os roteadores
+no Traefik.
+
 ## Adicionando mais jogos
 
 Ver `games/README.md`.

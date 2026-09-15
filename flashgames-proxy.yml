@@ -1,0 +1,37 @@
+# Traefik — configuracao dinamica (file provider) para o Coolify Proxy.
+#
+# So use isso se for configurar o roteamento manualmente na aba
+# Server > Proxy > Dynamic Configurations do Coolify (cole o conteudo deste
+# arquivo la, ou monte-o no diretorio de config dinamica do Traefik). O
+# `docker-compose.yml` deste app JA TEM os labels do Traefik equivalentes
+# (funciona sozinho ao subir o app pelo Coolify normalmente) — nao ative os
+# dois ao mesmo tempo pro mesmo host, senao duplica os roteadores.
+
+http:
+  routers:
+    flashgames:
+      rule: 'Host(`flashgames.gvtserver.online`) || Host(`www.flashgames.gvtserver.online`)'
+      entryPoints:
+        - https
+      service: flashgames-svc
+      middlewares:
+        - flashgames-sec
+      tls: {}
+  middlewares:
+    flashgames-sec:
+      headers:
+        forceSTSHeader: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        contentTypeNosniff: true
+        referrerPolicy: strict-origin-when-cross-origin
+        customResponseHeaders:
+          X-Frame-Options: SAMEORIGIN
+          Cross-Origin-Resource-Policy: same-site
+          Permissions-Policy: 'camera=(), microphone=(), geolocation=()'
+  services:
+    flashgames-svc:
+      loadBalancer:
+        servers:
+          - url: 'http://flashgames:4070'
