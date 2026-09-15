@@ -1,0 +1,19 @@
+{
+  "slug": "fireboy-and-watergirl",
+  "title": "Fireboy and Watergirl: Forest Temple",
+  "description": "Guie os dois ao mesmo tempo por um templo cheio de armadilhas: Fireboy nao pode tocar na agua, Watergirl nao pode tocar no fogo. Cooperacao (ou dois polegares) obrigatoria.",
+  "category": "plataforma",
+  "tags": ["cooperativo", "dois-jogadores", "puzzle"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Internet Archive (softwarelibrary_flash_games)",
+    "url": "https://archive.org/details/fireboy_and-watergirl-in-the-forest-temple"
+  },
+  "controls": {
+    "dpad": { "up": "w", "down": "s", "left": "a", "right": "d" },
+    "dpad2": { "up": "ArrowUp", "down": "ArrowDown", "left": "ArrowLeft", "right": "ArrowRight" }
+  }
+}

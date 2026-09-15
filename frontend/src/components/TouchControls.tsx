@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import type { ControlsConfig } from "../types";
+import type { ControlsConfig, DpadConfig } from "../types";
 
 interface Props {
   controls: ControlsConfig;
@@ -56,28 +56,63 @@ function dispatchMouse(target: HTMLElement, type: string, clientX: number, clien
   document.dispatchEvent(ev);
 }
 
-export default function TouchControls({ controls, targetRef }: Props) {
+function useDpad() {
   const activeDirs = useRef<Set<string>>(new Set());
-  const joystickBase = useRef<HTMLDivElement | null>(null);
-  const joystickKnob = useRef<HTMLDivElement | null>(null);
-  const joystickPointerId = useRef<number | null>(null);
 
-  const pressDpad = useCallback(
-    (dir: string, key?: string) => {
-      if (!key) return;
-      if (activeDirs.current.has(dir)) return;
-      activeDirs.current.add(dir);
-      dispatchKey("keydown", key);
-    },
-    []
-  );
+  const press = useCallback((dir: string, key?: string) => {
+    if (!key) return;
+    if (activeDirs.current.has(dir)) return;
+    activeDirs.current.add(dir);
+    dispatchKey("keydown", key);
+  }, []);
 
-  const releaseDpad = useCallback((dir: string, key?: string) => {
+  const release = useCallback((dir: string, key?: string) => {
     if (!key) return;
     if (!activeDirs.current.has(dir)) return;
     activeDirs.current.delete(dir);
     dispatchKey("keyup", key);
   }, []);
+
+  return { press, release };
+}
+
+function Dpad({ config, className }: { config: DpadConfig; className: string }) {
+  const { press, release } = useDpad();
+
+  const dir = (name: "up" | "down" | "left" | "right", key: string | undefined, label: string, extraClass: string) => (
+    <button
+      className={`dpad-btn ${extraClass}`}
+      onTouchStart={(e) => {
+        e.preventDefault();
+        press(name, key);
+      }}
+      onTouchEnd={(e) => {
+        e.preventDefault();
+        release(name, key);
+      }}
+      onTouchCancel={(e) => {
+        e.preventDefault();
+        release(name, key);
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className={className}>
+      {dir("up", config.up, "▲", "dpad-up")}
+      {dir("left", config.left, "◀", "dpad-left")}
+      {dir("right", config.right, "▶", "dpad-right")}
+      {dir("down", config.down, "▼", "dpad-down")}
+    </div>
+  );
+}
+
+export default function TouchControls({ controls, targetRef }: Props) {
+  const joystickBase = useRef<HTMLDivElement | null>(null);
+  const joystickKnob = useRef<HTMLDivElement | null>(null);
+  const joystickPointerId = useRef<number | null>(null);
 
   const onButtonStart = useCallback((key: string) => (e: React.TouchEvent | React.PointerEvent) => {
     e.preventDefault();
@@ -139,67 +174,14 @@ export default function TouchControls({ controls, targetRef }: Props) {
   );
 
   const dpad = controls.dpad;
+  const dpad2 = controls.dpad2;
   const joystick = controls.aimJoystick;
   const buttons = controls.buttons || [];
 
   return (
     <div className="touch-controls">
-      {dpad && (
-        <div className="touch-dpad">
-          <button
-            className="dpad-btn dpad-up"
-            onTouchStart={(e) => {
-              e.preventDefault();
-              pressDpad("up", dpad.up);
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              releaseDpad("up", dpad.up);
-            }}
-          >
-            ▲
-          </button>
-          <button
-            className="dpad-btn dpad-left"
-            onTouchStart={(e) => {
-              e.preventDefault();
-              pressDpad("left", dpad.left);
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              releaseDpad("left", dpad.left);
-            }}
-          >
-            ◀
-          </button>
-          <button
-            className="dpad-btn dpad-right"
-            onTouchStart={(e) => {
-              e.preventDefault();
-              pressDpad("right", dpad.right);
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              releaseDpad("right", dpad.right);
-            }}
-          >
-            ▶
-          </button>
-          <button
-            className="dpad-btn dpad-down"
-            onTouchStart={(e) => {
-              e.preventDefault();
-              pressDpad("down", dpad.down);
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              releaseDpad("down", dpad.down);
-            }}
-          >
-            ▼
-          </button>
-        </div>
-      )}
+      {dpad && <Dpad config={dpad} className="touch-dpad" />}
+      {dpad2 && <Dpad config={dpad2} className="touch-dpad touch-dpad2" />}
 
       {joystick && (
         <div

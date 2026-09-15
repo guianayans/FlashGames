@@ -1,0 +1,15 @@
+{
+  "slug": "effing-worms",
+  "title": "Effing Worms",
+  "description": "Estilingue uma minhoca elastica pelo cenario, coma tudo que encontrar pra crescer e vire uma criatura gigante capaz de arrasar a cidade.",
+  "category": "arcade",
+  "tags": ["fisica", "crescimento"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Internet Archive (flash_repair_shop)",
+    "url": "https://archive.org/details/effing-worms"
+  }
+}

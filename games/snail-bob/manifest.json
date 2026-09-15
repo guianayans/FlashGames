@@ -1,0 +1,15 @@
+{
+  "slug": "snail-bob",
+  "title": "Snail Bob",
+  "description": "Ajude o caracol Bob a atravessar cada fase cheia de armadilhas e mecanismos, acionando alavancas e botoes no momento certo. Aponte, clique, pense.",
+  "category": "puzzle",
+  "tags": ["aponte-e-clique", "casual"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Internet Archive (softwarelibrary_flash_games)",
+    "url": "https://archive.org/details/snailbob_flash"
+  }
+}

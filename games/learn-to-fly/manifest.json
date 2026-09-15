@@ -1,0 +1,15 @@
+{
+  "slug": "learn-to-fly",
+  "title": "Learn to Fly",
+  "description": "Um pinguim quer voar de verdade. Lance-o em deslizes cada vez mais longos, compre upgrades entre as tentativas e tente vencer a gravidade.",
+  "category": "arcade",
+  "tags": ["fisica", "lancamento", "upgrades"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Internet Archive (softwarelibrary_flash_games)",
+    "url": "https://archive.org/details/learn-to-fly"
+  }
+}

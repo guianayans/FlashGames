@@ -1,0 +1,15 @@
+{
+  "slug": "toss-the-turtle",
+  "title": "Toss the Turtle",
+  "description": "Chute uma tartaruga pelos ares e use uma bateria de armas absurdas para manda-la o mais longe possivel. Fisica de catapulta em doses cavalares de humor.",
+  "category": "arcade",
+  "tags": ["fisica", "lancamento", "humor"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 800,
+  "height": 500,
+  "source": {
+    "name": "Internet Archive (softwarelibrary_flash)",
+    "url": "https://archive.org/details/flash_tosstheturtle"
+  }
+}

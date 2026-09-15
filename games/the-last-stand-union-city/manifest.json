@@ -1,0 +1,27 @@
+{
+  "slug": "the-last-stand-union-city",
+  "title": "The Last Stand: Union City",
+  "description": "Union City caiu pros zumbis. Explore o mapa aberto, junte sobreviventes, barricades casas pra passar a noite e corra pro helicoptero antes do prazo acabar.",
+  "category": "acao",
+  "tags": ["tiro", "zumbis", "sobrevivencia", "mundo-aberto"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 760,
+  "height": 400,
+  "source": {
+    "name": "Internet Archive (softwarelibrary_flash_games)",
+    "url": "https://archive.org/details/128954-the-last-stand-union-city"
+  },
+  "controls": {
+    "dpad": { "up": "w", "down": "s", "left": "a", "right": "d" },
+    "aimJoystick": { "label": "Mirar / Atirar", "fireOnHold": true, "radius": 140 },
+    "buttons": [
+      { "id": "reload", "label": "R", "key": "r", "position": "action-1" },
+      { "id": "weapon1", "label": "1", "key": "1", "position": "weapon-1" },
+      { "id": "weapon2", "label": "2", "key": "2", "position": "weapon-2" },
+      { "id": "weapon3", "label": "3", "key": "3", "position": "weapon-3" },
+      { "id": "weapon4", "label": "4", "key": "4", "position": "weapon-4" },
+      { "id": "enter", "label": "Enter", "key": "Enter", "position": "menu-confirm" }
+    ]
+  }
+}

@@ -2,17 +2,20 @@
 //
 // Registro minimo (exigido pelo Chrome/Android pra considerar o app
 // instalavel), mas com uma otimizacao real: o Ruffle (ruffle.js + os .wasm,
-// ~30MB) e os .swf dos jogos sao arquivos pesados e praticamente estaticos,
-// entao usamos stale-while-revalidate neles - carrega instantaneo do cache
-// nas proximas visitas, e atualiza o cache em segundo plano (assim, se voce
-// trocar o .swf de um jogo no servidor, o proximo load ja pega a versao
-// nova, so a visita atual que ainda usa a antiga).
+// ~30MB), os .swf dos jogos e as capas (.jpg) sao arquivos pesados e
+// praticamente estaticos, entao usamos stale-while-revalidate neles - carrega
+// instantaneo do cache nas proximas visitas, e atualiza o cache em segundo
+// plano (assim, se voce trocar um arquivo de jogo no servidor, o proximo
+// load ja pega a versao nova, so a visita atual que ainda usa a antiga).
 //
 // Tudo mais (API, HTML, JS/CSS do app) passa direto pra rede, sem cache, pra
 // nunca servir uma versao velha da tela ou de dado dinamico (saves, sessao).
+// As fontes (self-hosted, /fonts/) tambem sao cacheadas: nunca mudam de
+// conteudo pro mesmo caminho, entao dispensam revalidacao (cache-first).
 
-const CACHE_NAME = "flashgames-assets-v1";
-const CACHEABLE_RE = /\/vendor\/ruffle\/|\/games\/.+\.swf$/;
+const CACHE_NAME = "flashgames-assets-v2";
+const REVALIDATE_RE = /\/vendor\/ruffle\/|\/games\/.+\.(swf|jpg|jpeg|png|webp)$/;
+const CACHE_FIRST_RE = /\/fonts\/.+\.woff2?$/;
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -33,7 +36,25 @@ self.addEventListener("fetch", (event) => {
   // respostas opacas de requisições cross-origin refeitas via SW.
   if (url.origin !== self.location.origin) return;
 
-  if (event.request.method !== "GET" || !CACHEABLE_RE.test(url.pathname)) {
+  if (event.request.method !== "GET") {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  if (CACHE_FIRST_RE.test(url.pathname)) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+        const response = await fetch(event.request);
+        if (response.ok) cache.put(event.request, response.clone());
+        return response;
+      })
+    );
+    return;
+  }
+
+  if (!REVALIDATE_RE.test(url.pathname)) {
     event.respondWith(fetch(event.request));
     return;
   }

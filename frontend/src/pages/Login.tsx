@@ -26,46 +26,52 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <form className="login-card" onSubmit={onSubmit}>
-        <h1>FlashGames</h1>
-        <p className="login-subtitle">Entre com seu usuario para carregar seus saves.</p>
+      <div className="login-scene" aria-hidden="true" />
 
-        <label>
-          Usuario
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            minLength={3}
-            maxLength={20}
-            required
-            autoFocus
-          />
-        </label>
+      <div className="login-content">
+        <div className="login-wordmark">
+          <h1>FLASHGAMES</h1>
+          <p>Entre com seu usuario pra carregar seus saves e jogar.</p>
+        </div>
 
-        <label>
-          Senha
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            minLength={4}
-            maxLength={72}
-            required
-          />
-        </label>
+        <form className="login-card glass" onSubmit={onSubmit}>
+          <label>
+            Usuario
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+              minLength={3}
+              maxLength={20}
+              required
+              autoFocus
+            />
+          </label>
 
-        {error && <p className="error-text">{error}</p>}
+          <label>
+            Senha
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              minLength={4}
+              maxLength={72}
+              required
+            />
+          </label>
 
-        <button type="submit" disabled={busy}>
-          {busy ? "Entrando..." : "Entrar"}
-        </button>
+          {error && <p className="error-text">{error}</p>}
 
-        <p className="login-hint">
-          Primeira vez? So digitar um usuario e senha novos ja cria sua conta.
-        </p>
-      </form>
+          <button type="submit" disabled={busy}>
+            {busy ? "Entrando..." : "Entrar"}
+          </button>
+
+          <p className="login-hint">
+            Primeira vez? So digitar um usuario e senha novos ja cria sua conta.
+          </p>
+        </form>
+      </div>
     </div>
   );
 }

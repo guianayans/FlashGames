@@ -1,0 +1,18 @@
+{
+  "slug": "achievement-unlocked",
+  "title": "Achievement Unlocked",
+  "description": "Um platformer sem objetivo real alem de desbloquear todas as conquistas possiveis e absurdas. Morra, pule e explore so pra ver o que mais destrava.",
+  "category": "plataforma",
+  "tags": ["humor", "exploracao"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 720,
+  "height": 400,
+  "source": {
+    "name": "Internet Archive (softwarelibrary_flash_unsorted)",
+    "url": "https://archive.org/details/flash_achievementunlocked"
+  },
+  "controls": {
+    "dpad": { "up": "ArrowUp", "down": "ArrowDown", "left": "ArrowLeft", "right": "ArrowRight" }
+  }
+}

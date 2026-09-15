@@ -8,6 +8,9 @@ router.get("/", (_req, res) => {
     slug: g.slug,
     title: g.title,
     description: g.description || "",
+    category: g.category || "outros",
+    tags: Array.isArray(g.tags) ? g.tags : [],
+    cover: g.cover ? `/games/${g.slug}/${g.cover}` : null,
     width: g.width,
     height: g.height,
   }));
@@ -17,7 +20,14 @@ router.get("/", (_req, res) => {
 router.get("/:slug", (req, res) => {
   const game = getGame(req.params.slug);
   if (!game) return res.status(404).json({ error: "not_found" });
-  res.json({ game });
+  res.json({
+    game: {
+      ...game,
+      category: game.category || "outros",
+      tags: Array.isArray(game.tags) ? game.tags : [],
+      cover: game.cover ? `/games/${game.slug}/${game.cover}` : null,
+    },
+  });
 });
 
 export default router;

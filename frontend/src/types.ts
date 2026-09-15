@@ -2,6 +2,9 @@ export interface GameSummary {
   slug: string;
   title: string;
   description: string;
+  category: string;
+  tags: string[];
+  cover: string | null;
   width: number;
   height: number;
 }
@@ -28,6 +31,8 @@ export interface ButtonConfig {
 
 export interface ControlsConfig {
   dpad?: DpadConfig;
+  /** segundo d-pad opcional, pra jogos de 2 jogadores no mesmo teclado (ex: Fireboy & Watergirl) */
+  dpad2?: DpadConfig;
   aimJoystick?: AimJoystickConfig;
   buttons?: ButtonConfig[];
 }

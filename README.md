@@ -5,6 +5,8 @@ App auto-hospedado para jogar jogos em Flash (.swf) no navegador usando o
 depender de CDN). Login simples por usuario/senha, com save automatico por
 usuario (sincroniza o "save" nativo do jogo, o SharedObject do Flash, com o
 servidor). Funciona no celular com controles na tela, configuraveis por jogo.
+Biblioteca com busca e filtro por categoria, visual cyberpunk/glassmorphism
+com capas neon geradas para cada jogo.
 
 Segue o mesmo padrao dos outros apps em `/pendriver` rodando via Coolify
 (Traefik + rede `coolify` externa) — fica em `/pendriver/FlashGames`.
@@ -45,6 +47,12 @@ FlashGames/
   `/pendriver/FlashGames/games`) a cada request de listagem — adicionar um
   jogo e so criar a pasta com `manifest.json` + `.swf`, sem rebuild. Ver
   `games/README.md`.
+- **Busca e filtro por categoria**: a biblioteca tem busca por titulo/descricao/tags
+  (acento-insensivel) e chips de categoria com contagem (`Acao`, `Estrategia`,
+  `Puzzle`, `Plataforma`, `Arcade` — configuravel em `frontend/src/categories.ts`).
+- **Visual**: tema cyberpunk/glassmorphism (fontes Chakra Petch + Inter
+  self-hosted, painéis com blur e borda neon, glow por categoria) — ver
+  `frontend/src/styles.css`.
 - **PWA**: da pra "instalar" o site (Android/desktop: "Adicionar a tela
   inicial"/"Instalar app"; iOS Safari: Compartilhar → "Adicionar a Tela de
   Inicio") — abre em tela cheia sem barra do navegador. O service worker
@@ -53,12 +61,28 @@ FlashGames/
   resto (API, HTML, JS do app) sempre vai direto pra rede, pra nunca mostrar
   tela ou save desatualizado.
 
-## Jogo incluso: Boxhead 2Play — The Rooms
+## Jogos inclusos
 
-Baixado do item publico do Internet Archive
-[`378950-boxhead-2-play-rooms`](https://archive.org/details/378950-boxhead-2-play-rooms)
-(colecao `open_source_software`, verificado contra malware pela curadoria do
-IA). E o arquivo `games/boxhead-2-play-rooms/game.swf`.
+10 jogos originais (sem IP de terceiros tipo Disney/Nintendo/Sega), todos
+baixados de itens publicos do Internet Archive verificados contra malware
+pela curadoria do IA — o link de origem de cada um esta no campo `source`
+do respectivo `manifest.json`:
+
+| Jogo | Categoria |
+| --- | --- |
+| Boxhead 2Play: The Rooms | Ação |
+| The Last Stand: Union City | Ação |
+| Bloons Tower Defense | Estratégia |
+| Stick War | Estratégia |
+| Snail Bob | Puzzle |
+| Fireboy and Watergirl: Forest Temple | Plataforma |
+| Achievement Unlocked | Plataforma |
+| Learn to Fly | Arcade |
+| Toss the Turtle | Arcade |
+| Effing Worms | Arcade |
+
+Ver `games/README.md` pra detalhes sobre como as capas foram geradas e como
+adicionar mais jogos.
 
 ## Rodando localmente (sem Docker)
 

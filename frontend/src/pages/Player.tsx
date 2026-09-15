@@ -89,7 +89,7 @@ export default function Player() {
 
   return (
     <div className="player-page">
-      <div className="player-topbar">
+      <div className="player-topbar glass">
         <Link to="/" className="back-link">
           ← Biblioteca
         </Link>

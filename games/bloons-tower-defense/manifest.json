@@ -1,0 +1,15 @@
+{
+  "slug": "bloons-tower-defense",
+  "title": "Bloons Tower Defense",
+  "description": "Posicione macacos e torres pelo caminho para estourar as ondas de baloes antes que escapem. O tower defense classico que viciou a internet.",
+  "category": "estrategia",
+  "tags": ["tower-defense", "casual"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Internet Archive (softwarelibrary_flash_unsorted)",
+    "url": "https://archive.org/details/bloons_tower_defense_1_flash"
+  }
+}

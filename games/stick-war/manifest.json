@@ -1,0 +1,15 @@
+{
+  "slug": "stick-war",
+  "title": "Stick War",
+  "description": "Comande um exercito de bonecos-palito: minere ouro, recrute tropas e arrase a nacao vizinha nesse RTS que virou lenda dos portais de flash.",
+  "category": "estrategia",
+  "tags": ["rts", "batalha"],
+  "cover": "cover.jpg",
+  "swf": "game.swf",
+  "width": 600,
+  "height": 400,
+  "source": {
+    "name": "Internet Archive (softwarelibrary_flash_games)",
+    "url": "https://archive.org/details/stick-war"
+  }
+}
