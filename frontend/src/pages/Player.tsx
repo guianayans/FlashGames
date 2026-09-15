@@ -24,22 +24,36 @@ export default function Player() {
   const [shellRect, setShellSlot] = useContainFit(gameRatio);
   const [fsRect, setFsSlot] = useContainFit(gameRatio);
 
-  // Detecta touch (pra decidir se mostra controles) e orientacao (retrato =
-  // shell de portatil com a tela em cima; paisagem = jogo em tela cheia).
+  // Detecta "e celular" (pra decidir se mostra o shell/tela cheia + controles
+  // ativados por padrao) e orientacao. So `pointer: coarse` nao e confiavel
+  // sozinho (alguns navegadores/dispositivos nao reportam certo) — combina
+  // com o tamanho da tela: o lado curto do viewport (funciona em qualquer
+  // orientacao) tem que ser de celular, nao de tablet/desktop.
   useEffect(() => {
     const mqCoarse = window.matchMedia("(pointer: coarse)");
     const mqPortrait = window.matchMedia("(orientation: portrait)");
+    let defaultApplied = false;
     const sync = () => {
-      setPointerCoarse(mqCoarse.matches);
+      const shortSide = Math.min(window.innerWidth, window.innerHeight);
+      const isMobile = mqCoarse.matches || shortSide <= 560;
+      setPointerCoarse(isMobile);
       setPortrait(mqPortrait.matches);
+      // So aplica o padrao (controles ligados em celular) uma vez, na
+      // primeira deteccao — depois disso e o usuario quem manda no toggle,
+      // girar a tela nao pode resetar a escolha dele.
+      if (!defaultApplied) {
+        defaultApplied = true;
+        setShowControls(isMobile);
+      }
     };
     sync();
-    setShowControls(mqCoarse.matches);
     mqCoarse.addEventListener("change", sync);
     mqPortrait.addEventListener("change", sync);
+    window.addEventListener("resize", sync);
     return () => {
       mqCoarse.removeEventListener("change", sync);
       mqPortrait.removeEventListener("change", sync);
+      window.removeEventListener("resize", sync);
     };
   }, []);
 
