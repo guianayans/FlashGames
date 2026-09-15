@@ -15,7 +15,7 @@
   "controls": {
     "dpad": { "up": "ArrowUp", "down": "ArrowDown", "left": "ArrowLeft", "right": "ArrowRight" },
     "buttons": [
-      { "id": "attack", "label": "X", "key": "x", "position": "action-1" }
+      { "id": "attack", "label": "X", "key": "x", "position": "x" }
     ]
   }
 }

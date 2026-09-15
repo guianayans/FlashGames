@@ -5,8 +5,8 @@ interface Props {
   controls: ControlsConfig;
   /** ref pro elemento <ruffle-player> (nao o wrapper) — é nele que o Ruffle escuta teclado/pointer */
   targetRef: React.RefObject<HTMLElement>;
-  /** "overlay" (padrao): botoes flutuam por cima do jogo. "deck": fluxo normal, pra um layout tipo gamepad abaixo do jogo */
-  layout?: "overlay" | "deck";
+  /** "shell": botoes quase invisiveis sobre a imagem do portatil (retrato). "fullscreen": mesmos botoes, reposicionados pros cantos da tela cheia (paisagem) */
+  placement: "shell" | "fullscreen";
 }
 
 const CODE_MAP: Record<string, string> = {
@@ -15,6 +15,8 @@ const CODE_MAP: Record<string, string> = {
   s: "KeyS",
   d: "KeyD",
   r: "KeyR",
+  x: "KeyX",
+  z: "KeyZ",
   " ": "Space",
   Enter: "Enter",
   Escape: "Escape",
@@ -83,6 +85,13 @@ function dispatchPointer(canvas: HTMLElement, type: string, clientX: number, cli
   canvas.dispatchEvent(ev);
 }
 
+function flash(el: Element) {
+  el.classList.add("pressed");
+}
+function unflash(el: Element) {
+  el.classList.remove("pressed");
+}
+
 function useDpad(targetRef: React.RefObject<HTMLElement>) {
   const activeDirs = useRef<Set<string>>(new Set());
 
@@ -97,15 +106,12 @@ function useDpad(targetRef: React.RefObject<HTMLElement>) {
     [targetRef]
   );
 
-  const release = useCallback(
-    (dir: string, key?: string) => {
-      if (!key) return;
-      if (!activeDirs.current.has(dir)) return;
-      activeDirs.current.delete(dir);
-      dispatchKey("keyup", key);
-    },
-    []
-  );
+  const release = useCallback((dir: string, key?: string) => {
+    if (!key) return;
+    if (!activeDirs.current.has(dir)) return;
+    activeDirs.current.delete(dir);
+    dispatchKey("keyup", key);
+  }, []);
 
   return { press, release };
 }
@@ -121,61 +127,65 @@ function Dpad({
 }) {
   const { press, release } = useDpad(targetRef);
 
-  const dir = (name: "up" | "down" | "left" | "right", key: string | undefined, label: string, extraClass: string) => (
-    <button
-      className={`dpad-btn ${extraClass}`}
+  const dir = (name: "up" | "down" | "left" | "right", key: string | undefined, extraClass: string) => (
+    <div
+      className={`dp ${extraClass}`}
       onTouchStart={(e) => {
         e.preventDefault();
+        flash(e.currentTarget);
         press(name, key);
       }}
       onTouchEnd={(e) => {
         e.preventDefault();
+        unflash(e.currentTarget);
         release(name, key);
       }}
       onTouchCancel={(e) => {
         e.preventDefault();
+        unflash(e.currentTarget);
         release(name, key);
       }}
-    >
-      {label}
-    </button>
+    />
   );
 
   return (
     <div className={className}>
-      {dir("up", config.up, "▲", "dpad-up")}
-      {dir("left", config.left, "◀", "dpad-left")}
-      {dir("right", config.right, "▶", "dpad-right")}
-      {dir("down", config.down, "▼", "dpad-down")}
+      {dir("up", config.up, "dp-up")}
+      {dir("left", config.left, "dp-left")}
+      {dir("right", config.right, "dp-right")}
+      {dir("down", config.down, "dp-down")}
     </div>
   );
 }
 
-export default function TouchControls({ controls, targetRef, layout = "overlay" }: Props) {
-  const joystickBase = useRef<HTMLDivElement | null>(null);
-  const joystickKnob = useRef<HTMLDivElement | null>(null);
-  const joystickPointerId = useRef<number | null>(null);
+export default function TouchControls({ controls, targetRef, placement }: Props) {
+  const stickBase = useRef<HTMLDivElement | null>(null);
+  const stickPointerId = useRef<number | null>(null);
 
   const onButtonStart = useCallback(
-    (key: string) => (e: React.TouchEvent | React.PointerEvent) => {
+    (key: string) => (e: React.TouchEvent<HTMLElement>) => {
       e.preventDefault();
+      flash(e.currentTarget);
       focusPlayer(targetRef.current);
       dispatchKey("keydown", key);
     },
     [targetRef]
   );
 
-  const onButtonEnd = useCallback((key: string) => (e: React.TouchEvent | React.PointerEvent) => {
-    e.preventDefault();
-    dispatchKey("keyup", key);
-  }, []);
+  const onButtonEnd = useCallback(
+    (key: string) => (e: React.TouchEvent<HTMLElement>) => {
+      e.preventDefault();
+      unflash(e.currentTarget);
+      dispatchKey("keyup", key);
+    },
+    []
+  );
 
-  const updateJoystick = useCallback(
+  const updateStick = useCallback(
     (clientX: number, clientY: number, fireOnHold: boolean, isStart: boolean) => {
-      const base = joystickBase.current;
-      const knob = joystickKnob.current;
+      const base = stickBase.current;
       const canvas = getCanvas(targetRef.current);
-      if (!base || !knob || !canvas) return;
+      if (!base || !canvas) return;
 
       const baseRect = base.getBoundingClientRect();
       const centerX = baseRect.left + baseRect.width / 2;
@@ -190,7 +200,6 @@ export default function TouchControls({ controls, targetRef, layout = "overlay" 
         dx = (dx / dist) * uiRadius;
         dy = (dy / dist) * uiRadius;
       }
-      knob.style.transform = `translate(${dx}px, ${dy}px)`;
 
       const canvasRect = canvas.getBoundingClientRect();
       const gameCenterX = canvasRect.left + canvasRect.width / 2;
@@ -206,11 +215,9 @@ export default function TouchControls({ controls, targetRef, layout = "overlay" 
     [targetRef]
   );
 
-  const resetJoystick = useCallback(
+  const resetStick = useCallback(
     (fireOnHold: boolean) => {
-      const knob = joystickKnob.current;
       const canvas = getCanvas(targetRef.current);
-      if (knob) knob.style.transform = "translate(0px, 0px)";
       if (canvas && fireOnHold) {
         const r = canvas.getBoundingClientRect();
         dispatchPointer(canvas, "pointerup", r.left + r.width / 2, r.top + r.height / 2, false);
@@ -221,60 +228,58 @@ export default function TouchControls({ controls, targetRef, layout = "overlay" 
 
   const dpad = controls.dpad;
   const dpad2 = controls.dpad2;
-  const joystick = controls.aimJoystick;
+  const stick = controls.aimJoystick;
   const buttons = controls.buttons || [];
 
   return (
-    <div className={`touch-controls layout-${layout}`}>
-      {dpad && <Dpad config={dpad} className="touch-dpad" targetRef={targetRef} />}
-      {dpad2 && <Dpad config={dpad2} className="touch-dpad touch-dpad2" targetRef={targetRef} />}
+    <div className={`touch-controls placement-${placement}`}>
+      {dpad && <Dpad config={dpad} className="ctl-dpad" targetRef={targetRef} />}
+      {dpad2 && <Dpad config={dpad2} className="ctl-dpad ctl-dpad2" targetRef={targetRef} />}
 
-      {joystick && (
+      {stick && (
         <div
-          className="touch-joystick"
-          ref={joystickBase}
+          className="ctl-stick ctl-stick-r"
+          ref={stickBase}
           onPointerDown={(e) => {
             e.preventDefault();
+            e.currentTarget.classList.add("pressed");
             try {
-              (e.target as HTMLElement).setPointerCapture(e.pointerId);
+              e.currentTarget.setPointerCapture(e.pointerId);
             } catch {
-              // segue sem capture (raro, mas nao pode travar o resto do handler)
+              // raro, segue sem capture
             }
-            joystickPointerId.current = e.pointerId;
+            stickPointerId.current = e.pointerId;
             focusPlayer(targetRef.current);
-            updateJoystick(e.clientX, e.clientY, !!joystick.fireOnHold, true);
+            updateStick(e.clientX, e.clientY, !!stick.fireOnHold, true);
           }}
           onPointerMove={(e) => {
-            if (joystickPointerId.current !== e.pointerId) return;
+            if (stickPointerId.current !== e.pointerId) return;
             e.preventDefault();
-            updateJoystick(e.clientX, e.clientY, !!joystick.fireOnHold, false);
+            updateStick(e.clientX, e.clientY, !!stick.fireOnHold, false);
           }}
           onPointerUp={(e) => {
-            if (joystickPointerId.current !== e.pointerId) return;
+            if (stickPointerId.current !== e.pointerId) return;
             e.preventDefault();
-            joystickPointerId.current = null;
-            resetJoystick(!!joystick.fireOnHold);
+            e.currentTarget.classList.remove("pressed");
+            stickPointerId.current = null;
+            resetStick(!!stick.fireOnHold);
           }}
-          onPointerCancel={() => {
-            joystickPointerId.current = null;
-            resetJoystick(!!joystick.fireOnHold);
+          onPointerCancel={(e) => {
+            e.currentTarget.classList.remove("pressed");
+            stickPointerId.current = null;
+            resetStick(!!stick.fireOnHold);
           }}
-        >
-          <div className="touch-joystick-knob" ref={joystickKnob} />
-          {joystick.label && <span className="touch-joystick-label">{joystick.label}</span>}
-        </div>
+        />
       )}
 
       {buttons.map((btn) => (
-        <button
+        <div
           key={btn.id}
-          className={`touch-action-btn pos-${btn.position}`}
+          className={`ctl-btn slot-${btn.position}`}
           onTouchStart={onButtonStart(btn.key)}
           onTouchEnd={onButtonEnd(btn.key)}
           onTouchCancel={onButtonEnd(btn.key)}
-        >
-          {btn.label}
-        </button>
+        />
       ))}
     </div>
   );

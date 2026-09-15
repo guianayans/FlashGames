@@ -39,17 +39,19 @@ FlashGames/
   num jogo, ele limpa do navegador qualquer chave conhecida daquele jogo e
   restaura so as do usuario atual (evita vazar save de outra pessoa no mesmo
   navegador/dispositivo compartilhado).
-- **Controles no celular**: cada jogo pode declarar `controls` no
-  `manifest.json` (d-pad, d-pad duplo pra jogos de 2 jogadores, analogico de
-  mira/tiro, botoes extras). Em telas touch os controles aparecem
-  automaticamente; tem um botao 🎮 pra ligar/desligar manualmente. Detalhes
-  em `games/README.md`.
-  - **Celular na vertical**: o jogo fica no tamanho normal em cima e os
-    controles viram um "deck" de gamepad abaixo dele, com uma imagem de
-    fundo de um portatil de jogos futurista (`frontend/public/images/handheld-bg.webp`).
-  - **Celular na horizontal**: o jogo vai pra tela cheia (preservando a
-    proporcao original — sem esticar) e os controles sobrepoem o jogo,
-    redimensionados pra caber na tela curta.
+- **Controles no celular**: um gamepad fisico so (d-pad, 2 analogicos,
+  X/Y/A/B, FN/SELECT/START) — cada jogo so declara em `controls` no
+  `manifest.json` quais desses botoes usa e pra qual tecla cada um manda
+  (ver `games/README.md`). Tem um botao 🎮 pra ligar/desligar manualmente.
+  - **Celular na vertical**: o jogo fica no tamanho normal em cima, sobre a
+    imagem de um portatil de jogos futurista
+    (`frontend/public/images/handheld-bg.webp`) — os controles ficam
+    **invisiveis**, posicionados em cima dos botoes/analogicos desenhados
+    na propria foto.
+  - **Celular na horizontal**: o jogo vai pra tela cheia (preserva a
+    proporcao original, sem esticar — a foto do portatil nao aparece, nao
+    tem espaco) e os mesmos controles reaparecem quase invisiveis nos
+    cantos da tela, redimensionados pra caber na altura curta.
   - Os toques sao traduzidos pra eventos de verdade que o Ruffle escuta: teclado
     (`keydown`/`keyup` em `window`, so processados quando o player esta em foco —
     por isso todo toque tambem chama `.focus()` no player) e ponteiro

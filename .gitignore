@@ -14,5 +14,10 @@ data/
 games/**/*.swf
 
 # Fonte bruta (1.4MB) da imagem de fundo do modo retrato - a versao otimizada
-# (.webp, ~55KB) que o app de fato usa fica em frontend/public/images/.
+# (.webp, ~86KB) que o app de fato usa fica em frontend/public/images/.
 /imagens/
+
+# Prototipo HTML standalone (1.8MB, com a imagem em base64 embutida) usado
+# como referencia pro layout dos controles do shell - a logica ja foi
+# portada pra frontend/src/components/TouchControls.tsx e Player.tsx.
+/elementos/

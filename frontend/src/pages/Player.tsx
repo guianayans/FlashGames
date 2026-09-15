@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import type { GameDetail } from "../types";
 import { loadRuffleScript } from "../loadRuffleScript";
 import { prepareGameStorage, flushGameSave, type GameStorageSession } from "../ruffleSave";
+import { useContainFit } from "../useContainFit";
 import TouchControls from "../components/TouchControls";
 
 export default function Player() {
@@ -19,8 +20,12 @@ export default function Player() {
   const sessionRef = useRef<GameStorageSession | null>(null);
   const flushIntervalRef = useRef<number | null>(null);
 
-  // Detecta touch (pra decidir se mostra controles) e orientacao (retrato = deck
-  // de gamepad abaixo do jogo; paisagem = jogo em tela cheia com controles por cima).
+  const gameRatio = game ? game.width / game.height : 4 / 3;
+  const [shellRect, setShellSlot] = useContainFit(gameRatio);
+  const [fsRect, setFsSlot] = useContainFit(gameRatio);
+
+  // Detecta touch (pra decidir se mostra controles) e orientacao (retrato =
+  // shell de portatil com a tela em cima; paisagem = jogo em tela cheia).
   useEffect(() => {
     const mqCoarse = window.matchMedia("(pointer: coarse)");
     const mqPortrait = window.matchMedia("(orientation: portrait)");
@@ -116,8 +121,8 @@ export default function Player() {
   }, [slug]);
 
   const hasControls = !!game?.controls;
-  const isHandheld = pointerCoarse && portrait; // celular vertical: deck de gamepad abaixo do jogo
-  const isMobileLandscape = pointerCoarse && !portrait; // celular horizontal: jogo em tela cheia
+  const isHandheld = pointerCoarse && portrait; // celular vertical: shell de portatil
+  const isMobileLandscape = pointerCoarse && !portrait; // celular horizontal: tela cheia
 
   const pageClass = [
     "player-page",
@@ -127,11 +132,57 @@ export default function Player() {
     .filter(Boolean)
     .join(" ");
 
+  // A stage (onde o <ruffle-player> mora) precisa ficar sempre montada, sem
+  // nunca desmontar, senao o jogo recarrega do zero a cada troca de
+  // orientacao. So a posicao/tamanho dela mudam por modo.
+  let stageStyle: CSSProperties;
+  if (isHandheld) {
+    stageStyle = shellRect
+      ? { position: "fixed", left: shellRect.left, top: shellRect.top, width: shellRect.width, height: shellRect.height, borderRadius: "13px 13px 4px 4px" }
+      : { position: "fixed", opacity: 0, width: 0, height: 0 };
+  } else if (isMobileLandscape) {
+    stageStyle = fsRect
+      ? { position: "fixed", left: fsRect.left, top: fsRect.top, width: fsRect.width, height: fsRect.height, borderRadius: 0 }
+      : { position: "fixed", opacity: 0, width: 0, height: 0 };
+  } else {
+    stageStyle = {
+      position: "relative",
+      width: "100%",
+      maxWidth: 960,
+      margin: "0 auto",
+      aspectRatio: game ? `${game.width}/${game.height}` : "4/3",
+    };
+  }
+
   return (
     <div className={pageClass}>
-      {isHandheld && <div className="handheld-backdrop" aria-hidden="true" />}
+      {isHandheld && (
+        <>
+          <div className="shell-topbar">
+            <Link to="/" className="shell-back" aria-label="Voltar pra biblioteca">
+              ←
+            </Link>
+            <span className="shell-title">{game?.title ?? "Carregando..."}</span>
+            <button
+              className="shell-toggle"
+              onClick={() => setShowControls((v) => !v)}
+              title="Mostrar/ocultar controles"
+            >
+              🎮
+            </button>
+          </div>
 
-      {!isMobileLandscape && (
+          <div className="shell">
+            <img className="shell-img" src="/images/handheld-bg.webp" alt="" />
+            <div className="shell-screen-slot" ref={setShellSlot} />
+            {showControls && hasControls && (
+              <TouchControls controls={game!.controls!} targetRef={playerElRef} placement="shell" />
+            )}
+          </div>
+        </>
+      )}
+
+      {!isHandheld && !isMobileLandscape && (
         <div className="player-topbar glass">
           <Link to="/" className="back-link">
             ← Biblioteca
@@ -147,18 +198,11 @@ export default function Player() {
         </div>
       )}
 
-      {error && <p className="error-text">{error}</p>}
-
-      <div
-        className="player-stage-wrapper"
-        style={{
-          aspectRatio: game ? `${game.width}/${game.height}` : "4/3",
-          ["--game-ratio" as string]: game ? game.width / game.height : 4 / 3,
-        }}
-      >
-        {isMobileLandscape && (
+      {isMobileLandscape && (
+        <>
+          <div className="landscape-screen-slot" ref={setFsSlot} />
           <div className="mobile-landscape-bar">
-            <Link to="/" className="back-link">
+            <Link to="/" className="back-link" aria-label="Voltar pra biblioteca">
               ←
             </Link>
             <button
@@ -169,18 +213,17 @@ export default function Player() {
               🎮
             </button>
           </div>
-        )}
-        <div className="player-stage" ref={stageRef} />
-        {showControls && hasControls && isMobileLandscape && (
-          <TouchControls controls={game!.controls!} targetRef={playerElRef} layout="overlay" />
-        )}
-      </div>
-
-      {showControls && hasControls && isHandheld && (
-        <div className="gamepad-deck glass">
-          <TouchControls controls={game!.controls!} targetRef={playerElRef} layout="deck" />
-        </div>
+          {showControls && hasControls && (
+            <TouchControls controls={game!.controls!} targetRef={playerElRef} placement="fullscreen" />
+          )}
+        </>
       )}
+
+      {error && <p className="error-text">{error}</p>}
+
+      <div className="player-stage-wrapper" style={stageStyle}>
+        <div className="player-stage" ref={stageRef} />
+      </div>
 
       {!isHandheld && !isMobileLandscape && game?.description && (
         <p className="player-description">{game.description}</p>

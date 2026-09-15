@@ -667,16 +667,20 @@ a {
 }
 
 .player-stage-wrapper {
-  position: relative;
-  width: 100%;
-  max-width: 960px;
-  margin: 0 auto;
   background: #000;
-  border-radius: var(--radius-md);
   overflow: hidden;
   touch-action: none;
+  z-index: 20;
+}
+
+.player-page:not(.is-handheld):not(.is-mobile-landscape) .player-stage-wrapper {
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
   box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.15), 0 20px 60px -20px rgba(255, 46, 154, 0.35), 0 0 50px -18px rgba(0, 229, 255, 0.3);
+}
+
+.is-handheld .player-stage-wrapper {
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.65);
 }
 
 .player-stage {
@@ -694,249 +698,103 @@ a {
   padding: 0 4px;
 }
 
-/* ---------- Touch controls ---------- */
-/* layout-overlay: botoes flutuam absolutos por cima do jogo (paisagem/desktop).
-   layout-deck: fluxo normal, empilhados num painel abaixo do jogo (retrato). */
+/* ============================================================
+   MODO "HANDHELD" (celular na vertical)
+   Um portatil de jogos com a tela e os botoes reais da imagem —
+   os controles ficam quase invisiveis, sobre os botoes impressos.
+   ============================================================ */
 
-.touch-controls {
-  user-select: none;
-}
-
-.touch-controls.layout-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 20;
-}
-
-.touch-controls.layout-deck {
-  position: static;
-  display: flex;
-  flex-wrap: wrap;
+.player-page.is-handheld {
+  max-width: none;
+  padding: 0;
+  gap: 0;
+  height: 100dvh;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
-  pointer-events: auto;
+  justify-content: flex-start;
+  overflow: hidden;
 }
 
-.touch-dpad {
-  width: 150px;
-  height: 150px;
-  display: grid;
-  grid-template-columns: 50px 50px 50px;
-  grid-template-rows: 50px 50px 50px;
-  pointer-events: auto;
-}
-
-.layout-overlay .touch-dpad {
-  position: absolute;
-  left: 14px;
-  bottom: 14px;
-}
-
-.layout-overlay .touch-dpad2 {
-  left: auto;
-  right: 14px;
-}
-
-.layout-deck .touch-dpad {
-  position: static;
-  order: 0;
-}
-
-.layout-deck .touch-dpad2 {
-  order: 3;
-}
-
-.dpad-btn {
-  background: rgba(0, 229, 255, 0.1);
-  border: 1px solid rgba(0, 229, 255, 0.4);
-  color: var(--text);
-  font-size: 1.1rem;
-  border-radius: 10px;
-  touch-action: none;
-  -webkit-user-select: none;
-  backdrop-filter: blur(6px);
-}
-
-.touch-dpad2 .dpad-btn {
-  background: rgba(255, 46, 154, 0.1);
-  border-color: rgba(255, 46, 154, 0.4);
-}
-
-.dpad-btn:active {
-  background: rgba(0, 229, 255, 0.3);
-}
-
-.touch-dpad2 .dpad-btn:active {
-  background: rgba(255, 46, 154, 0.3);
-}
-
-.dpad-up {
-  grid-column: 2;
-  grid-row: 1;
-}
-.dpad-left {
-  grid-column: 1;
-  grid-row: 2;
-}
-.dpad-right {
-  grid-column: 3;
-  grid-row: 2;
-}
-.dpad-down {
-  grid-column: 2;
-  grid-row: 3;
-}
-
-.touch-joystick {
-  position: relative;
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  background: rgba(255, 46, 154, 0.08);
-  border: 1px solid rgba(255, 46, 154, 0.4);
-  pointer-events: auto;
-  touch-action: none;
+.shell-topbar {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: min(440px, 96vw);
   display: flex;
   align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(6px);
+  justify-content: space-between;
+  gap: 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 4px 8px;
 }
 
-.layout-overlay .touch-joystick {
-  position: absolute;
-  right: 24px;
-  bottom: 24px;
-}
-
-.layout-deck .touch-joystick {
-  position: static;
-  order: 2;
-}
-
-.touch-joystick-knob {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: rgba(255, 46, 154, 0.55);
-  box-shadow: 0 0 16px rgba(255, 46, 154, 0.6);
-  pointer-events: none;
-}
-
-.touch-joystick-label {
-  position: absolute;
-  bottom: -20px;
-  font-size: 0.68rem;
-  font-family: var(--font-display);
+.shell-back,
+.shell-toggle {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   color: var(--text-dim);
+  text-decoration: none;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 8px 12px;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.shell-back:hover,
+.shell-toggle:hover {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+
+.shell-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.touch-action-btn {
-  pointer-events: auto;
-  touch-action: none;
-  border: 1px solid rgba(139, 92, 246, 0.45);
-  background: rgba(139, 92, 246, 0.14);
-  color: var(--text);
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.85rem;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  backdrop-filter: blur(6px);
+.shell {
+  position: relative;
+  width: min(440px, 96vw);
+  aspect-ratio: 2 / 3;
+  max-height: calc(100dvh - 56px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  flex-shrink: 1;
 }
 
-.touch-action-btn:active {
-  background: rgba(139, 92, 246, 0.38);
-}
-
-.layout-overlay .touch-action-btn {
+.shell-img {
   position: absolute;
-}
-
-.layout-deck .touch-action-btn {
-  position: static;
-  order: 1;
-}
-
-.layout-overlay .pos-action-1 {
-  right: 172px;
-  bottom: 96px;
-}
-.layout-overlay .pos-action-2 {
-  right: 100px;
-  bottom: 160px;
-}
-.layout-overlay .pos-weapon-1 {
-  top: 12px;
-  left: 12px;
-}
-.layout-overlay .pos-weapon-2 {
-  top: 12px;
-  left: 68px;
-}
-.layout-overlay .pos-weapon-3 {
-  top: 12px;
-  left: 124px;
-}
-.layout-overlay .pos-weapon-4 {
-  top: 12px;
-  left: 180px;
-}
-.layout-overlay .pos-menu-confirm {
-  top: 12px;
-  right: 12px;
-  width: 68px;
-  border-radius: 10px;
-}
-.layout-overlay .pos-pause {
-  top: 12px;
-  right: 90px;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  font-size: 0.7rem;
-}
-
-.layout-deck .pos-menu-confirm,
-.layout-deck .pos-pause {
-  width: 68px;
-  border-radius: 10px;
-}
-
-/* ---------- Modo "handheld" (celular na vertical) ---------- */
-/* Fundo simulando um portatil de jogos futurista atras do jogo + deck de
-   controles abaixo, tipo um gamepad de verdade. */
-
-.handheld-backdrop {
-  position: fixed;
   inset: 0;
-  z-index: -1;
-  background-image: radial-gradient(ellipse at 50% 0%, rgba(10, 7, 20, 0.35), rgba(10, 7, 20, 0.85) 65%), url("/images/handheld-bg.webp");
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  -webkit-user-drag: none;
 }
 
-.player-page.is-handheld .player-stage-wrapper {
-  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.25), 0 24px 60px -16px rgba(0, 0, 0, 0.7), 0 0 60px -14px rgba(255, 46, 154, 0.35);
+.shell-screen-slot {
+  position: absolute;
+  top: 2.56%;
+  left: 4.05%;
+  width: 92.8%;
+  height: 40.79%;
+  pointer-events: none;
 }
 
-.gamepad-deck {
-  padding: 18px 16px 22px;
-  margin-top: 2px;
-}
-
-/* ---------- Modo tela cheia (celular na horizontal) ---------- */
+/* ============================================================
+   MODO TELA CHEIA (celular na horizontal)
+   ============================================================ */
 
 .mobile-landscape-bar {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 25;
+  z-index: 45;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -960,88 +818,255 @@ a {
   max-width: none;
 }
 
-.player-page.is-mobile-landscape .player-stage-wrapper {
+.landscape-screen-slot {
   position: fixed;
   inset: 0;
-  z-index: 40;
-  max-width: none;
-  width: 100vw;
-  height: 100dvh;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-  aspect-ratio: unset !important;
+  z-index: 0;
+  pointer-events: none;
+  background: #000;
 }
 
-/* Letterbox: preserva a proporcao original do jogo (--game-ratio, setado
-   inline pelo React) dentro da tela cheia, sem esticar. */
-.player-page.is-mobile-landscape .player-stage {
+/* ============================================================
+   CONTROLES DE TOQUE
+   Mesmo esquema fisico nos dois modos (d-pad, d-pad2, analogico de
+   mira, botoes X/Y/A/B + FN/SELECT/START) — so a posicao/tamanho
+   mudam. "shell": percentuais medidos sobre a imagem do portatil.
+   "fullscreen": cantos da tela, reaproveitando os mesmos controles.
+   Quase invisiveis: sem preenchimento nem borda, so um flash
+   translucido leve ao tocar.
+   ============================================================ */
+
+.touch-controls {
+  user-select: none;
+}
+
+.touch-controls.placement-shell {
   position: absolute;
-  inset: auto;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(100vw, 100dvh * var(--game-ratio, 1.3333));
-  height: min(100dvh, 100vw / var(--game-ratio, 1.3333));
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
 }
 
-/* Controles um pouco menores em paisagem no celular, pra caber na altura curta da tela. */
-@media (orientation: landscape) and (pointer: coarse) {
-  .layout-overlay .touch-dpad {
-    width: 128px;
-    height: 128px;
-    grid-template-columns: 42px 42px 42px;
-    grid-template-rows: 42px 42px 42px;
-    left: 10px;
-    bottom: 10px;
-  }
-  .layout-overlay .touch-dpad2 {
-    left: auto;
-    right: 10px;
-  }
-  .layout-overlay .touch-joystick {
-    width: 108px;
-    height: 108px;
-    right: 18px;
-    bottom: 18px;
-  }
-  .layout-overlay .touch-joystick-knob {
-    width: 46px;
-    height: 46px;
-  }
-  .layout-overlay .touch-action-btn {
-    width: 42px;
-    height: 42px;
-    font-size: 0.75rem;
-  }
-  .layout-overlay .pos-action-1 {
-    right: 148px;
-    bottom: 82px;
-  }
-  .layout-overlay .pos-action-2 {
-    right: 88px;
-    bottom: 138px;
-  }
-  .layout-overlay .pos-weapon-2 {
-    left: 58px;
-  }
-  .layout-overlay .pos-weapon-3 {
-    left: 104px;
-  }
-  .layout-overlay .pos-weapon-4 {
-    left: 150px;
-  }
-  /* Empurra os botoes do topo pra baixo da barra flutuante (voltar/toggle). */
-  .layout-overlay .pos-weapon-1,
-  .layout-overlay .pos-weapon-2,
-  .layout-overlay .pos-weapon-3,
-  .layout-overlay .pos-weapon-4 {
-    top: calc(env(safe-area-inset-top, 0px) + 54px);
-  }
-  .layout-overlay .pos-menu-confirm,
-  .layout-overlay .pos-pause {
-    top: calc(env(safe-area-inset-top, 0px) + 54px);
-  }
+.touch-controls.placement-fullscreen {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 46;
+}
+
+.dp,
+.ctl-stick,
+.ctl-btn {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: pointer;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 60ms ease;
+}
+
+.dp.pressed,
+.ctl-stick.pressed,
+.ctl-btn.pressed {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.ctl-stick,
+.ctl-btn {
+  border-radius: 50%;
+}
+
+/* ---------- d-pad ---------- */
+
+.ctl-dpad {
+  pointer-events: none;
+}
+
+.placement-shell .ctl-dpad {
+  position: absolute;
+  top: 51%;
+  left: 10.1%;
+  width: 16%;
+  aspect-ratio: 1;
+}
+
+.placement-shell .ctl-dpad2 {
+  top: 74%;
+  left: 10%;
+  width: 15%;
+}
+
+.placement-shell .dp {
+  position: absolute;
+}
+.placement-shell .dp-up {
+  top: 0;
+  left: 33%;
+  width: 34%;
+  height: 34%;
+  border-radius: 3px 3px 0 0;
+}
+.placement-shell .dp-right {
+  top: 53%;
+  right: -13px;
+  width: 34%;
+  height: 34%;
+  border-radius: 0 3px 3px 0;
+}
+.placement-shell .dp-down {
+  bottom: -26px;
+  left: 33%;
+  width: 34%;
+  height: 34%;
+  border-radius: 0 0 3px 3px;
+}
+.placement-shell .dp-left {
+  top: 52%;
+  left: -15px;
+  width: 34%;
+  height: 34%;
+  border-radius: 3px 0 0 3px;
+}
+
+.placement-fullscreen .ctl-dpad {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  width: 120px;
+  height: 120px;
+  display: grid;
+  grid-template-columns: 40px 40px 40px;
+  grid-template-rows: 40px 40px 40px;
+}
+.placement-fullscreen .ctl-dpad2 {
+  left: auto;
+  right: 14px;
+}
+.placement-fullscreen .dp {
+  position: static;
+  border-radius: 8px;
+}
+.placement-fullscreen .dp-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+.placement-fullscreen .dp-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+.placement-fullscreen .dp-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+.placement-fullscreen .dp-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+/* ---------- analogico de mira (stick direito) ---------- */
+
+.placement-shell .ctl-stick-r {
+  position: absolute;
+  top: 74%;
+  left: 75%;
+  width: 15%;
+  aspect-ratio: 1;
+}
+
+.placement-fullscreen .ctl-stick-r {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 100px;
+  height: 100px;
+}
+
+/* ---------- botoes de acao (X/Y/A/B + FN/SELECT/START) ---------- */
+
+.placement-shell .ctl-btn {
+  position: absolute;
+  aspect-ratio: 1;
+}
+.placement-shell .slot-x {
+  top: 50.8%;
+  left: 79.5%;
+  width: 5.5%;
+}
+.placement-shell .slot-y {
+  top: 56.8%;
+  left: 70.2%;
+  width: 5.5%;
+}
+.placement-shell .slot-a {
+  top: 57.2%;
+  left: 88.8%;
+  width: 5.5%;
+}
+.placement-shell .slot-b {
+  top: 63.7%;
+  left: 79.6%;
+  width: 5.5%;
+}
+.placement-shell .slot-fn {
+  top: 63.5%;
+  left: 47%;
+  width: 6%;
+}
+.placement-shell .slot-select {
+  top: 70%;
+  left: 35%;
+  width: 11%;
+  height: 3.8%;
+  aspect-ratio: unset;
+  border-radius: 20px;
+}
+.placement-shell .slot-start {
+  top: 70%;
+  left: 53.5%;
+  width: 11%;
+  height: 3.8%;
+  aspect-ratio: unset;
+  border-radius: 20px;
+}
+
+.placement-fullscreen .ctl-btn {
+  position: fixed;
+  width: 42px;
+  height: 42px;
+}
+.placement-fullscreen .slot-x {
+  right: 150px;
+  bottom: 195px;
+}
+.placement-fullscreen .slot-y {
+  right: 175px;
+  bottom: 170px;
+}
+.placement-fullscreen .slot-a {
+  right: 125px;
+  bottom: 170px;
+}
+.placement-fullscreen .slot-b {
+  right: 150px;
+  bottom: 145px;
+}
+.placement-fullscreen .slot-fn {
+  right: 208px;
+  bottom: 24px;
+}
+.placement-fullscreen .slot-select,
+.placement-fullscreen .slot-start {
+  top: calc(env(safe-area-inset-top, 0px) + 52px);
+  width: 62px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 0.65rem;
+}
+.placement-fullscreen .slot-select {
+  right: 84px;
+}
+.placement-fullscreen .slot-start {
+  right: 14px;
 }
 
 /* ---------- Responsive ---------- */

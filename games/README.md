@@ -24,9 +24,9 @@ a imagem (so recarregar a pagina/backend detecta na proxima listagem).
   "height": 480,
   "controls": {
     "dpad": { "up": "w", "down": "s", "left": "a", "right": "d" },
-    "aimJoystick": { "label": "Mirar / Atirar", "fireOnHold": true, "radius": 140 },
+    "aimJoystick": { "fireOnHold": true },
     "buttons": [
-      { "id": "acao1", "label": "Espaco", "key": " ", "position": "action-1" }
+      { "id": "acao1", "label": "Espaco", "key": " ", "position": "x" }
     ]
   }
 }
@@ -44,29 +44,67 @@ As categorias (e cores/icones dos chips e badges) ficam mapeadas em
 entrada nesse arquivo (label acentuado, cor neon em hex, icone) e usar o
 mesmo slug (minusculo, sem acento) no `category` do manifest.
 
+## Controles de toque: um gamepad fisico so
+
+Os controles seguem sempre o mesmo esquema fisico de um handheld de verdade
+(d-pad, dois analogicos, botoes X/Y/A/B e FN/SELECT/START) — o manifest so
+diz **quais** desses botoes o jogo usa e pra qual tecla cada um manda. A UI
+decide sozinha onde desenhar cada um:
+
+- **Retrato**: o jogo aparece no tamanho normal em cima, e por baixo tem a
+  imagem de um portatil de jogos (`frontend/public/images/handheld-bg.webp`).
+  Os controles ficam **invisiveis**, exatamente em cima dos botoes/analogicos
+  desenhados na foto — voce esta tocando o botao "de verdade" que aparece
+  na imagem.
+- **Paisagem**: o jogo vai pra tela cheia (preserva a proporcao original,
+  sem esticar) e os mesmos controles reaparecem sobrepostos nos cantos da
+  tela, tambem quase invisiveis, so com um flash translúcido leve ao tocar.
+
+Isso e tudo implementado em `frontend/src/components/TouchControls.tsx`
+(logica) + `frontend/src/styles.css` (posicao/tamanho de cada modo) +
+`frontend/src/pages/Player.tsx` (que troca de modo por orientacao/tela).
+
 ## Campos de `controls` (todos opcionais)
 
 - `dpad`: 4 direcoes que viram teclas de teclado (keydown/keyup) enquanto o
-  jogador segura o botao na tela. Use o valor da tecla como em `KeyboardEvent.key`
-  (ex: `"w"`, `"ArrowUp"`, `" "`).
-- `dpad2`: um segundo d-pad (aparece do lado direito da tela) pra jogos de
-  2 jogadores no mesmo teclado, tipo Fireboy & Watergirl — um dpad controla
-  cada personagem.
-- `aimJoystick`: analógico virtual (lado direito da tela) que move um mouse
-  virtual a partir do centro da tela do jogo — bom para jogos de tiro top-down
-  como o Boxhead. `fireOnHold: true` mantem o botao esquerdo do mouse pressionado
-  enquanto o analógico estiver ativo (auto-fire). `radius` controla o raio (em
-  pixels de tela) que o analógico visual aceita arrastar; a mira em si sempre
-  cobre a tela inteira do jogo proporcionalmente.
-- `buttons`: lista de botoes extras (recarregar, trocar arma, pausar, confirmar
+  jogador segura o botao — mapeia pro d-pad fisico (esquerda). Use o valor
+  da tecla como em `KeyboardEvent.key` (ex: `"w"`, `"ArrowUp"`, `" "`).
+- `dpad2`: um segundo d-pad, mapeado pro analogico esquerdo — pra jogos de
+  2 jogadores no mesmo teclado, tipo Fireboy & Watergirl (um dpad controla
+  cada personagem).
+- `aimJoystick`: mapeado pro analogico direito — move um "mouse" virtual a
+  partir do centro da tela do jogo, bom pra jogos de tiro top-down como o
+  Boxhead. `fireOnHold: true` mantem o botao esquerdo do mouse pressionado
+  enquanto o analógico estiver sendo arrastado (auto-fire).
+- `buttons`: lista de botoes extras (recarregar, trocar arma, confirmar
   menu, etc). Cada botao dispara `keydown` ao tocar e `keyup` ao soltar.
-  `position` e soltopositions pre-definidas do CSS
-  (`action-1`, `action-2`, `weapon-1`..`weapon-4`, `menu-confirm`, `pause`) -
-  veja `frontend/src/components/TouchControls.tsx` para adicionar novas.
+  `position` tem que ser um destes 7 slots fisicos: `x`, `y`, `a`, `b`
+  (os 4 botoes de acao), `fn`, `select`, `start` (os 3 botoes centrais).
+  Da pra usar ate 7 botoes por jogo; o Boxhead/Last Stand ja usam 6
+  (`x`/`y`/`a`/`b` = trocar arma, `fn` = recarregar, `start` = confirmar).
 
 Se `controls` nao for definido, o jogo ainda funciona no celular (o Ruffle
-recebe toque como clique), so nao aparecem os botoes de teclado/direcao na tela
-— funciona bem pra jogos de aponte-e-clique (ex: Snail Bob) sem configurar nada.
+recebe toque como clique), so nao aparecem os botoes/d-pad na tela — funciona
+bem pra jogos de aponte-e-clique (ex: Snail Bob, Riddle School) sem configurar
+nada.
+
+### Por que o toque nao "simplesmente funciona" com qualquer evento sintetico
+
+O Ruffle (o emulador Flash que roda os jogos) escuta eventos bem
+especificos, e o `TouchControls.tsx` imita exatamente isso:
+
+- **Teclado**: o Ruffle so processa `keydown`/`keyup` quando o elemento
+  `<ruffle-player>` esta com foco de verdade (ele mesmo se marca com
+  `tabindex="-1"` e escuta `focusin`/`focusout`). Por isso todo toque no
+  d-pad/botao chama `.focus()` nesse elemento antes de disparar a tecla.
+- **Mouse/mira**: o Ruffle escuta `PointerEvent` (`pointerdown` /
+  `pointermove` / `pointerup`) direto no `<canvas>` — que fica dentro de uma
+  *shadow root* do `<ruffle-player>` (por isso o `querySelector` normal nao
+  acha; precisa checar `.shadowRoot` tambem). Um `MouseEvent` solto em
+  qualquer outro elemento da pagina e ignorado silenciosamente.
+
+Se um dia parecer que "os controles nao fazem nada", esses dois pontos sao
+o primeiro lugar pra olhar.
 
 ## Salvamento por usuario
 
