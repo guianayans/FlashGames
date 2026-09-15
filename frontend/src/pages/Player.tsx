@@ -43,13 +43,18 @@ export default function Player() {
     };
   }, []);
 
-  // Trava o scroll da pagina por tras enquanto o jogo esta em tela cheia (paisagem no celular).
+  // A pagina do jogo (shell no retrato, tela cheia na paisagem) nunca deve
+  // rolar - trava o scroll do body enquanto qualquer um dos dois modos
+  // estiver ativo.
   useEffect(() => {
-    if (!(pointerCoarse && !portrait)) return;
+    if (!pointerCoarse) return;
     const prevOverflow = document.body.style.overflow;
+    const prevHeight = document.body.style.height;
     document.body.style.overflow = "hidden";
+    document.body.style.height = "100dvh";
     return () => {
       document.body.style.overflow = prevOverflow;
+      document.body.style.height = prevHeight;
     };
   }, [pointerCoarse, portrait]);
 
@@ -83,8 +88,13 @@ export default function Player() {
 
         await player.ruffle().load({
           url: `/games/${slug}/${detail.swf}`,
-          width: detail.width,
-          height: detail.height,
+          // "showAll" preserva a proporcao original sem cortar (letterbox).
+          // forceScale ignora o Stage.scaleMode que o proprio jogo tente
+          // setar via ActionScript (comum em jogos antigos) — sem isso,
+          // alguns jogos forcam o proprio tamanho fixo e cortam dentro do
+          // nosso container.
+          scale: "showAll",
+          forceScale: true,
         });
 
         const flush = (keepalive = false) => {
