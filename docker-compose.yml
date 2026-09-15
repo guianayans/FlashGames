@@ -1,16 +1,17 @@
 # FlashGames — atras do Traefik (Coolify), no mesmo padrao dos outros apps em /pendriver.
-# Build a partir de /FlashGames; os jogos ficam em /FlashGames/games (bind mount,
-# da pra adicionar jogo novo sem rebuildar a imagem).
+# Build a partir de /pendriver/FlashGames; os jogos ficam em
+# /pendriver/FlashGames/games (bind mount, da pra adicionar jogo novo sem
+# rebuildar a imagem).
 
 services:
   flashgames:
     container_name: flashgames
     build:
-      context: /FlashGames
+      context: /pendriver/FlashGames
       dockerfile: Dockerfile
     working_dir: /app
     volumes:
-      - /FlashGames/games:/app/games
+      - /pendriver/FlashGames/games:/app/games
       - flashgames_data:/app/data
     environment:
       NODE_ENV: production

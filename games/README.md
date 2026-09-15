@@ -1,8 +1,8 @@
 # Como adicionar um novo jogo
 
 Esta pasta e montada dentro do container (bind mount), entao voce pode adicionar
-jogos direto no servidor em `/FlashGames/games/` sem precisar rebuildar a imagem
-(so recarregar a pagina/backend detecta na proxima listagem).
+jogos direto no servidor em `/pendriver/FlashGames/games/` sem precisar rebuildar
+a imagem (so recarregar a pagina/backend detecta na proxima listagem).
 
 1. Crie uma pasta com um slug (letras minusculas, numeros e hifen), ex: `games/meu-jogo/`.
 2. Coloque o arquivo `.swf` dentro dela, ex: `games/meu-jogo/game.swf`.
@@ -59,5 +59,5 @@ porque geralmente nao sao nossos pra redistribuir publicamente - so o
 `manifest.json` de cada jogo fica versionado. Isso significa que, ao clonar
 o repositorio em outro lugar, a pasta `games/` vem sem os `.swf`: e preciso
 copiar os arquivos de volta manualmente (o servidor de producao ja tem eles
-em `/FlashGames/games/`, fora do controle do git).
+em `/pendriver/FlashGames/games/`, fora do controle do git).
 

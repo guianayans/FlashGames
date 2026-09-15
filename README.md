@@ -7,8 +7,7 @@ usuario (sincroniza o "save" nativo do jogo, o SharedObject do Flash, com o
 servidor). Funciona no celular com controles na tela, configuraveis por jogo.
 
 Segue o mesmo padrao dos outros apps em `/pendriver` rodando via Coolify
-(Traefik + rede `coolify` externa), so que este app fica isolado em
-`/FlashGames` (fora do `/pendriver`), conforme pedido.
+(Traefik + rede `coolify` externa) — fica em `/pendriver/FlashGames`.
 
 ## Estrutura
 
@@ -43,8 +42,9 @@ FlashGames/
   touch os controles aparecem automaticamente sobre o jogo; tem um botao 🎮
   pra ligar/desligar manualmente. Detalhes em `games/README.md`.
 - **Biblioteca de jogos dinamica**: o backend le `/app/games` (bind mount de
-  `/FlashGames/games`) a cada request de listagem — adicionar um jogo e so
-  criar a pasta com `manifest.json` + `.swf`, sem rebuild. Ver `games/README.md`.
+  `/pendriver/FlashGames/games`) a cada request de listagem — adicionar um
+  jogo e so criar a pasta com `manifest.json` + `.swf`, sem rebuild. Ver
+  `games/README.md`.
 - **PWA**: da pra "instalar" o site (Android/desktop: "Adicionar a tela
   inicial"/"Instalar app"; iOS Safari: Compartilhar → "Adicionar a Tela de
   Inicio") — abre em tela cheia sem barra do navegador. O service worker
@@ -84,7 +84,7 @@ Abra `http://localhost:5173`.
 ## Rodando com Docker
 
 ```bash
-cd /FlashGames
+cd /pendriver/FlashGames
 cp .env.example .env   # edite o SESSION_SECRET
 docker compose build
 docker compose up -d
@@ -95,7 +95,7 @@ App sobe em `:4070` dentro do container, exposto publicamente via Traefik em
 existir no host, igual aos outros apps).
 
 No Coolify: aponte o app pra este `docker-compose.yml` (build context
-`/FlashGames`). A unica variavel obrigatoria e o `SESSION_SECRET` — tudo mais
+`/pendriver/FlashGames`). A unica variavel obrigatoria e o `SESSION_SECRET` — tudo mais
 ja tem valor padrao (`CORS_ORIGIN` cai pro dominio do Traefik automaticamente).
 Se usar um dominio diferente de `flashgames.gvtserver.online`, troque nos
 labels do Traefik aqui no `docker-compose.yml` e no `CORS_ORIGIN`.
