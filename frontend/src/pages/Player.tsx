@@ -57,20 +57,6 @@ export default function Player() {
     };
   }, []);
 
-  // A pagina do jogo (shell no retrato, tela cheia na paisagem) nunca deve
-  // rolar - trava o scroll do body enquanto qualquer um dos dois modos
-  // estiver ativo.
-  useEffect(() => {
-    if (!pointerCoarse) return;
-    const prevOverflow = document.body.style.overflow;
-    const prevHeight = document.body.style.height;
-    document.body.style.overflow = "hidden";
-    document.body.style.height = "100dvh";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.body.style.height = prevHeight;
-    };
-  }, [pointerCoarse, portrait]);
 
   useEffect(() => {
     setGame(null);
