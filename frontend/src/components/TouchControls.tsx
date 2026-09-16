@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { ControlsConfig, DpadConfig } from "../types";
 
 interface Props {
@@ -85,11 +85,44 @@ function dispatchPointer(canvas: HTMLElement, type: string, clientX: number, cli
   canvas.dispatchEvent(ev);
 }
 
-function flash(el: Element) {
-  el.classList.add("pressed");
-}
-function unflash(el: Element) {
-  el.classList.remove("pressed");
+// React marca onTouchStart/onTouchEnd como listeners passivos por padrao (pra
+// nao atrapalhar o scroll da pagina), o que faz e.preventDefault() dentro do
+// handler JSX falhar silenciosamente (so um aviso no console — o dispatch em
+// si ainda roda, mas o navegador pode tratar o toque como scroll/zoom junto).
+// Por isso os botoes anexam o listener manualmente com passive:false.
+function usePressZone(onStart: () => void, onEnd: () => void) {
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const onStartRef = useRef(onStart);
+  const onEndRef = useRef(onEnd);
+  onStartRef.current = onStart;
+  onEndRef.current = onEnd;
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+
+    const start = (e: TouchEvent) => {
+      e.preventDefault();
+      el.classList.add("pressed");
+      onStartRef.current();
+    };
+    const end = (e: TouchEvent) => {
+      e.preventDefault();
+      el.classList.remove("pressed");
+      onEndRef.current();
+    };
+
+    el.addEventListener("touchstart", start, { passive: false });
+    el.addEventListener("touchend", end, { passive: false });
+    el.addEventListener("touchcancel", end, { passive: false });
+    return () => {
+      el.removeEventListener("touchstart", start);
+      el.removeEventListener("touchend", end);
+      el.removeEventListener("touchcancel", end);
+    };
+  }, []);
+
+  return elRef;
 }
 
 function useDpad(targetRef: React.RefObject<HTMLElement>) {
@@ -116,6 +149,26 @@ function useDpad(targetRef: React.RefObject<HTMLElement>) {
   return { press, release };
 }
 
+function DpadButton({
+  name,
+  keyValue,
+  extraClass,
+  press,
+  release,
+}: {
+  name: string;
+  keyValue: string | undefined;
+  extraClass: string;
+  press: (dir: string, key?: string) => void;
+  release: (dir: string, key?: string) => void;
+}) {
+  const ref = usePressZone(
+    () => press(name, keyValue),
+    () => release(name, keyValue)
+  );
+  return <div ref={ref} className={`dp ${extraClass}`} />;
+}
+
 function Dpad({
   config,
   className,
@@ -127,59 +180,40 @@ function Dpad({
 }) {
   const { press, release } = useDpad(targetRef);
 
-  const dir = (name: "up" | "down" | "left" | "right", key: string | undefined, extraClass: string) => (
-    <div
-      className={`dp ${extraClass}`}
-      onTouchStart={(e) => {
-        e.preventDefault();
-        flash(e.currentTarget);
-        press(name, key);
-      }}
-      onTouchEnd={(e) => {
-        e.preventDefault();
-        unflash(e.currentTarget);
-        release(name, key);
-      }}
-      onTouchCancel={(e) => {
-        e.preventDefault();
-        unflash(e.currentTarget);
-        release(name, key);
-      }}
-    />
-  );
-
   return (
     <div className={className}>
-      {dir("up", config.up, "dp-up")}
-      {dir("left", config.left, "dp-left")}
-      {dir("right", config.right, "dp-right")}
-      {dir("down", config.down, "dp-down")}
+      <DpadButton name="up" keyValue={config.up} extraClass="dp-up" press={press} release={release} />
+      <DpadButton name="left" keyValue={config.left} extraClass="dp-left" press={press} release={release} />
+      <DpadButton name="right" keyValue={config.right} extraClass="dp-right" press={press} release={release} />
+      <DpadButton name="down" keyValue={config.down} extraClass="dp-down" press={press} release={release} />
     </div>
   );
+}
+
+function ActionButton({
+  id,
+  keyValue,
+  position,
+  targetRef,
+}: {
+  id: string;
+  keyValue: string;
+  position: string;
+  targetRef: React.RefObject<HTMLElement>;
+}) {
+  const ref = usePressZone(
+    () => {
+      focusPlayer(targetRef.current);
+      dispatchKey("keydown", keyValue);
+    },
+    () => dispatchKey("keyup", keyValue)
+  );
+  return <div key={id} ref={ref} className={`ctl-btn slot-${position}`} />;
 }
 
 export default function TouchControls({ controls, targetRef, placement }: Props) {
   const stickBase = useRef<HTMLDivElement | null>(null);
   const stickPointerId = useRef<number | null>(null);
-
-  const onButtonStart = useCallback(
-    (key: string) => (e: React.TouchEvent<HTMLElement>) => {
-      e.preventDefault();
-      flash(e.currentTarget);
-      focusPlayer(targetRef.current);
-      dispatchKey("keydown", key);
-    },
-    [targetRef]
-  );
-
-  const onButtonEnd = useCallback(
-    (key: string) => (e: React.TouchEvent<HTMLElement>) => {
-      e.preventDefault();
-      unflash(e.currentTarget);
-      dispatchKey("keyup", key);
-    },
-    []
-  );
 
   const updateStick = useCallback(
     (clientX: number, clientY: number, fireOnHold: boolean, isStart: boolean) => {
@@ -273,13 +307,7 @@ export default function TouchControls({ controls, targetRef, placement }: Props)
       )}
 
       {buttons.map((btn) => (
-        <div
-          key={btn.id}
-          className={`ctl-btn slot-${btn.position}`}
-          onTouchStart={onButtonStart(btn.key)}
-          onTouchEnd={onButtonEnd(btn.key)}
-          onTouchCancel={onButtonEnd(btn.key)}
-        />
+        <ActionButton key={btn.id} id={btn.id} keyValue={btn.key} position={btn.position} targetRef={targetRef} />
       ))}
     </div>
   );

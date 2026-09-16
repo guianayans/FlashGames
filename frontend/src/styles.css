@@ -766,10 +766,18 @@ a {
 
 .shell {
   position: relative;
-  width: min(440px, 96vw);
+  /* contain-fit: usa a altura disponivel (viewport menos a topbar) como
+     limite tambem, nao so a largura — sem isso, em celulares bem altos o
+     shell ficava pequeno e "grudado" no topo, sobrando um vao vazio embaixo. */
+  --shell-avail-h: calc(100dvh - 56px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  width: min(440px, 96vw, calc(var(--shell-avail-h) * 2 / 3));
   aspect-ratio: 2 / 3;
-  max-height: calc(100dvh - 56px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-  flex-shrink: 1;
+  flex-shrink: 0;
+  /* Topbar fica grudada no topo (flex-start no pai); a margem automatica
+     centraliza so o shell no espaco que sobra abaixo dela, em vez de deixar
+     o vao inteiro largado embaixo. */
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 .shell-img {
