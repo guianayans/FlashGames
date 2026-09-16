@@ -8,6 +8,23 @@ container (bind mount) — dá pra adicionar ROM nova sem rebuildar a imagem:
 - `NES/` — Nintendo/Famicom (`.nes`, `.zip`)
 - `GENESIS/` — Mega Drive/Genesis (`.md`, `.gen`, `.bin`, `.zip`)
 - `GBA/` — Game Boy Advance (`.gba`, `.zip`)
+- `PS1/` — PlayStation, **uma pasta por jogo** (não é 1 arquivo solto como
+  os outros). Dentro de cada pasta, o scanner escolhe sozinho o arquivo
+  "principal" (`.m3u` > `.cue` > `.chd` > `.pbp` > `.ccd`, e só cai pro
+  `.bin`/`.iso`/`.img` solto se não achar nenhum desses).
+
+## PS1: BIOS obrigatória
+
+O core do PS1 (`pcsx_rearmed`) só consegue rodar jogo comercial com uma
+**BIOS** do console (o firmware do próprio PS1 — não é algo que a gente
+redistribui, tem que ser um dump seu). Sem ela, o emulador não consegue
+carregar o jogo e cai direto na tela de menu do RetroArch ("Load Core").
+
+Coloque o(s) arquivo(s) de BIOS (ex. `SCPH1001.BIN` para jogos americanos,
+`SCPH5501.BIN` para europeus, `SCPH5500.BIN` para japoneses) dentro da
+pasta `BIOS/` na raiz do projeto — fora de `PS1/`, pra não ser confundido
+com jogo. O core lê todos os arquivos que tiver lá e escolhe sozinho o
+certo pra região do jogo.
 
 ## Uso básico: só soltar o arquivo
 

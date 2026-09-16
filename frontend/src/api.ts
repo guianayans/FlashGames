@@ -35,6 +35,9 @@ export const api = {
   listGames() {
     return request<{ games: GameSummary[] }>("/api/games");
   },
+  listBios() {
+    return request<{ files: string[] }>("/api/games/system/bios");
+  },
   listFavorites() {
     return request<{ slugs: string[] }>("/api/favorites");
   },

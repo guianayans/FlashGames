@@ -1,4 +1,5 @@
 import { Nostalgist } from "nostalgist";
+import { api } from "./api";
 import type { SystemLauncher } from "./types";
 
 export interface EmulatorConfig {
@@ -25,6 +26,26 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
       return Nostalgist.megadrive(opts);
     case "gba":
       return Nostalgist.gba(opts);
+    case "psx": {
+      // Sem metodo de conveniencia pro PS1 (Nostalgist.psx nao existe) —
+      // core na mao. pcsx_rearmed e' o core PS1 mais leve/rapido pra rodar
+      // em WASM no navegador (o outro core PS1 do libretro, beetle-psx,
+      // e' mais preciso mas pesado demais pra isso aqui).
+      // pcsx_rearmed PRECISA de uma BIOS de PS1 pra rodar jogo comercial —
+      // sem ela, o core nao consegue iniciar o conteudo e o RetroArch cai
+      // direto na propria tela de menu ("Load Core"). O usuario coloca o(s)
+      // dump(s) dele em PS1/../BIOS (ver ROMS.md) e o backend expoe a lista
+      // em /api/games/system/bios — se nao tiver nenhum arquivo la, so
+      // segue sem bios mesmo (loga um aviso, mas nao trava o launch).
+      let bios: string[] = [];
+      try {
+        bios = (await api.listBios()).files;
+      } catch {
+        // sem bios configurada ainda - segue sem, RetroArch vai reclamar
+        // sozinho na tela se o jogo realmente precisar de uma.
+      }
+      return Nostalgist.launch({ core: "pcsx_rearmed", bios, ...opts });
+    }
   }
 }
 

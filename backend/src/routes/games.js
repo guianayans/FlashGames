@@ -1,6 +1,6 @@
 import { Router } from "express";
 import path from "node:path";
-import { listGames, getGame, ROMS_DIR } from "../gamesLibrary.js";
+import { listGames, getGame, listBiosFiles, ROMS_DIR } from "../gamesLibrary.js";
 import { TOP_GAME_SLUGS } from "../topGames.js";
 
 const router = Router();
@@ -26,6 +26,13 @@ function toSummary(g) {
 
 router.get("/", (_req, res) => {
   res.json({ games: listGames().map(toSummary) });
+});
+
+// Lista os arquivos de BIOS disponiveis (ver listBiosFiles) como URLs
+// prontas pra passar direto pro Nostalgist — precisa vir ANTES de
+// "/:slug" na ordem das rotas, senao o Express le "system" como slug.
+router.get("/system/bios", (_req, res) => {
+  res.json({ files: listBiosFiles().map((name) => `/roms/BIOS/${encodeURIComponent(name)}`) });
 });
 
 router.get("/:slug", (req, res) => {

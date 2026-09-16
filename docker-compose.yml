@@ -1,7 +1,9 @@
 # FlashGames — atras do Traefik (Coolify), no mesmo padrao dos outros apps em /pendriver.
 # Build a partir de /pendriver/FlashGames; as ROMs ficam em pastas por
 # sistema na raiz do projeto (/pendriver/FlashGames/SNES, /NES, /GENESIS,
-# /GBA — bind mount, da pra adicionar ROM nova sem rebuildar a imagem).
+# /GBA, /PS1 — bind mount, da pra adicionar ROM nova sem rebuildar a imagem).
+# /BIOS e' o dump de BIOS de console (ex: PS1) que o core precisa pra
+# rodar jogo comercial — ver backend/src/gamesLibrary.js (listBiosFiles).
 
 services:
   flashgames:
@@ -15,6 +17,8 @@ services:
       - /pendriver/FlashGames/NES:/app/roms/NES
       - /pendriver/FlashGames/GENESIS:/app/roms/GENESIS
       - /pendriver/FlashGames/GBA:/app/roms/GBA
+      - /pendriver/FlashGames/PS1:/app/roms/PS1
+      - /pendriver/FlashGames/BIOS:/app/roms/BIOS
       - flashgames_data:/app/data
     environment:
       NODE_ENV: production

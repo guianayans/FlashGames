@@ -14,13 +14,22 @@ data/
 # manifest.json de cada jogo continua versionado normalmente.
 games/**/*.swf
 
-# ROMs de console (SNES/NES/Genesis/GBA) - mesmo motivo do .swf acima:
+# ROMs de console (SNES/NES/Genesis/GBA/PS1) - mesmo motivo do .swf acima:
 # direitos autorais nao sao nossos pra redistribuir, ficam so no servidor
 # (bind mount, ver docker-compose.yml). Ver ROMS.md pra como adicionar.
 /SNES/
 /NES/
 /GENESIS/
 /GBA/
+/PS1/
+
+# Dump(s) de BIOS de console (ex: PS1) - mesmo motivo acima, e' firmware
+# do proprio aparelho, nao nosso pra redistribuir (mesmo em repo privado,
+# comitar o binario e' distribuir ele). So o README (instrucoes) entra no
+# git - o(s) arquivo(s) de BIOS em si ficam so no servidor. Ver comentario
+# em backend/src/gamesLibrary.js (listBiosFiles).
+/BIOS/*
+!/BIOS/README.md
 
 # Fonte bruta (1.4MB) da imagem de fundo do modo retrato - a versao otimizada
 # (.webp, ~86KB) que o app de fato usa fica em frontend/public/images/.
