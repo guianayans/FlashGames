@@ -44,7 +44,22 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
         // sem bios configurada ainda - segue sem, RetroArch vai reclamar
         // sozinho na tela se o jogo realmente precisar de uma.
       }
-      return Nostalgist.launch({ core: "pcsx_rearmed", bios, ...opts });
+      return Nostalgist.launch({
+        core: "pcsx_rearmed",
+        bios,
+        // O Nostalgist escreve os arquivos de "bios" em
+        // /home/web_user/retroarch/userdata/system dentro do sistema de
+        // arquivos virtual do RetroArch (isso e' fixo no proprio pacote,
+        // ver node_modules/nostalgist "EmulatorFileSystem.systemDirectory"
+        // — nao e' uma pasta real do servidor, existe so na memoria do
+        // navegador enquanto o jogo esta aberto). Mas o Nostalgist NAO
+        // seta o "system_directory" do retroarch.cfg pra combinar com
+        // isso — fica no default de fabrica do RetroArch, que pode nao
+        // ser exatamente esse caminho. Setando explicito aqui garante
+        // que o core vai procurar a BIOS exatamente onde ela foi escrita.
+        retroarchConfig: { system_directory: "/home/web_user/retroarch/userdata/system" },
+        ...opts,
+      });
     }
   }
 }
