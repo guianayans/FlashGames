@@ -20,11 +20,13 @@ O core do PS1 (`pcsx_rearmed`) só consegue rodar jogo comercial com uma
 redistribui, tem que ser um dump seu). Sem ela, o emulador não consegue
 carregar o jogo e cai direto na tela de menu do RetroArch ("Load Core").
 
-Coloque o(s) arquivo(s) de BIOS (ex. `SCPH1001.BIN` para jogos americanos,
-`SCPH5501.BIN` para europeus, `SCPH5500.BIN` para japoneses) dentro da
-pasta `BIOS/` na raiz do projeto — fora de `PS1/`, pra não ser confundido
-com jogo. O core lê todos os arquivos que tiver lá e escolhe sozinho o
-certo pra região do jogo.
+Coloque o(s) arquivo(s) de BIOS dentro da pasta `BIOS/` na raiz do
+projeto — fora de `PS1/`, pra não ser confundido com jogo. O core lê
+todos os arquivos que tiver lá e escolhe sozinho o certo pra região do
+jogo, **mas o nome do arquivo tem que estar em minúsculo** (`scph1001.bin`,
+não `SCPH1001.BIN`) — o pcsx_rearmed é case-sensitive nessa busca e, sem
+bater com nenhum nome esperado, cai sozinho pro modo HLE (bios emulada,
+menos compatível). Detalhes e a lista completa de nomes em `BIOS/README.md`.
 
 ## Uso básico: só soltar o arquivo
 
