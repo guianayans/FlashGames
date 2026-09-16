@@ -227,9 +227,80 @@ function ActionButton({
   return <div key={id} ref={ref} className={`ctl-btn slot-${position}`} />;
 }
 
+// O analogico de mira usava PointerEvent (onPointerDown/Move/Up do React),
+// que no Safari/iOS tem historico de suporte mais instavel que Touch Events
+// puro. Agora usa o mesmo mecanismo nativo (touchstart/move/end,
+// passive:false) ja comprovado no d-pad e nos botoes — touch events
+// continuam disparando no MESMO elemento mesmo se o dedo sair da area
+// visual dele, entao nao precisa de setPointerCapture.
+function StickZone({
+  stick,
+  targetRef,
+  baseRef,
+  updateStick,
+  resetStick,
+}: {
+  stick: { fireOnHold?: boolean };
+  targetRef: React.RefObject<HTMLElement>;
+  baseRef: React.RefObject<HTMLDivElement>;
+  updateStick: (x: number, y: number, fireOnHold: boolean, isStart: boolean) => void;
+  resetStick: (fireOnHold: boolean) => void;
+}) {
+  const touchIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const el = baseRef.current;
+    if (!el) {
+      dlog("StickZone: ref nao anexado no mount");
+      return;
+    }
+    dlog("StickZone: listeners de touch anexados");
+
+    const onStart = (e: TouchEvent) => {
+      const t = e.changedTouches[0];
+      if (!t) return;
+      dlog(`STICK touchstart (${Math.round(t.clientX)},${Math.round(t.clientY)}) id=${t.identifier}`);
+      e.preventDefault();
+      touchIdRef.current = t.identifier;
+      el.classList.add("pressed");
+      focusPlayer(targetRef.current);
+      updateStick(t.clientX, t.clientY, !!stick.fireOnHold, true);
+    };
+    const onMove = (e: TouchEvent) => {
+      if (touchIdRef.current === null) return;
+      const t = Array.from(e.changedTouches).find((x) => x.identifier === touchIdRef.current);
+      if (!t) return;
+      e.preventDefault();
+      updateStick(t.clientX, t.clientY, !!stick.fireOnHold, false);
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (touchIdRef.current === null) return;
+      const t = Array.from(e.changedTouches).find((x) => x.identifier === touchIdRef.current);
+      if (!t) return;
+      dlog("STICK touchend/cancel");
+      e.preventDefault();
+      touchIdRef.current = null;
+      el.classList.remove("pressed");
+      resetStick(!!stick.fireOnHold);
+    };
+
+    el.addEventListener("touchstart", onStart, { passive: false });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: false });
+    el.addEventListener("touchcancel", onEnd, { passive: false });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, [stick, targetRef, baseRef, updateStick, resetStick]);
+
+  return <div ref={baseRef} className="ctl-stick ctl-stick-r" />;
+}
+
 export default function TouchControls({ controls, targetRef, placement }: Props) {
   const stickBase = useRef<HTMLDivElement | null>(null);
-  const stickPointerId = useRef<number | null>(null);
 
   const updateStick = useCallback(
     (clientX: number, clientY: number, fireOnHold: boolean, isStart: boolean) => {
@@ -294,39 +365,12 @@ export default function TouchControls({ controls, targetRef, placement }: Props)
       {dpad2 && <Dpad config={dpad2} className="ctl-dpad ctl-dpad2" targetRef={targetRef} />}
 
       {stick && (
-        <div
-          className="ctl-stick ctl-stick-r"
-          ref={stickBase}
-          onPointerDown={(e) => {
-            dlog(`STICK pointerdown (pointerType=${e.pointerType}) em (${Math.round(e.clientX)},${Math.round(e.clientY)})`);
-            e.preventDefault();
-            e.currentTarget.classList.add("pressed");
-            try {
-              e.currentTarget.setPointerCapture(e.pointerId);
-            } catch {
-              // raro, segue sem capture
-            }
-            stickPointerId.current = e.pointerId;
-            focusPlayer(targetRef.current);
-            updateStick(e.clientX, e.clientY, !!stick.fireOnHold, true);
-          }}
-          onPointerMove={(e) => {
-            if (stickPointerId.current !== e.pointerId) return;
-            e.preventDefault();
-            updateStick(e.clientX, e.clientY, !!stick.fireOnHold, false);
-          }}
-          onPointerUp={(e) => {
-            if (stickPointerId.current !== e.pointerId) return;
-            e.preventDefault();
-            e.currentTarget.classList.remove("pressed");
-            stickPointerId.current = null;
-            resetStick(!!stick.fireOnHold);
-          }}
-          onPointerCancel={(e) => {
-            e.currentTarget.classList.remove("pressed");
-            stickPointerId.current = null;
-            resetStick(!!stick.fireOnHold);
-          }}
+        <StickZone
+          stick={stick}
+          targetRef={targetRef}
+          baseRef={stickBase}
+          updateStick={updateStick}
+          resetStick={resetStick}
         />
       )}
 
