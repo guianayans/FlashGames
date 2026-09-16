@@ -28,7 +28,7 @@ const KEY_TO_BUTTON: Record<string, string> = {
   z: "a", // btn-a
   Shift: "b", // btn-b
   Tab: "select",
-  Enter: "start",
+  k: "start", // btn-start — evita colidir com o bind nativo de Enter no RetroArch (ver diagnostico)
   q: "l",
   e: "r",
   ArrowUp: "up",
@@ -42,23 +42,29 @@ let nostalgist: Nostalgist | null = null;
 // Todos os botoes JA pressionados sem o "solta" correspondente ainda — rede
 // de seguranca (releaseAllHeld) pra garantir que nada fique preso no
 // emulador, independente do que aconteceu la em cima no GameScreen.html.
+// Chave "player:button" (ex. "1:a", "2:start") pra P1 e P2 nao pisarem um
+// no held-state do outro.
 const heldButtons = new Set<string>();
 
-function press(type: "keydown" | "keyup", key: string) {
+function press(type: "keydown" | "keyup", key: string, player = 1) {
   const button = KEY_TO_BUTTON[key];
   if (!button || !nostalgist) return;
+  const heldKey = `${player}:${button}`;
   if (type === "keydown") {
-    heldButtons.add(button);
-    nostalgist.pressDown(button);
+    heldButtons.add(heldKey);
+    nostalgist.pressDown({ button, player });
   } else {
-    heldButtons.delete(button);
-    nostalgist.pressUp(button);
+    heldButtons.delete(heldKey);
+    nostalgist.pressUp({ button, player });
   }
 }
 
 function releaseAllHeld() {
   if (!nostalgist || heldButtons.size === 0) return;
-  Array.from(heldButtons).forEach((button) => nostalgist?.pressUp(button));
+  Array.from(heldButtons).forEach((heldKey) => {
+    const [playerStr, button] = heldKey.split(":");
+    nostalgist?.pressUp({ button, player: Number(playerStr) });
+  });
   heldButtons.clear();
 }
 
@@ -131,7 +137,7 @@ document.addEventListener("touchend", stopWatchingEdgeSwipe, { passive: true });
 document.addEventListener("touchcancel", stopWatchingEdgeSwipe, { passive: true });
 
 window.addEventListener("message", (e: MessageEvent) => {
-  const d = e.data as { type?: string; key?: string } | null;
+  const d = e.data as { type?: string; key?: string; player?: number } | null;
   if (!d || !d.type) return;
 
   if (d.type === "releaseAll") {
@@ -139,7 +145,7 @@ window.addEventListener("message", (e: MessageEvent) => {
     return;
   }
   if ((d.type === "keydown" || d.type === "keyup") && d.key) {
-    press(d.type, d.key);
+    press(d.type, d.key, d.player || 1);
   }
 });
 

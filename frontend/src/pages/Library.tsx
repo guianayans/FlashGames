@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import type { GameSummary } from "../types";
 import { useAuth } from "../auth/AuthContext";
@@ -34,6 +34,7 @@ function scrollKey(search: string): string {
 
 export default function Library() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [games, setGames] = useState<GameSummary[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +53,45 @@ export default function Library() {
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const [alphaOpen, setAlphaOpen] = useState(false);
 
+  // Modo "Big Picture" — navegar a biblioteca inteira sem mouse/toque,
+  // so com o controle fisico. Aparece sozinho quando um gamepad e'
+  // detectado (mesma logica do player, ver Player.tsx). Select liga/
+  // desliga (o gamepad continua "conectado" — so pausa a navegacao).
+  const [gamepadActive, setGamepadActive] = useState(false);
+  const [gamepadName, setGamepadName] = useState<string | null>(null);
+  const [bigPictureOn, setBigPictureOn] = useState(true);
+  // Id unificado de foco — cobre a pagina inteira, nao so os cards:
+  // "search", "alpha-trigger", "chip:todos"/"chip:fav"/"chip:top"/
+  // "chip:system:<slug>", "card:<slug>", "page:prev"/"page:next".
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const bigPictureOnRef = useRef(bigPictureOn);
+  bigPictureOnRef.current = bigPictureOn;
+  const focusedIdRef = useRef<string | null>(null);
+  focusedIdRef.current = focusedId;
+  // Espelhos pra ler estado sempre atual de dentro do loop de poll do
+  // gamepad (aquele efeito so roda uma vez — ver comentario mais abaixo —
+  // entao closures que leem estado direto ficariam presas no valor da
+  // primeira renderizacao).
+  const favoritesRef = useRef(favorites);
+  favoritesRef.current = favorites;
+  const searchParamsRef = useRef(searchParams);
+  searchParamsRef.current = searchParams;
+
+  // No modo controle, o overlay A-Z vira teclado (letra focada = digitar
+  // na busca, em vez de pular pro filtro por letra inicial) — "" = nada
+  // focado ainda, "__ALL__" = o chip "Todos" (aqui vira "apagar tudo").
+  const [overlayFocusedKey, setOverlayFocusedKey] = useState("");
+  const overlayFocusedKeyRef = useRef(overlayFocusedKey);
+  overlayFocusedKeyRef.current = overlayFocusedKey;
+  const alphaOpenRef = useRef(alphaOpen);
+  alphaOpenRef.current = alphaOpen;
+  const keyboardMode = gamepadActive && bigPictureOn;
+  const keyboardModeRef = useRef(keyboardMode);
+  keyboardModeRef.current = keyboardMode;
+  const queryRef = useRef(query);
+  queryRef.current = query;
+
   // Puxar a tela pra baixo (no topo) atualiza a lista — Safari/PWA no iOS
   // nao tem pull-to-refresh nativo (diferente do Chrome/Android), entao
   // esse gesto e essa UI sao 100% nossos.
@@ -60,21 +100,37 @@ export default function Library() {
   const pageRef = useRef<HTMLDivElement>(null);
   const pullState = useRef<{ startY: number; active: boolean } | null>(null);
 
+  // Forma funcional do setSearchParams (le o PREV mais atual sempre, na
+  // hora em que roda de verdade) — necessario porque o loop de poll do
+  // gamepad chama isso de dentro de um efeito que so monta uma vez; sem
+  // isso, um updateFilters/goToPage disparado pelo controle reconstruiria
+  // a URL a partir do searchParams "congelado" da primeira renderizacao,
+  // desfazendo qualquer filtro mudado depois.
   function updateFilters(patch: Record<string, string | null>) {
-    const next = new URLSearchParams(searchParams);
-    for (const [key, value] of Object.entries(patch)) {
-      if (value === null) next.delete(key);
-      else next.set(key, value);
-    }
-    next.delete("page"); // filtro mudou, volta pra pagina 1
-    setSearchParams(next, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(patch)) {
+          if (value === null) next.delete(key);
+          else next.set(key, value);
+        }
+        next.delete("page"); // filtro mudou, volta pra pagina 1
+        return next;
+      },
+      { replace: true }
+    );
   }
 
   function goToPage(p: number) {
-    const next = new URLSearchParams(searchParams);
-    if (p <= 1) next.delete("page");
-    else next.set("page", String(p));
-    setSearchParams(next, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (p <= 1) next.delete("page");
+        else next.set("page", String(p));
+        return next;
+      },
+      { replace: true }
+    );
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -162,7 +218,11 @@ export default function Library() {
   }, [refreshing]);
 
   async function toggleFavorite(slug: string) {
-    const wasFavorite = favorites.has(slug);
+    // favoritesRef (nao o "favorites" direto): o loop de poll do gamepad
+    // chama esta funcao de dentro de um efeito que so monta uma vez, entao
+    // "favorites" fechado na closure ficaria sempre no valor inicial
+    // (Set vazio) — sempre tentaria ADICIONAR, nunca remover.
+    const wasFavorite = favoritesRef.current.has(slug);
     setFavorites((prev) => {
       const next = new Set(prev);
       if (wasFavorite) next.delete(slug);
@@ -218,6 +278,271 @@ export default function Library() {
     [filtered, pageSafe]
   );
 
+  // Refs "espelho" pros valores que o loop de poll do gamepad precisa —
+  // assim o efeito abaixo roda so UMA vez (nao precisa reconectar os
+  // listeners a cada tecla digitada na busca) e ainda assim sempre le o
+  // valor mais recente, sem closure velha.
+  const pagedRef = useRef(paged);
+  pagedRef.current = paged;
+  const pageSafeRef = useRef(pageSafe);
+  pageSafeRef.current = pageSafe;
+  const pageCountRef = useRef(pageCount);
+  pageCountRef.current = pageCount;
+
+  // Se a lista mudar (filtro, pagina, refresh) e o foco atual (quando e'
+  // um card) sumir dela, realinha pro primeiro card — so depois que o
+  // modo controle ja foi ativado (senao ficaria destacando algo sem
+  // ninguem ter pedido). Foco em outra coisa (busca, chips, paginacao)
+  // fica igual — esses ids nao desaparecem com filtro/pagina.
+  useEffect(() => {
+    if (!gamepadActive) return;
+    const id = focusedId;
+    if (!id) {
+      if (paged.length > 0) setFocusedId(`card:${paged[0].slug}`);
+      return;
+    }
+    if (id.startsWith("card:")) {
+      const slug = id.slice(5);
+      if (!paged.some((g) => g.slug === slug)) {
+        setFocusedId(paged.length > 0 ? `card:${paged[0].slug}` : "alpha-trigger");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gamepadActive, paged]);
+
+  function focusId(id: string) {
+    setFocusedId(id);
+    const el = document.querySelector<HTMLElement>(`[data-bp-id="${CSS.escape(id)}"]`);
+    // behavior "auto" (instantaneo) de proposito — com "smooth", segurar
+    // uma direcao pra repetir o movimento chamava moveFocus() de novo NO
+    // MEIO da animacao de rolagem anterior, entao getBoundingClientRect()
+    // media posicoes "em transito" e a navegacao ficava erratica bem no
+    // caso que mais importa (segurar pra passar varias linhas rapido).
+    el?.scrollIntoView({ block: "nearest", behavior: "auto" });
+  }
+
+  // Navegacao espacial cobrindo a PAGINA INTEIRA (busca, trigger A-Z,
+  // chips de categoria, cards, paginacao) — nao so a grade de jogos.
+  // Todo elemento navegavel tem um [data-bp-id]; pra cada direcao, acha o
+  // elemento mais proximo NAQUELA direcao (medindo a posicao real na
+  // tela, ja que a grade e' responsiva — auto-fill — e o numero de
+  // colunas muda com o tamanho da janela). Peso maior no eixo cruzado
+  // pra esquerda/direita (fica "na mesma linha") do que pra cima/baixo
+  // (trocar de secao/linha e' o proprio objetivo desses dois).
+  function moveFocus(dir: "up" | "down" | "left" | "right") {
+    const all = Array.from(document.querySelectorAll<HTMLElement>("[data-bp-id]"));
+    if (all.length === 0) return;
+    const currentId = focusedIdRef.current;
+    const currentEl = currentId ? all.find((el) => el.dataset.bpId === currentId) : null;
+    if (!currentEl) {
+      const first = all[0]?.dataset.bpId;
+      if (first) focusId(first);
+      return;
+    }
+    const cur = currentEl.getBoundingClientRect();
+    const curCx = cur.left + cur.width / 2;
+    const curCy = cur.top + cur.height / 2;
+    let best: HTMLElement | null = null;
+    let bestScore = Infinity;
+    for (const el of all) {
+      if (el === currentEl) continue;
+      const r = el.getBoundingClientRect();
+      const dx = r.left + r.width / 2 - curCx;
+      const dy = r.top + r.height / 2 - curCy;
+      let score: number;
+      if (dir === "right") {
+        if (dx <= 4) continue;
+        score = dx + Math.abs(dy) * 4;
+      } else if (dir === "left") {
+        if (dx >= -4) continue;
+        score = -dx + Math.abs(dy) * 4;
+      } else if (dir === "down") {
+        if (dy <= 4) continue;
+        score = dy + Math.abs(dx) * 1.2;
+      } else {
+        if (dy >= -4) continue;
+        score = -dy + Math.abs(dx) * 1.2;
+      }
+      if (score < bestScore) {
+        bestScore = score;
+        best = el;
+      }
+    }
+    if (best?.dataset.bpId) focusId(best.dataset.bpId);
+  }
+
+  function confirmFocused() {
+    const id = focusedIdRef.current;
+    if (!id) return;
+    if (id.startsWith("card:")) {
+      saveScroll();
+      navigate(`/play/${id.slice(5)}`);
+      return;
+    }
+    // Busca e o trigger A-Z levam pro mesmo lugar: o overlay A-Z e' o
+    // "teclado" do modo controle (ver keyboardMode) — nao da pra digitar
+    // com o cursor do gamepad num <input> sem teclado fisico.
+    if (id === "search" || id === "alpha-trigger") {
+      setAlphaOpen(true);
+      return;
+    }
+    // Os chips (Todos/Favoritos/Top Games/sistema) sao mutuamente
+    // exclusivos — so um fica ativo por vez, "Todos" e' o estado "nenhum
+    // filtro de categoria". Por isso cada ramo sempre zera os outros dois
+    // junto (senao ficava acumulando: escolhe Favoritos, depois um
+    // sistema, e os dois ficam "ligados" ao mesmo tempo sem dar pra tirar
+    // so um).
+    const sp = searchParamsRef.current;
+    if (id === "chip:todos") {
+      updateFilters({ system: null, fav: null, top: null });
+    } else if (id === "chip:fav") {
+      updateFilters({ system: null, top: null, fav: sp.get("fav") === "1" ? null : "1" });
+    } else if (id === "chip:top") {
+      updateFilters({ system: null, fav: null, top: sp.get("top") === "1" ? null : "1" });
+    } else if (id.startsWith("chip:system:")) {
+      const slug = id.slice(12);
+      const curSystem = sp.get("system") ?? "todos";
+      updateFilters({ fav: null, top: null, system: curSystem === slug ? null : slug });
+    } else if (id === "page:prev") {
+      goToPage(pageSafeRef.current - 1);
+    } else if (id === "page:next") {
+      goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
+    }
+  }
+
+  // Mesma detecção/mapeamento por posição do controle usada em Player.tsx
+  // (ver useGamepadPlayer la) — aqui e' so pra navegar a biblioteca, sem
+  // nenhum input de jogo envolvido.
+  useEffect(() => {
+    let gpIndex: number | null = null;
+    let raf = 0;
+    const REPEAT_DELAY_MS = 320;
+    const REPEAT_RATE_MS = 140;
+    const dirState: Record<string, { held: boolean; nextAt: number }> = {
+      up: { held: false, nextAt: 0 },
+      down: { held: false, nextAt: 0 },
+      left: { held: false, nextAt: 0 },
+      right: { held: false, nextAt: 0 },
+    };
+    const btnState: Record<number, boolean> = {};
+
+    function onConnected(e: GamepadEvent) {
+      gpIndex = e.gamepad.index;
+      setGamepadActive(true);
+      setGamepadName(e.gamepad.id || "Controle");
+    }
+    function onDisconnected(e: GamepadEvent) {
+      if (e.gamepad.index !== gpIndex) return;
+      gpIndex = null;
+      setGamepadActive(false);
+      setGamepadName(null);
+    }
+    window.addEventListener("gamepadconnected", onConnected);
+    window.addEventListener("gamepaddisconnected", onDisconnected);
+
+    function handleDir(dir: "up" | "down" | "left" | "right", pressed: boolean, now: number) {
+      const s = dirState[dir];
+      if (!pressed) {
+        s.held = false;
+        return;
+      }
+      if (!s.held) {
+        s.held = true;
+        s.nextAt = now + REPEAT_DELAY_MS;
+        moveFocus(dir);
+      } else if (now >= s.nextAt) {
+        s.nextAt = now + REPEAT_RATE_MS;
+        moveFocus(dir);
+      }
+    }
+
+    function poll() {
+      const now = performance.now();
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let gp = gpIndex !== null ? pads[gpIndex] : null;
+      if (!gp) {
+        for (let i = 0; i < pads.length; i++) {
+          if (pads[i]) {
+            gp = pads[i];
+            gpIndex = gp!.index;
+            setGamepadActive(true);
+            setGamepadName(gp!.id || "Controle");
+            break;
+          }
+        }
+      }
+      if (gp) {
+        const pressedNow = (idx: number) => !!gp!.buttons[idx]?.pressed;
+
+        // Select (8) liga/desliga o modo Big Picture inteiro — funciona
+        // sempre, mesmo com ele desligado (senao nao tinha como religar).
+        if (pressedNow(8) && !btnState[8]) setBigPictureOn((v) => !v);
+        btnState[8] = pressedNow(8);
+
+        if (!bigPictureOnRef.current) {
+          raf = requestAnimationFrame(poll);
+          return;
+        }
+
+        const [ax, ay] = gp.axes;
+        const dead = 0.5;
+        const left = !!gp.buttons[14]?.pressed || (typeof ax === "number" && ax < -dead);
+        const right = !!gp.buttons[15]?.pressed || (typeof ax === "number" && ax > dead);
+        const up = !!gp.buttons[12]?.pressed || (typeof ay === "number" && ay < -dead);
+        const down = !!gp.buttons[13]?.pressed || (typeof ay === "number" && ay > dead);
+
+        // Overlay A-Z aberto E em modo teclado: D-pad/confirma navegam e
+        // "digitam" nele em vez de mexer na grade de jogos por tras.
+        if (alphaOpenRef.current && keyboardModeRef.current) {
+          handleDir("left", left, now);
+          handleDir("right", right, now);
+          handleDir("up", up, now);
+          handleDir("down", down, now);
+          if (pressedNow(0) && !btnState[0]) confirmOverlayFocus();
+          // B (1) ou Start (9) de novo: fecha o teclado (termina de digitar).
+          if ((pressedNow(1) && !btnState[1]) || (pressedNow(9) && !btnState[9])) setAlphaOpen(false);
+          [0, 1, 9].forEach((idx) => {
+            btnState[idx] = pressedNow(idx);
+          });
+          raf = requestAnimationFrame(poll);
+          return;
+        }
+
+        // Sem overlay (ou overlay aberto so por mouse/toque, sem modo
+        // teclado): navegacao normal da grade de jogos.
+        handleDir("left", left, now);
+        handleDir("right", right, now);
+        handleDir("up", up, now);
+        handleDir("down", down, now);
+
+        // Confirma (baixo da carcaça — A no Xbox, Cross no PS): abre o
+        // jogo focado. Direita (B/Circle): favorita o jogo focado. L1/R1:
+        // pagina anterior/proxima. Start: abre o filtro por letra (vira
+        // teclado sozinho, ver keyboardMode).
+        if (pressedNow(0) && !btnState[0]) confirmFocused();
+        if (pressedNow(1) && !btnState[1]) {
+          const id = focusedIdRef.current;
+          if (id?.startsWith("card:")) toggleFavorite(id.slice(5));
+        }
+        if (pressedNow(4) && !btnState[4]) goToPage(pageSafeRef.current - 1);
+        if (pressedNow(5) && !btnState[5]) goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
+        if (pressedNow(9) && !btnState[9]) setAlphaOpen(true);
+        [0, 1, 4, 5, 9].forEach((idx) => {
+          btnState[idx] = pressedNow(idx);
+        });
+      }
+      raf = requestAnimationFrame(poll);
+    }
+    raf = requestAnimationFrame(poll);
+
+    return () => {
+      window.removeEventListener("gamepadconnected", onConnected);
+      window.removeEventListener("gamepaddisconnected", onDisconnected);
+      cancelAnimationFrame(raf);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Restaura o scroll de onde o usuario parou ao voltar de um jogo (ver
   // saveScroll, chamado ao clicar num card). So tenta depois que a lista
   // carregou e a pagina certa ja esta renderizada, senao a altura do
@@ -237,7 +562,13 @@ export default function Library() {
   // enquanto ele estiver aberto (senao da pra rolar a lista de jogos
   // "atraves" do overlay no mobile).
   useEffect(() => {
-    if (!alphaOpen) return;
+    if (!alphaOpen) {
+      setOverlayFocusedKey("");
+      return;
+    }
+    // Em modo teclado comeca focado na primeira letra de verdade ("A"),
+    // nao no bucket "#" — fluxo de digitacao mais natural.
+    if (keyboardMode) setOverlayFocusedKey("A");
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setAlphaOpen(false);
     };
@@ -248,11 +579,67 @@ export default function Library() {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alphaOpen]);
 
   function pickLetter(l: string | null) {
+    // Modo controle: o overlay vira teclado — "Todos" apaga tudo que foi
+    // digitado, uma letra ACRESCENTA na busca (fica aberto, pra continuar
+    // digitando). Sem controle, continua sendo o filtro por letra
+    // inicial de sempre, e fecha o overlay.
+    if (keyboardMode) {
+      updateFilters({ q: l === null ? null : (queryRef.current || "") + l });
+      return;
+    }
     updateFilters({ letter: l });
     setAlphaOpen(false);
+  }
+
+  // Navegacao espacial dentro do overlay A-Z (mesmo algoritmo da grade de
+  // jogos, so que aplicada aos chips de letra) — so entra em uso quando
+  // keyboardMode esta ativo (senao o overlay so responde a mouse/toque
+  // normal, como sempre foi).
+  function moveOverlayFocus(dir: "up" | "down" | "left" | "right") {
+    const chips = Array.from(document.querySelectorAll<HTMLElement>(".alpha-grid [data-letter]"));
+    if (chips.length === 0) return;
+    const currentKey = overlayFocusedKeyRef.current;
+    const currentEl = chips.find((el) => el.dataset.letter === currentKey);
+    if (!currentEl) {
+      setOverlayFocusedKey(chips[0].dataset.letter ?? "");
+      return;
+    }
+    if (dir === "left" || dir === "right") {
+      const idx = chips.indexOf(currentEl);
+      const nextIdx = dir === "right" ? idx + 1 : idx - 1;
+      if (nextIdx < 0 || nextIdx >= chips.length) return;
+      setOverlayFocusedKey(chips[nextIdx].dataset.letter ?? "");
+      return;
+    }
+    const cur = currentEl.getBoundingClientRect();
+    const curCx = cur.left + cur.width / 2;
+    const curCy = cur.top + cur.height / 2;
+    let best: HTMLElement | null = null;
+    let bestScore = Infinity;
+    for (const el of chips) {
+      if (el === currentEl) continue;
+      const r = el.getBoundingClientRect();
+      const dy = r.top + r.height / 2 - curCy;
+      if (dir === "down" && dy <= 4) continue;
+      if (dir === "up" && dy >= -4) continue;
+      const dx = Math.abs(r.left + r.width / 2 - curCx);
+      const score = Math.abs(dy) * 3 + dx;
+      if (score < bestScore) {
+        bestScore = score;
+        best = el;
+      }
+    }
+    if (best) setOverlayFocusedKey(best.dataset.letter ?? "");
+  }
+
+  function confirmOverlayFocus() {
+    const key = overlayFocusedKeyRef.current;
+    if (!key) return;
+    pickLetter(key === "__ALL__" ? null : key);
   }
 
   function saveScroll() {
@@ -284,14 +671,15 @@ export default function Library() {
       <header className="library-header glass">
         <button
           type="button"
-          className={`library-alpha-trigger${letter ? " active" : ""}`}
+          data-bp-id="alpha-trigger"
+          className={`library-alpha-trigger${letter ? " active" : ""}${gamepadActive && focusedId === "alpha-trigger" ? " bp-focused" : ""}`}
           onClick={() => setAlphaOpen(true)}
           aria-label="Filtrar por letra"
         >
           {letter || "A–Z"}
         </button>
 
-        <div className="library-search">
+        <div className={`library-search${gamepadActive && focusedId === "search" ? " bp-focused" : ""}`} data-bp-id="search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="7" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -302,9 +690,25 @@ export default function Library() {
             placeholder="Buscar jogos..."
             aria-label="Buscar jogos"
           />
+          {query && (
+            <button
+              type="button"
+              className="library-search-clear"
+              onClick={() => updateFilters({ q: null })}
+              aria-label="Limpar busca"
+            >
+              ×
+            </button>
+          )}
         </div>
 
         <div className="library-user">
+          {gamepadActive && (
+            <span className={`gamepad-badge${bigPictureOn ? "" : " gamepad-badge-paused"}`}>
+              🎮 {gamepadName}
+              {!bigPictureOn && " (pausado — Select religa)"}
+            </span>
+          )}
           <span>
             Ola, <strong>{user?.username}</strong>
           </span>
@@ -316,7 +720,7 @@ export default function Library() {
         <div className="alpha-overlay" role="dialog" aria-modal="true" aria-label="Filtrar por letra" onClick={() => setAlphaOpen(false)}>
           <div className="alpha-card glass" onClick={(e) => e.stopPropagation()}>
             <div className="alpha-card-header">
-              <h2>Filtrar por letra</h2>
+              <h2>{keyboardMode ? "Digite pra buscar" : "Filtrar por letra"}</h2>
               <button type="button" className="alpha-close" onClick={() => setAlphaOpen(false)} aria-label="Fechar">
                 ×
               </button>
@@ -324,17 +728,19 @@ export default function Library() {
             <div className="alpha-grid">
               <button
                 type="button"
-                className={`alpha-chip alpha-chip-all${!letter ? " active" : ""}`}
+                data-letter="__ALL__"
+                className={`alpha-chip alpha-chip-all${!keyboardMode && !letter ? " active" : ""}${overlayFocusedKey === "__ALL__" ? " gamepad-focused" : ""}`}
                 onClick={() => pickLetter(null)}
               >
-                Todos
+                {keyboardMode ? "Apagar tudo" : "Todos"}
               </button>
               {ALPHABET.map((l) => (
                 <button
                   key={l}
                   type="button"
-                  className={`alpha-chip${letter === l ? " active" : ""}`}
-                  disabled={!availableLetters.has(l)}
+                  data-letter={l}
+                  className={`alpha-chip${!keyboardMode && letter === l ? " active" : ""}${overlayFocusedKey === l ? " gamepad-focused" : ""}`}
+                  disabled={!keyboardMode && !availableLetters.has(l)}
                   onClick={() => pickLetter(l)}
                 >
                   {l}
@@ -347,37 +753,42 @@ export default function Library() {
 
       <div className="category-row">
         <button
-          className={`category-chip${activeSystem === "todos" ? " active" : ""}`}
+          data-bp-id="chip:todos"
+          className={`category-chip${activeSystem === "todos" ? " active" : ""}${gamepadActive && focusedId === "chip:todos" ? " bp-focused" : ""}`}
           style={{ ["--chip-color" as string]: "#00e5ff" }}
-          onClick={() => updateFilters({ system: null })}
+          onClick={() => updateFilters({ system: null, fav: null, top: null })}
         >
           Todos
         </button>
         <button
-          className={`category-chip${favoritesOnly ? " active" : ""}`}
+          data-bp-id="chip:fav"
+          className={`category-chip${favoritesOnly ? " active" : ""}${gamepadActive && focusedId === "chip:fav" ? " bp-focused" : ""}`}
           style={{ ["--chip-color" as string]: "#ffb020" }}
-          onClick={() => updateFilters({ fav: favoritesOnly ? null : "1" })}
+          onClick={() => updateFilters({ system: null, top: null, fav: favoritesOnly ? null : "1" })}
           aria-pressed={favoritesOnly}
         >
           <span className="chip-dot">★</span>
           Favoritos
         </button>
         <button
-          className={`category-chip${topOnly ? " active" : ""}`}
+          data-bp-id="chip:top"
+          className={`category-chip${topOnly ? " active" : ""}${gamepadActive && focusedId === "chip:top" ? " bp-focused" : ""}`}
           style={{ ["--chip-color" as string]: "#ff2e9a" }}
-          onClick={() => updateFilters({ top: topOnly ? null : "1" })}
+          onClick={() => updateFilters({ system: null, fav: null, top: topOnly ? null : "1" })}
           aria-pressed={topOnly}
         >
           Top Games
         </button>
         {systems.map(([slug, count]) => {
           const meta = systemMeta(slug);
+          const bpId = `chip:system:${slug}`;
           return (
             <button
               key={slug}
-              className={`category-chip${activeSystem === slug ? " active" : ""}`}
+              data-bp-id={bpId}
+              className={`category-chip${activeSystem === slug ? " active" : ""}${gamepadActive && focusedId === bpId ? " bp-focused" : ""}`}
               style={{ ["--chip-color" as string]: meta.color }}
-              onClick={() => updateFilters({ system: slug })}
+              onClick={() => updateFilters({ fav: null, top: null, system: activeSystem === slug ? null : slug })}
             >
               <span className="chip-dot">{meta.icon}</span>
               {meta.label}
@@ -402,7 +813,7 @@ export default function Library() {
         </p>
       )}
 
-      <div className="game-grid">
+      <div className="game-grid" ref={gridRef}>
         {paged.map((g) => {
           const meta = systemMeta(g.system);
           const isFavorite = favorites.has(g.slug);
@@ -410,7 +821,8 @@ export default function Library() {
             <Link
               key={g.slug}
               to={`/play/${g.slug}`}
-              className="game-card"
+              className={`game-card${gamepadActive && focusedId === `card:${g.slug}` ? " gamepad-focused" : ""}`}
+              data-bp-id={`card:${g.slug}`}
               style={{ ["--accent" as string]: meta.color }}
               onClick={saveScroll}
             >
@@ -449,13 +861,25 @@ export default function Library() {
 
       {!error && pageCount > 1 && (
         <div className="pagination">
-          <button type="button" disabled={pageSafe <= 1} onClick={() => goToPage(pageSafe - 1)}>
+          <button
+            type="button"
+            data-bp-id="page:prev"
+            className={gamepadActive && focusedId === "page:prev" ? "bp-focused" : ""}
+            disabled={pageSafe <= 1}
+            onClick={() => goToPage(pageSafe - 1)}
+          >
             ← Anterior
           </button>
           <span className="pagination-status">
             Pagina {pageSafe} de {pageCount}
           </span>
-          <button type="button" disabled={pageSafe >= pageCount} onClick={() => goToPage(pageSafe + 1)}>
+          <button
+            type="button"
+            data-bp-id="page:next"
+            className={gamepadActive && focusedId === "page:next" ? "bp-focused" : ""}
+            disabled={pageSafe >= pageCount}
+            onClick={() => goToPage(pageSafe + 1)}
+          >
             Proxima →
           </button>
         </div>

@@ -252,6 +252,51 @@ body {
 #btn-l { top:93.2%; left:10%;  width:18%; height:3%; }
 #btn-r { top:93.2%; right:10%; left:auto; width:18%; height:3%; }
 
+/* ── CONFIRMAR SAIR (segurar L2 no controle) ── */
+#exit-confirm {
+  position: fixed; inset: 0; z-index: 110;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.72);
+  padding: 24px;
+  touch-action: auto;
+}
+#exit-confirm.hidden { display: none; }
+#exit-confirm-card {
+  width: min(300px, 100%);
+  background: #161616;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 12px;
+  padding: 20px 18px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  touch-action: auto;
+  text-align: center;
+}
+#exit-confirm-text {
+  color: rgba(255,255,255,.92);
+  font: 600 14px/1.4 system-ui, sans-serif;
+  margin-bottom: 16px;
+}
+#exit-confirm-actions {
+  display: flex; gap: 10px;
+}
+.exit-confirm-btn {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  font: 600 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.exit-confirm-btn.gamepad-focused {
+  border-color: #00e5ff;
+  background: rgba(0,229,255,.16);
+  box-shadow: 0 0 0 2px #00e5ff;
+}
+#exit-confirm-yes { color: #ff6b81; }
+
 /* ── PAINEL DE ESCOLHA DE TECLA (remapeamento) ── */
 #remap-panel {
   position: fixed; inset: 0; z-index: 100;
@@ -485,7 +530,19 @@ body.layout-edit [data-draggable] {
   <!-- CENTRO -->
   <div id="btn-fn"     class="cbtn" data-key="Escape" data-label="FN"    data-draggable="btn-fn"></div>
   <div id="btn-select" class="cbtn" data-key="Tab"    data-label="SEL"   data-draggable="btn-select"></div>
-  <div id="btn-start"  class="cbtn" data-key="Enter"  data-label="START" data-draggable="btn-start"></div>
+  <div id="btn-start"  class="cbtn" data-key="k"  data-label="START" data-draggable="btn-start"></div>
+</div>
+
+<!-- Confirmar saida — abre quando L2 e segurado por ~0.7s no
+     controle fisico (ver secao CONTROLE FISICO no <script>) -->
+<div id="exit-confirm" class="hidden">
+  <div id="exit-confirm-card">
+    <div id="exit-confirm-text">Sair do jogo e voltar pra biblioteca?</div>
+    <div id="exit-confirm-actions">
+      <button id="exit-confirm-no" class="exit-confirm-btn" type="button">Nao</button>
+      <button id="exit-confirm-yes" class="exit-confirm-btn" type="button">Sim</button>
+    </div>
+  </div>
 </div>
 
 <!-- Escolha de tecla pro remapeamento — abre quando o usuario toca um botao
@@ -574,19 +631,31 @@ function haptic() {
   } catch (e) {}
 }
 
-function sendKey(key, type) {
+function sendKey(key, type, player) {
   if (type === 'down') haptic();
   const ev = type === 'down' ? 'keydown' : 'keyup';
   const kc = KEY_CODES[key] || 0;
   const win = getWin();
   if (win) {
     try {
-      win.dispatchEvent(new KeyboardEvent(ev, { key, keyCode:kc, which:kc, bubbles:true, cancelable:true }));
-      win.postMessage({ type: ev, key, keyCode: kc }, '*');
+      // So o postMessage (que o game-wrapper.ts escuta e usa pra chamar
+      // pressDown/pressUp) — NAO despacha mais um KeyboardEvent real na
+      // janela do jogo. O RetroArch por baixo tem os proprios binds
+      // padrao de teclado pra P1 E P2; um KeyboardEvent sintetico nosso
+      // podia coincidir com o bind de ALGUM dos dois e chegar duplicado
+      // (uma vez pelo pressDown manual, outra "de verdade" pelo proprio
+      // RetroArch escutando o evento) — foi exatamente isso que fazia o
+      // menu 1P/2P do Mario Kart sempre cair no 2P quando o Start vinha
+      // do controle fisico.
+      win.postMessage({ type: ev, key, keyCode: kc, player: player || 1 }, '*');
     } catch(e) {}
   }
-  if (type === 'down') activeKeys.add(key); else activeKeys.delete(key);
-  updateLog();
+  // O log/teclas ativas na tela e' so referencia do P1 (toque so tem um
+  // jogador) — um segundo gamepad fisico (P2) nao mexe nisso.
+  if (!player || player === 1) {
+    if (type === 'down') activeKeys.add(key); else activeKeys.delete(key);
+    updateLog();
+  }
 }
 
 function updateLog() {
@@ -856,32 +925,46 @@ document.querySelectorAll('.dp').forEach(el => {
     4: 'q',     // L1/LB                        -> L
     5: 'e',     // R1/RB                        -> R
     8: 'Tab',   // Select/Share/Back            -> SELECT
-    9: 'Enter', // Start/Options/Menu           -> START
+    9: 'k',     // Start/Options/Menu           -> START
   };
   var GP_DPAD_BUTTON_DIR = { 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
   var STICK_DEAD = 0.5;
 
-  var gpIndex = null;
-  var heldButtons = {};
-  var heldDpad = { up: false, down: false, left: false, right: false };
+  // Ate 2 jogadores. O PRIMEIRO controle detectado vira P1 (esse sim
+  // acende os botoes na tela — o shell visual so representa um jogador,
+  // o "principal" deste aparelho). O SEGUNDO controle vira P2 — so manda
+  // o input (nostalgist.pressDown(button, 2)), sem mexer em nada visual.
+  // Com 1 controle so, NUNCA se manda input de P2 — resolve o pedido de
+  // "so habilitar 2P com 2 controles conectados" por construcao (nao tem
+  // slot 2 pra usar).
+  var slots = [
+    { player: 1, gpIndex: null, heldButtons: {}, heldDpad: { up: false, down: false, left: false, right: false } },
+    { player: 2, gpIndex: null, heldButtons: {}, heldDpad: { up: false, down: false, left: false, right: false } },
+  ];
   var toastTimer = null;
 
-  function setButtonState(key, active) {
-    var el = document.querySelector('[data-key="' + key + '"]');
-    if (el) el.classList.toggle('pressed', active);
-    sendKey(key, active ? 'down' : 'up');
+  function setButtonState(slot, key, active) {
+    if (slot.player === 1) {
+      var el = document.querySelector('[data-key="' + key + '"]');
+      if (el) el.classList.toggle('pressed', active);
+    }
+    sendKey(key, active ? 'down' : 'up', slot.player);
   }
-  function setDpadState(dir, active) {
-    if (heldDpad[dir] === active) return;
-    heldDpad[dir] = active;
-    var el = document.getElementById('dp-' + dir);
-    if (el) el.classList.toggle('pressed', active);
-    sendKey(DIR_KEYS[dir], active ? 'down' : 'up');
+  function setDpadState(slot, dir, active) {
+    if (slot.heldDpad[dir] === active) return;
+    slot.heldDpad[dir] = active;
+    if (slot.player === 1) {
+      var el = document.getElementById('dp-' + dir);
+      if (el) el.classList.toggle('pressed', active);
+    }
+    sendKey(DIR_KEYS[dir], active ? 'down' : 'up', slot.player);
   }
-  function clearAllVisuals() {
-    Object.keys(heldButtons).forEach(function (idx) { if (heldButtons[idx]) setButtonState(GP_BUTTON_KEY[idx], false); });
-    heldButtons = {};
-    ['up', 'down', 'left', 'right'].forEach(function (d) { setDpadState(d, false); });
+  function clearSlotVisuals(slot) {
+    Object.keys(slot.heldButtons).forEach(function (idx) {
+      if (slot.heldButtons[idx]) setButtonState(slot, GP_BUTTON_KEY[idx], false);
+    });
+    slot.heldButtons = {};
+    ['up', 'down', 'left', 'right'].forEach(function (d) { setDpadState(slot, d, false); });
   }
 
   function showGamepadToast(text) {
@@ -897,34 +980,145 @@ document.querySelectorAll('.dp').forEach(el => {
     toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2500);
   }
 
-  window.addEventListener('gamepadconnected', function (e) {
-    gpIndex = e.gamepad.index;
-    showGamepadToast('🎮 ' + (e.gamepad.id || 'Controle') + ' conectado');
-    hideControlsForGamepad();
-  });
+  function slotForIndex(gpIndex) {
+    for (var i = 0; i < slots.length; i++) if (slots[i].gpIndex === gpIndex) return slots[i];
+    return null;
+  }
+  function freeSlot() {
+    for (var i = 0; i < slots.length; i++) if (slots[i].gpIndex === null) return slots[i];
+    return null;
+  }
+  function assignSlot(gp) {
+    if (!gp || slotForIndex(gp.index)) return;
+    var slot = freeSlot();
+    if (!slot) return; // ja tem 2 controles ocupados, ignora o resto
+    slot.gpIndex = gp.index;
+    showGamepadToast('🎮 P' + slot.player + ': ' + (gp.id || 'Controle') + ' conectado');
+    if (slot.player === 1) hideControlsForGamepad();
+  }
+
+  window.addEventListener('gamepadconnected', function (e) { assignSlot(e.gamepad); });
   window.addEventListener('gamepaddisconnected', function (e) {
-    if (e.gamepad.index !== gpIndex) return;
-    gpIndex = null;
-    clearAllVisuals();
-    showGamepadToast('Controle desconectado');
+    var slot = slotForIndex(e.gamepad.index);
+    if (!slot) return;
+    slot.gpIndex = null;
+    clearSlotVisuals(slot);
+    showGamepadToast('P' + slot.player + ' desconectado');
+  });
+
+  // ═══════════════════════════════════════════
+  //  CONFIRMAR SAIR — segurar L2 sozinho (so no controle do P1, botao 6 —
+  //  gatilho esquerdo) por L2_HOLD_MS abre um dialogo "Sair do jogo?"
+  //  navegavel pelo proprio controle, pra nao sair sem querer no meio de
+  //  uma partida. Enquanto aberto, os botoes param de ir pro jogo (so
+  //  mexem no dialogo).
+  //  Ja foi Start+Select juntos, depois segurar Select sozinho — os dois
+  //  brigavam com outros usos do Select (no proprio jogo, e o Select
+  //  tambem liga/desliga o modo Big Picture na biblioteca), o que
+  //  atrapalhava o gesto disparar. L2 nao e' usado em NENHUM console
+  //  suportado aqui (so L1/R1, sem gatilho analogico) — fica livre pra
+  //  isso sem conflitar com mais nada.
+  // ═══════════════════════════════════════════
+  var exitConfirmEl = document.getElementById('exit-confirm');
+  var exitConfirmYesBtn = document.getElementById('exit-confirm-yes');
+  var exitConfirmNoBtn = document.getElementById('exit-confirm-no');
+  var exitConfirmOpen = false;
+  var exitConfirmFocus = 'no'; // comeca em "Nao" de proposito — sair e' a excecao, nao o padrao
+  var L2_HOLD_MS = 700;
+  var l2HoldStart = null; // timestamp (performance.now()) de quando o L2 do P1 comecou a ser segurado, ou null se solto
+  var l2HoldFired = false; // ja abriu/fechou o dialogo nesta segurada (evita repetir enquanto ainda ta segurando)
+
+  function syncExitConfirmVisual() {
+    exitConfirmYesBtn.classList.toggle('gamepad-focused', exitConfirmFocus === 'yes');
+    exitConfirmNoBtn.classList.toggle('gamepad-focused', exitConfirmFocus === 'no');
+  }
+  function openExitConfirm() {
+    exitConfirmOpen = true;
+    exitConfirmFocus = 'no';
+    syncExitConfirmVisual();
+    exitConfirmEl.classList.remove('hidden');
+  }
+  function closeExitConfirm() {
+    exitConfirmOpen = false;
+    exitConfirmEl.classList.add('hidden');
+  }
+  function confirmExit() {
+    closeExitConfirm();
+    try { window.top.postMessage({ type: 'gc:exitToLibrary' }, location.origin); } catch (e) {}
+  }
+  exitConfirmYesBtn.addEventListener('click', confirmExit);
+  exitConfirmNoBtn.addEventListener('click', closeExitConfirm);
+  exitConfirmEl.addEventListener('click', function (e) {
+    if (e.target === exitConfirmEl) closeExitConfirm();
   });
 
   function pollGamepad() {
     var pads = navigator.getGamepads ? navigator.getGamepads() : [];
-    var gp = gpIndex !== null ? pads[gpIndex] : null;
-    if (!gp) {
-      // Safari as vezes nao dispara 'gamepadconnected' se o controle ja
-      // estava pareado ANTES da pagina carregar — acha ele na poll mesmo.
-      for (var i = 0; i < pads.length; i++) {
-        if (pads[i]) { gp = pads[i]; gpIndex = i; showGamepadToast('🎮 ' + (gp.id || 'Controle') + ' conectado'); hideControlsForGamepad(); break; }
-      }
+    // Controles ja pareados ANTES da pagina carregar as vezes nao disparam
+    // 'gamepadconnected' (Safari) — acha e atribui slot na poll mesmo.
+    for (var i = 0; i < pads.length; i++) {
+      if (pads[i]) assignSlot(pads[i]);
     }
-    if (gp) {
+
+    // So o P1 abre/fecha o dialogo de saida (evita 2 controles brigando
+    // por ele em jogo de 2 jogadores).
+    var p1 = slots[0];
+    var gpP1 = p1.gpIndex !== null ? pads[p1.gpIndex] : null;
+    // Botao 6 = L2/gatilho esquerdo. Nao entra no GP_BUTTON_KEY (nenhum
+    // console suportado usa), entao nunca e' mandado pro jogo — não
+    // precisa soltar nada ao disparar, diferente de quando era o Select.
+    var l2Pressed = !!(gpP1 && gpP1.buttons[6] && (gpP1.buttons[6].pressed || gpP1.buttons[6].value > 0.5));
+    if (l2Pressed) {
+      if (l2HoldStart === null) l2HoldStart = performance.now();
+      else if (!l2HoldFired && performance.now() - l2HoldStart >= L2_HOLD_MS) {
+        l2HoldFired = true;
+        if (exitConfirmOpen) closeExitConfirm(); else openExitConfirm();
+      }
+    } else {
+      l2HoldStart = null;
+      l2HoldFired = false;
+    }
+
+    if (exitConfirmOpen) {
+      // Enquanto o dialogo esta aberto, D-pad/analogico esquerdo do
+      // controle do P1 troca Sim/Nao, e os botoes de confirmar/voltar
+      // decidem — nada disso vai pro jogo. Usa os proprios GP_DPAD_
+      // BUTTON_DIR/STICK_DEAD (ja tem constante) e le do gpP1 direto.
+      var leftPressed = !!(gpP1 && gpP1.buttons[14] && gpP1.buttons[14].pressed);
+      var rightPressed = !!(gpP1 && gpP1.buttons[15] && gpP1.buttons[15].pressed);
+      if (gpP1 && gpP1.axes && gpP1.axes.length >= 1) {
+        if (gpP1.axes[0] < -STICK_DEAD) leftPressed = true;
+        if (gpP1.axes[0] >  STICK_DEAD) rightPressed = true;
+      }
+      var dirNow = leftPressed ? 'left' : (rightPressed ? 'right' : null);
+      if (dirNow && dirNow !== p1.exitConfirmDirHeld) {
+        exitConfirmFocus = exitConfirmFocus === 'yes' ? 'no' : 'yes';
+        syncExitConfirmVisual();
+      }
+      p1.exitConfirmDirHeld = dirNow;
+
+      var confirmPressed = !!(gpP1 && gpP1.buttons[0] && gpP1.buttons[0].pressed);
+      var backPressed = !!(gpP1 && gpP1.buttons[1] && gpP1.buttons[1].pressed);
+      if (confirmPressed && !p1.exitConfirmConfirmHeld) {
+        if (exitConfirmFocus === 'yes') confirmExit(); else closeExitConfirm();
+      }
+      if (backPressed && !p1.exitConfirmBackHeld) closeExitConfirm();
+      p1.exitConfirmConfirmHeld = confirmPressed;
+      p1.exitConfirmBackHeld = backPressed;
+
+      requestAnimationFrame(pollGamepad);
+      return;
+    }
+
+    slots.forEach(function (slot) {
+      if (slot.gpIndex === null) return;
+      var gp = pads[slot.gpIndex];
+      if (!gp) return;
       for (var idx in GP_BUTTON_KEY) {
         var pressed = !!(gp.buttons[idx] && gp.buttons[idx].pressed);
-        if (pressed !== !!heldButtons[idx]) {
-          heldButtons[idx] = pressed;
-          setButtonState(GP_BUTTON_KEY[idx], pressed);
+        if (pressed !== !!slot.heldButtons[idx]) {
+          slot.heldButtons[idx] = pressed;
+          setButtonState(slot, GP_BUTTON_KEY[idx], pressed);
         }
       }
       var activeDirs = { up: false, down: false, left: false, right: false };
@@ -938,8 +1132,8 @@ document.querySelectorAll('.dp').forEach(el => {
         if (ay < -STICK_DEAD) activeDirs.up = true;
         if (ay >  STICK_DEAD) activeDirs.down = true;
       }
-      for (var d in activeDirs) setDpadState(d, activeDirs[d]);
-    }
+      for (var d in activeDirs) setDpadState(slot, d, activeDirs[d]);
+    });
     requestAnimationFrame(pollGamepad);
   }
   requestAnimationFrame(pollGamepad);

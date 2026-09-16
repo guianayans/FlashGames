@@ -12,6 +12,7 @@ const SYSTEM_ASPECT_RATIO: Record<SystemLauncher, number> = {
   nes: 4 / 3,
   megadrive: 4 / 3,
   gba: 3 / 2,
+  psx: 4 / 3,
 };
 import { loadEmulator } from "../loadEmulatorScript";
 import type { Nostalgist } from "nostalgist";
@@ -91,17 +92,26 @@ function MobilePlayer({ slug }: { slug: string }) {
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.origin !== location.origin) return;
-      if ((e.data as { type?: string } | null)?.type !== "gc:revealBack") return;
-      setShowBack(true);
-      if (hideTimer.current) clearTimeout(hideTimer.current);
-      hideTimer.current = setTimeout(() => setShowBack(false), BACK_BUTTON_AUTO_HIDE_MS);
+      const type = (e.data as { type?: string } | null)?.type;
+      if (type === "gc:revealBack") {
+        setShowBack(true);
+        if (hideTimer.current) clearTimeout(hideTimer.current);
+        hideTimer.current = setTimeout(() => setShowBack(false), BACK_BUTTON_AUTO_HIDE_MS);
+        return;
+      }
+      // Segurar L2 no controle (ver GameScreen.html, dialogo "Sair do
+      // jogo?") — o usuario ja confirmou LA dentro, sai direto, sem
+      // precisar revelar/tocar o botao de novo.
+      if (type === "gc:exitToLibrary") {
+        goBack();
+      }
     }
     window.addEventListener("message", onMessage);
     return () => {
       window.removeEventListener("message", onMessage);
       if (hideTimer.current) clearTimeout(hideTimer.current);
     };
-  }, []);
+  }, [goBack]);
 
   const handleLoad = () => {
     const win = frameRef.current?.contentWindow as GameScreenWindow | null | undefined;
@@ -149,67 +159,96 @@ const GAMEPAD_BUTTON_MAP: Record<number, string> = {
 const GAMEPAD_DPAD_MAP: Record<number, string> = { 12: "up", 13: "down", 14: "left", 15: "right" };
 const GAMEPAD_STICK_DEAD = 0.5;
 
-// Detecta o gamepad conectado (pro badge no topo) E manda o input pro jogo
-// via nostalgist.pressDown/pressUp. Testado ao vivo: o Nostalgist.js NAO
-// pega o gamepad sozinho neste embed — por isso manda o comando na mao,
-// igual o GameScreen.html faz pro player mobile.
-function useGamepadPlayer(nostalgistRef: React.RefObject<Nostalgist | null>): string | null {
-  const [name, setName] = useState<string | null>(null);
+type GamepadSlot = {
+  player: 1 | 2;
+  gpIndex: number | null;
+  heldButtons: Record<number, boolean>;
+  heldDirs: Record<string, boolean>;
+};
+
+// Detecta ate 2 gamepads (pro badge no topo) E manda o input pro jogo via
+// nostalgist.pressDown/pressUp(button, player). Testado ao vivo: o
+// Nostalgist.js NAO pega o gamepad sozinho neste embed — por isso manda o
+// comando na mao, igual o GameScreen.html faz pro player mobile. O
+// PRIMEIRO controle detectado vira P1, o segundo vira P2 — com 1 controle
+// so, nunca se manda input de P2 (nao tem slot 2 ocupado pra isso).
+function useGamepadPlayer(nostalgistRef: React.RefObject<Nostalgist | null>): (string | null)[] {
+  const [names, setNames] = useState<(string | null)[]>([null, null]);
 
   useEffect(() => {
-    let gpIndex: number | null = null;
+    const slots: GamepadSlot[] = [
+      { player: 1, gpIndex: null, heldButtons: {}, heldDirs: { up: false, down: false, left: false, right: false } },
+      { player: 2, gpIndex: null, heldButtons: {}, heldDirs: { up: false, down: false, left: false, right: false } },
+    ];
     let raf = 0;
-    const heldButtons: Record<number, boolean> = {};
-    const heldDirs: Record<string, boolean> = { up: false, down: false, left: false, right: false };
 
-    function press(button: string, down: boolean) {
+    function press(slot: GamepadSlot, button: string, down: boolean) {
       const inst = nostalgistRef.current;
       if (!inst) return;
-      if (down) inst.pressDown(button);
-      else inst.pressUp(button);
+      if (down) inst.pressDown({ button, player: slot.player });
+      else inst.pressUp({ button, player: slot.player });
+    }
+
+    function setName(player: 1 | 2, name: string | null) {
+      setNames((prev) => {
+        const next = [...prev] as (string | null)[];
+        next[player - 1] = name;
+        return next;
+      });
+    }
+
+    function slotForIndex(gpIndex: number) {
+      return slots.find((s) => s.gpIndex === gpIndex) ?? null;
+    }
+    function assignSlot(gp: Gamepad | null) {
+      if (!gp || slotForIndex(gp.index)) return;
+      const slot = slots.find((s) => s.gpIndex === null);
+      if (!slot) return; // ja tem 2 controles ocupados
+      slot.gpIndex = gp.index;
+      setName(slot.player, gp.id || "Controle");
+    }
+
+    function clearSlot(slot: GamepadSlot) {
+      Object.keys(slot.heldButtons).forEach((idx) => {
+        if (slot.heldButtons[Number(idx)]) press(slot, GAMEPAD_BUTTON_MAP[Number(idx)], false);
+      });
+      slot.heldButtons = {};
+      Object.keys(slot.heldDirs).forEach((d) => {
+        if (slot.heldDirs[d]) press(slot, d, false);
+        slot.heldDirs[d] = false;
+      });
     }
 
     function onConnected(e: GamepadEvent) {
-      gpIndex = e.gamepad.index;
-      setName(e.gamepad.id || "Controle");
+      assignSlot(e.gamepad);
     }
     function onDisconnected(e: GamepadEvent) {
-      if (e.gamepad.index !== gpIndex) return;
-      gpIndex = null;
-      setName(null);
-      Object.keys(heldButtons).forEach((idx) => {
-        if (heldButtons[Number(idx)]) press(GAMEPAD_BUTTON_MAP[Number(idx)], false);
-      });
-      Object.keys(heldDirs).forEach((d) => {
-        if (heldDirs[d]) press(d, false);
-        heldDirs[d] = false;
-      });
+      const slot = slotForIndex(e.gamepad.index);
+      if (!slot) return;
+      slot.gpIndex = null;
+      setName(slot.player, null);
+      clearSlot(slot);
     }
     window.addEventListener("gamepadconnected", onConnected);
     window.addEventListener("gamepaddisconnected", onDisconnected);
 
     function poll() {
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-      let gp = gpIndex !== null ? pads[gpIndex] : null;
-      if (!gp) {
-        // Alguns navegadores nao disparam 'gamepadconnected' se o
-        // controle ja estava pareado antes da pagina carregar.
-        for (let i = 0; i < pads.length; i++) {
-          if (pads[i]) {
-            gp = pads[i];
-            gpIndex = gp!.index;
-            setName(gp!.id || "Controle");
-            break;
-          }
-        }
+      // Alguns navegadores nao disparam 'gamepadconnected' se o controle
+      // ja estava pareado antes da pagina carregar.
+      for (let i = 0; i < pads.length; i++) {
+        if (pads[i]) assignSlot(pads[i]);
       }
-      if (gp) {
+      for (const slot of slots) {
+        if (slot.gpIndex === null) continue;
+        const gp = pads[slot.gpIndex];
+        if (!gp) continue;
         for (const idxStr of Object.keys(GAMEPAD_BUTTON_MAP)) {
           const idx = Number(idxStr);
           const pressed = !!gp.buttons[idx]?.pressed;
-          if (pressed !== !!heldButtons[idx]) {
-            heldButtons[idx] = pressed;
-            press(GAMEPAD_BUTTON_MAP[idx], pressed);
+          if (pressed !== !!slot.heldButtons[idx]) {
+            slot.heldButtons[idx] = pressed;
+            press(slot, GAMEPAD_BUTTON_MAP[idx], pressed);
           }
         }
         const activeDirs: Record<string, boolean> = { up: false, down: false, left: false, right: false };
@@ -225,9 +264,9 @@ function useGamepadPlayer(nostalgistRef: React.RefObject<Nostalgist | null>): st
           if (ay > GAMEPAD_STICK_DEAD) activeDirs.down = true;
         }
         for (const dir of Object.keys(activeDirs)) {
-          if (activeDirs[dir] !== heldDirs[dir]) {
-            heldDirs[dir] = activeDirs[dir];
-            press(dir, activeDirs[dir]);
+          if (activeDirs[dir] !== slot.heldDirs[dir]) {
+            slot.heldDirs[dir] = activeDirs[dir];
+            press(slot, dir, activeDirs[dir]);
           }
         }
       }
@@ -242,7 +281,7 @@ function useGamepadPlayer(nostalgistRef: React.RefObject<Nostalgist | null>): st
     };
   }, [nostalgistRef]);
 
-  return name;
+  return names;
 }
 
 function DesktopPlayer({ slug }: { slug: string }) {
@@ -251,7 +290,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const nostalgistRef = useRef<Nostalgist | null>(null);
   const goBack = useLibraryBack();
-  const gamepadName = useGamepadPlayer(nostalgistRef);
+  const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef);
 
   useEffect(() => {
     setGame(null);
@@ -305,7 +344,8 @@ function DesktopPlayer({ slug }: { slug: string }) {
           ← Biblioteca
         </button>
         <h1>{game?.title ?? "Carregando..."}</h1>
-        {gamepadName && <span className="gamepad-badge">🎮 {gamepadName}</span>}
+        {gamepad1Name && <span className="gamepad-badge">🎮 P1: {gamepad1Name}</span>}
+        {gamepad2Name && <span className="gamepad-badge">🎮 P2: {gamepad2Name}</span>}
       </div>
 
       {error && <p className="error-text">{error}</p>}
