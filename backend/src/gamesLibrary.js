@@ -253,13 +253,16 @@ export function getGame(slug) {
 // arquivos com jogo (nao entra no loop de scanAll). E' o usuario quem
 // coloca o dump (nao redistribuimos BIOS, cada um usa o dump extraido do
 // proprio console). O core (ex: pcsx_rearmed pro PS1) recebe todos os
-// arquivos daqui e escolhe sozinho qual bate com a regiao do jogo.
+// arquivos daqui e escolhe sozinho qual bate com a regiao do jogo — por
+// isso o README.md (instrucoes, unico arquivo versionado dessa pasta,
+// ver .gitignore) NAO pode entrar nessa lista: o core tentava ler ele
+// como se fosse firmware e a BIOS de verdade nunca carregava.
 export function listBiosFiles() {
   const biosDir = path.join(ROMS_DIR, "BIOS");
   try {
     return fs
       .readdirSync(biosDir, { withFileTypes: true })
-      .filter((e) => e.isFile())
+      .filter((e) => e.isFile() && e.name.toLowerCase() !== "readme.md")
       .map((e) => e.name);
   } catch {
     return [];
