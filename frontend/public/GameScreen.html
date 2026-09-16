@@ -98,6 +98,33 @@ body {
   border-radius: 3px; color: #fff;
   font-size: 10px; padding: 1px 5px;
 }
+#gamepad-toast {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-14px);
+  z-index: 60;
+  padding: 8px 16px;
+  border-radius: 999px;
+  /* Solido, sem backdrop-filter de proposito — blur em elemento fixo no
+     topo foi origem de mais de um bug de renderizacao no PWA standalone
+     do iOS neste app (ver historico do :root/library-header). */
+  background: rgba(10,7,20,.94);
+  border: 1px solid rgba(0,229,255,.5);
+  color: #fff;
+  font: 600 13px/1 system-ui, sans-serif;
+  max-width: 88vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+#gamepad-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 #remap-btn {
   /* Oculto: controles ja funcionam de forma nativa, remapear nao e mais
      necessario. */
@@ -423,7 +450,7 @@ body.layout-edit [data-draggable] {
   <div id="screen">
     <div id="log-label">PRESSIONE UM BOTÃO</div>
     <div id="log-keys"></div>
-    <iframe id="game-iframe" allowfullscreen title="Game"></iframe>
+    <iframe id="game-iframe" allowfullscreen allow="gamepad" title="Game"></iframe>
     <button id="remap-btn" title="Remapear botoes">⚙</button>
     <button id="layout-btn" title="Arrastar controles">✥</button>
     <button id="hide-controls-btn" title="Alternar controles visiveis">👁</button>
@@ -806,6 +833,119 @@ document.querySelectorAll('.dp').forEach(el => {
 })();
 
 // ═══════════════════════════════════════════
+//  CONTROLE FISICO (Gamepad API)
+//  Testado ao vivo: o Nostalgist.js NAO pega o gamepad sozinho neste
+//  embed (canvas dentro de iframe aninhado) — por isso manda o input
+//  pro jogo pela MESMA rota que o toque ja usa (sendKey -> postMessage ->
+//  game-wrapper.ts -> nostalgist.pressDown/pressUp), alem de acender o
+//  botao correspondente na tela (mesma classe .pressed do toque) e
+//  mostrar um aviso de "controle conectado".
+//  Mapeamento por POSICAO do botao na carcaça (igual o proprio RetroArch
+//  faz por padrao), nao pelo nome/letra: o botao de baixo do controle
+//  sempre vira B, o da direita vira A, etc — independente do controle
+//  rotular esses botoes como "A/B/X/Y" (Xbox) ou "Cross/Circle/Square/
+//  Triangle" (PlayStation), porque o SNES em si tem B embaixo e A na
+//  direita, nao "A embaixo" como um Xbox.
+// ═══════════════════════════════════════════
+(function () {
+  var GP_BUTTON_KEY = {
+    0: 'Shift', // baixo (Xbox A / PS Cross)    -> B
+    1: 'z',     // direita (Xbox B / PS Circle) -> A
+    2: 'y',     // esquerda (Xbox X / PS Square)-> Y
+    3: 'x',     // cima (Xbox Y / PS Triangle)  -> X
+    4: 'q',     // L1/LB                        -> L
+    5: 'e',     // R1/RB                        -> R
+    8: 'Tab',   // Select/Share/Back            -> SELECT
+    9: 'Enter', // Start/Options/Menu           -> START
+  };
+  var GP_DPAD_BUTTON_DIR = { 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
+  var STICK_DEAD = 0.5;
+
+  var gpIndex = null;
+  var heldButtons = {};
+  var heldDpad = { up: false, down: false, left: false, right: false };
+  var toastTimer = null;
+
+  function setButtonState(key, active) {
+    var el = document.querySelector('[data-key="' + key + '"]');
+    if (el) el.classList.toggle('pressed', active);
+    sendKey(key, active ? 'down' : 'up');
+  }
+  function setDpadState(dir, active) {
+    if (heldDpad[dir] === active) return;
+    heldDpad[dir] = active;
+    var el = document.getElementById('dp-' + dir);
+    if (el) el.classList.toggle('pressed', active);
+    sendKey(DIR_KEYS[dir], active ? 'down' : 'up');
+  }
+  function clearAllVisuals() {
+    Object.keys(heldButtons).forEach(function (idx) { if (heldButtons[idx]) setButtonState(GP_BUTTON_KEY[idx], false); });
+    heldButtons = {};
+    ['up', 'down', 'left', 'right'].forEach(function (d) { setDpadState(d, false); });
+  }
+
+  function showGamepadToast(text) {
+    var toast = document.getElementById('gamepad-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'gamepad-toast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2500);
+  }
+
+  window.addEventListener('gamepadconnected', function (e) {
+    gpIndex = e.gamepad.index;
+    showGamepadToast('🎮 ' + (e.gamepad.id || 'Controle') + ' conectado');
+    hideControlsForGamepad();
+  });
+  window.addEventListener('gamepaddisconnected', function (e) {
+    if (e.gamepad.index !== gpIndex) return;
+    gpIndex = null;
+    clearAllVisuals();
+    showGamepadToast('Controle desconectado');
+  });
+
+  function pollGamepad() {
+    var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var gp = gpIndex !== null ? pads[gpIndex] : null;
+    if (!gp) {
+      // Safari as vezes nao dispara 'gamepadconnected' se o controle ja
+      // estava pareado ANTES da pagina carregar — acha ele na poll mesmo.
+      for (var i = 0; i < pads.length; i++) {
+        if (pads[i]) { gp = pads[i]; gpIndex = i; showGamepadToast('🎮 ' + (gp.id || 'Controle') + ' conectado'); hideControlsForGamepad(); break; }
+      }
+    }
+    if (gp) {
+      for (var idx in GP_BUTTON_KEY) {
+        var pressed = !!(gp.buttons[idx] && gp.buttons[idx].pressed);
+        if (pressed !== !!heldButtons[idx]) {
+          heldButtons[idx] = pressed;
+          setButtonState(GP_BUTTON_KEY[idx], pressed);
+        }
+      }
+      var activeDirs = { up: false, down: false, left: false, right: false };
+      for (var bIdx in GP_DPAD_BUTTON_DIR) {
+        if (gp.buttons[bIdx] && gp.buttons[bIdx].pressed) activeDirs[GP_DPAD_BUTTON_DIR[bIdx]] = true;
+      }
+      if (gp.axes && gp.axes.length >= 2) {
+        var ax = gp.axes[0], ay = gp.axes[1];
+        if (ax < -STICK_DEAD) activeDirs.left = true;
+        if (ax >  STICK_DEAD) activeDirs.right = true;
+        if (ay < -STICK_DEAD) activeDirs.up = true;
+        if (ay >  STICK_DEAD) activeDirs.down = true;
+      }
+      for (var d in activeDirs) setDpadState(d, activeDirs[d]);
+    }
+    requestAnimationFrame(pollGamepad);
+  }
+  requestAnimationFrame(pollGamepad);
+})();
+
+// ═══════════════════════════════════════════
 //  REMAPEAR BOTOES (X/Y/A/B/L/R/FN/SEL/START)
 //  O usuario escolhe livremente a tecla do teclado que quiser pra cada um
 //  desses botoes: toca a engrenagem pra entrar em "modo remapear" e depois
@@ -950,6 +1090,12 @@ function syncOrientation() {
   screenEl.style.borderRadius = isLandscape ? '0' : '15px 15px 8px 8px';
   if (isLandscape) {
     applyCustomLayout();
+    // Girou pra paisagem com um controle fisico ja conectado — esconde os
+    // botoes de toque direto (ver hideControlsForGamepad, secao CONTROLE
+    // FISICO), sem precisar esperar um evento de conexao novo.
+    if (navigator.getGamepads && navigator.getGamepads().some(g => g) && typeof hideControlsForGamepad === 'function') {
+      hideControlsForGamepad();
+    }
   } else {
     clearCustomLayoutPositions();
     // Modo de arrastar so existe na paisagem — se o usuario girar o
@@ -1073,6 +1219,29 @@ function resetControlsPreset() {
   presetIndex = 0;
   syncControlsVisibility();
 }
+
+// Controle fisico conectado na paisagem: os botoes de toque ficam
+// redundantes, entao escondem sozinhos (preset 1 = tudo oculto). So
+// mexe se o preset ATUAL for o "tudo visivel" (0) — nao atropela uma
+// escolha manual do usuario pelo botao de olho (⁠hideControlsBtn). Um
+// toque na tela devolve pro normal, mas SO se foi este codigo que
+// escondeu (gamepadAutoHidden) — um preset escolhido a mao no botao de
+// olho continua do jeito que o usuario deixou.
+let gamepadAutoHidden = false;
+function hideControlsForGamepad() {
+  if (!document.body.classList.contains('landscape')) return;
+  if (presetIndex !== 0) return;
+  presetIndex = 1;
+  syncControlsVisibility();
+  gamepadAutoHidden = true;
+}
+function revealControlsFromTouch() {
+  if (!gamepadAutoHidden) return;
+  gamepadAutoHidden = false;
+  presetIndex = 0;
+  syncControlsVisibility();
+}
+document.addEventListener('touchstart', revealControlsFromTouch, { passive: true, capture: true });
 
 hideControlsBtn.addEventListener('click', () => {
   presetIndex = (presetIndex + 1) % CONTROL_PRESETS.length;

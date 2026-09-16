@@ -876,7 +876,7 @@ a {
 .player-page {
   position: relative;
   z-index: 1;
-  max-width: 1040px;
+  max-width: 1800px;
   margin: 0 auto;
   padding: 14px 14px 32px;
   display: flex;
@@ -902,6 +902,22 @@ a {
   white-space: nowrap;
 }
 
+.gamepad-badge {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  color: var(--cyan);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .back-link {
   background: none;
   border: none;
@@ -920,6 +936,17 @@ a {
 }
 
 .player-stage-wrapper {
+  /* Cresce pra preencher o que sobrar de tela (largura OU altura,
+     dependendo do que limitar primeiro) sem distorcer: width e' o MENOR
+     entre "100% do container" e "a altura disponivel vezes a proporcao do
+     console" — com aspect-ratio fixando a proporcao, a altura sempre
+     acompanha certo, nunca estica. 170px e' uma estimativa generosa do
+     que o topbar/descricao/paddings da pagina consomem. object-fit:contain
+     no canvas (ver DesktopPlayer) ja protege contra distorcao de qualquer
+     jeito — isso aqui e' so pra minimizar barra preta desnecessaria. */
+  width: min(100%, calc((100dvh - 170px) * var(--stage-ratio, 1.3333)));
+  aspect-ratio: var(--stage-ratio, 1.3333);
+  margin: 0 auto;
   background: #000;
   overflow: hidden;
   touch-action: none;

@@ -1,7 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
-import type { GameDetail } from "../types";
+import type { GameDetail, SystemLauncher } from "../types";
+
+// Proporcao nativa de cada console — usada pra dimensionar o palco do jogo
+// (ver DesktopPlayer) sem esticar/distorcer a imagem. object-fit:contain
+// no canvas ja protege contra distorcao de qualquer jeito, mas acertar a
+// proporcao aqui evita barras pretas desnecessarias.
+const SYSTEM_ASPECT_RATIO: Record<SystemLauncher, number> = {
+  snes: 4 / 3,
+  nes: 4 / 3,
+  megadrive: 4 / 3,
+  gba: 3 / 2,
+};
 import { loadEmulator } from "../loadEmulatorScript";
 import type { Nostalgist } from "nostalgist";
 
@@ -113,11 +124,125 @@ function MobilePlayer({ slug }: { slug: string }) {
         className="mobile-player-frame"
         title="Game Controller"
         onLoad={handleLoad}
-        allow="fullscreen"
+        allow="fullscreen; gamepad"
         allowFullScreen
       />
     </div>
   );
+}
+
+// Mapeamento por POSICAO do botao na carcaça (mesmo criterio do
+// GameScreen.html, ver secao "CONTROLE FISICO" la) — o botao de baixo do
+// controle sempre vira B, o da direita vira A, etc, independente do
+// controle rotular isso como "A/B/X/Y" (Xbox) ou "Cross/Circle/Square/
+// Triangle" (PlayStation): o SNES tem B embaixo e A na direita.
+const GAMEPAD_BUTTON_MAP: Record<number, string> = {
+  0: "b", // baixo (Xbox A / PS Cross)
+  1: "a", // direita (Xbox B / PS Circle)
+  2: "y", // esquerda (Xbox X / PS Square)
+  3: "x", // cima (Xbox Y / PS Triangle)
+  4: "l", // L1/LB
+  5: "r", // R1/RB
+  8: "select", // Select/Share/Back
+  9: "start", // Start/Options/Menu
+};
+const GAMEPAD_DPAD_MAP: Record<number, string> = { 12: "up", 13: "down", 14: "left", 15: "right" };
+const GAMEPAD_STICK_DEAD = 0.5;
+
+// Detecta o gamepad conectado (pro badge no topo) E manda o input pro jogo
+// via nostalgist.pressDown/pressUp. Testado ao vivo: o Nostalgist.js NAO
+// pega o gamepad sozinho neste embed — por isso manda o comando na mao,
+// igual o GameScreen.html faz pro player mobile.
+function useGamepadPlayer(nostalgistRef: React.RefObject<Nostalgist | null>): string | null {
+  const [name, setName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let gpIndex: number | null = null;
+    let raf = 0;
+    const heldButtons: Record<number, boolean> = {};
+    const heldDirs: Record<string, boolean> = { up: false, down: false, left: false, right: false };
+
+    function press(button: string, down: boolean) {
+      const inst = nostalgistRef.current;
+      if (!inst) return;
+      if (down) inst.pressDown(button);
+      else inst.pressUp(button);
+    }
+
+    function onConnected(e: GamepadEvent) {
+      gpIndex = e.gamepad.index;
+      setName(e.gamepad.id || "Controle");
+    }
+    function onDisconnected(e: GamepadEvent) {
+      if (e.gamepad.index !== gpIndex) return;
+      gpIndex = null;
+      setName(null);
+      Object.keys(heldButtons).forEach((idx) => {
+        if (heldButtons[Number(idx)]) press(GAMEPAD_BUTTON_MAP[Number(idx)], false);
+      });
+      Object.keys(heldDirs).forEach((d) => {
+        if (heldDirs[d]) press(d, false);
+        heldDirs[d] = false;
+      });
+    }
+    window.addEventListener("gamepadconnected", onConnected);
+    window.addEventListener("gamepaddisconnected", onDisconnected);
+
+    function poll() {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let gp = gpIndex !== null ? pads[gpIndex] : null;
+      if (!gp) {
+        // Alguns navegadores nao disparam 'gamepadconnected' se o
+        // controle ja estava pareado antes da pagina carregar.
+        for (let i = 0; i < pads.length; i++) {
+          if (pads[i]) {
+            gp = pads[i];
+            gpIndex = gp!.index;
+            setName(gp!.id || "Controle");
+            break;
+          }
+        }
+      }
+      if (gp) {
+        for (const idxStr of Object.keys(GAMEPAD_BUTTON_MAP)) {
+          const idx = Number(idxStr);
+          const pressed = !!gp.buttons[idx]?.pressed;
+          if (pressed !== !!heldButtons[idx]) {
+            heldButtons[idx] = pressed;
+            press(GAMEPAD_BUTTON_MAP[idx], pressed);
+          }
+        }
+        const activeDirs: Record<string, boolean> = { up: false, down: false, left: false, right: false };
+        for (const idxStr of Object.keys(GAMEPAD_DPAD_MAP)) {
+          const idx = Number(idxStr);
+          if (gp.buttons[idx]?.pressed) activeDirs[GAMEPAD_DPAD_MAP[idx]] = true;
+        }
+        const [ax, ay] = gp.axes;
+        if (typeof ax === "number" && typeof ay === "number") {
+          if (ax < -GAMEPAD_STICK_DEAD) activeDirs.left = true;
+          if (ax > GAMEPAD_STICK_DEAD) activeDirs.right = true;
+          if (ay < -GAMEPAD_STICK_DEAD) activeDirs.up = true;
+          if (ay > GAMEPAD_STICK_DEAD) activeDirs.down = true;
+        }
+        for (const dir of Object.keys(activeDirs)) {
+          if (activeDirs[dir] !== heldDirs[dir]) {
+            heldDirs[dir] = activeDirs[dir];
+            press(dir, activeDirs[dir]);
+          }
+        }
+      }
+      raf = requestAnimationFrame(poll);
+    }
+    raf = requestAnimationFrame(poll);
+
+    return () => {
+      window.removeEventListener("gamepadconnected", onConnected);
+      window.removeEventListener("gamepaddisconnected", onDisconnected);
+      cancelAnimationFrame(raf);
+    };
+  }, [nostalgistRef]);
+
+  return name;
 }
 
 function DesktopPlayer({ slug }: { slug: string }) {
@@ -126,6 +251,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const nostalgistRef = useRef<Nostalgist | null>(null);
   const goBack = useLibraryBack();
+  const gamepadName = useGamepadPlayer(nostalgistRef);
 
   useEffect(() => {
     setGame(null);
@@ -179,6 +305,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
           ← Biblioteca
         </button>
         <h1>{game?.title ?? "Carregando..."}</h1>
+        {gamepadName && <span className="gamepad-badge">🎮 {gamepadName}</span>}
       </div>
 
       {error && <p className="error-text">{error}</p>}
@@ -187,10 +314,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
         className="player-stage-wrapper"
         style={{
           position: "relative",
-          width: "100%",
-          maxWidth: 960,
-          margin: "0 auto",
-          aspectRatio: "4/3",
+          ["--stage-ratio" as string]: game ? SYSTEM_ASPECT_RATIO[game.launcher] : 4 / 3,
         }}
       >
         <div className="player-stage" ref={stageRef} />
