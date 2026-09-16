@@ -47,6 +47,7 @@ export default function Library() {
   const query = searchParams.get("q") ?? "";
   const activeSystem = searchParams.get("system") ?? "todos";
   const favoritesOnly = searchParams.get("fav") === "1";
+  const topOnly = searchParams.get("top") === "1";
   const letter = searchParams.get("letter") ?? "";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const [alphaOpen, setAlphaOpen] = useState(false);
@@ -194,13 +195,14 @@ export default function Library() {
     const q = normalize(query.trim());
     return games.filter((g) => {
       if (favoritesOnly && !favorites.has(g.slug)) return false;
+      if (topOnly && !g.top) return false;
       if (activeSystem !== "todos" && g.system !== activeSystem) return false;
       if (letter && titleBucket(g.title) !== letter) return false;
       if (!q) return true;
       const haystack = normalize([g.title, g.description, g.category, ...(g.tags || [])].join(" "));
       return haystack.includes(q);
     });
-  }, [games, query, activeSystem, favoritesOnly, favorites, letter]);
+  }, [games, query, activeSystem, favoritesOnly, favorites, topOnly, letter]);
 
   // Pra desabilitar no overlay as letras sem nenhum jogo correspondente.
   const availableLetters = useMemo(() => {
@@ -359,6 +361,14 @@ export default function Library() {
         >
           <span className="chip-dot">★</span>
           Favoritos
+        </button>
+        <button
+          className={`category-chip${topOnly ? " active" : ""}`}
+          style={{ ["--chip-color" as string]: "#ff2e9a" }}
+          onClick={() => updateFilters({ top: topOnly ? null : "1" })}
+          aria-pressed={topOnly}
+        >
+          Top Games
         </button>
         {systems.map(([slug, count]) => {
           const meta = systemMeta(slug);

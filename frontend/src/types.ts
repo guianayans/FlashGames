@@ -8,6 +8,7 @@ export interface GameSummary {
   tags: string[];
   system: SystemKey;
   cover: string | null;
+  top: boolean;
 }
 
 export type SystemLauncher = "snes" | "nes" | "megadrive" | "gba";
