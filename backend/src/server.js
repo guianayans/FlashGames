@@ -6,6 +6,7 @@ import path from "node:path";
 import authRoutes from "./routes/auth.js";
 import gamesRoutes from "./routes/games.js";
 import savesRoutes from "./routes/saves.js";
+import controlsRoutes from "./routes/controls.js";
 import { GAMES_DIR } from "./gamesLibrary.js";
 import { readAuth } from "./auth.js";
 
@@ -30,6 +31,7 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/games", gamesRoutes);
 app.use("/api/saves", savesRoutes);
+app.use("/api/controls", controlsRoutes);
 
 // Arquivos do Ruffle (ruffle.js + wasm), com o mime type correto para .wasm
 app.use(

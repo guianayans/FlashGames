@@ -1,66 +1,87 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import type { GameDetail } from "../types";
 import { loadRuffleScript } from "../loadRuffleScript";
 import { prepareGameStorage, flushGameSave, type GameStorageSession } from "../ruffleSave";
-import { useContainFit } from "../useContainFit";
-import TouchControls from "../components/TouchControls";
-import { dlog } from "../debugLog";
+
+// Janela do GameScreen.html com a API que ele expoe (ver
+// frontend/public/GameScreen.html, copia fiel de elementos/GameScreen.html).
+interface GameScreenWindow extends Window {
+  GameController?: { setGame(src: string, slug?: string): void };
+}
+
+function detectPointerCoarse(): boolean {
+  if (typeof window === "undefined") return false;
+  const shortSide = Math.min(window.innerWidth, window.innerHeight);
+  return window.matchMedia("(pointer: coarse)").matches || shortSide <= 560;
+}
 
 export default function Player() {
   const { slug = "" } = useParams();
-  const [game, setGame] = useState<GameDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [showControls, setShowControls] = useState(false);
-  const [pointerCoarse, setPointerCoarse] = useState(false);
-  const [portrait, setPortrait] = useState(true);
 
-  const stageRef = useRef<HTMLDivElement>(null);
-  const playerElRef = useRef<HTMLElement | null>(null);
-  const sessionRef = useRef<GameStorageSession | null>(null);
-  const flushIntervalRef = useRef<number | null>(null);
+  // Celular/touch: o GameScreen.html (controller com shell de portatil,
+  // d-pad, analogicos e botoes) assume a tela inteira e cuida de tudo,
+  // portrait e landscape (inclusive o botao de fullscreen nativo dele). O
+  // Ruffle roda dentro do <iframe id="game-iframe"> DELE, carregado via
+  // GameController.setGame() — ver frontend/src/game-wrapper.ts.
+  const [pointerCoarse, setPointerCoarse] = useState(detectPointerCoarse);
 
-  const gameRatio = game ? game.width / game.height : 4 / 3;
-  const [shellRect, setShellSlot] = useContainFit(gameRatio);
-  const [fsRect, setFsSlot] = useContainFit(gameRatio);
-
-  // Detecta "e celular" (pra decidir se mostra o shell/tela cheia + controles
-  // ativados por padrao) e orientacao. So `pointer: coarse` nao e confiavel
-  // sozinho (alguns navegadores/dispositivos nao reportam certo) — combina
-  // com o tamanho da tela: o lado curto do viewport (funciona em qualquer
-  // orientacao) tem que ser de celular, nao de tablet/desktop.
   useEffect(() => {
+    // So escuta mudanca de capacidade de ponteiro (ex.: mouse/teclado
+    // bluetooth conectado/desconectado num celular) — NAO reage a
+    // "resize" do viewport. O endereco do navegador escondendo/aparecendo
+    // ao rolar, ou o GameScreen.html entrando/saindo de fullscreen, tambem
+    // disparam resize e mudam a heuristica de "lado curto <= 560px";
+    // reagir a isso trocava MobilePlayer <-> DesktopPlayer no meio do jogo
+    // (desmontando o iframe inteiro, com o jogo dentro) — o "glitch" que
+    // parava os botoes de funcionar. Uma vez detectado touch, fica
+    // travado em touch pelo resto da sessao nesta pagina.
     const mqCoarse = window.matchMedia("(pointer: coarse)");
-    const mqPortrait = window.matchMedia("(orientation: portrait)");
-    let defaultApplied = false;
     const sync = () => {
-      const shortSide = Math.min(window.innerWidth, window.innerHeight);
-      const isMobile = mqCoarse.matches || shortSide <= 560;
-      setPointerCoarse(isMobile);
-      setPortrait(mqPortrait.matches);
-      dlog(
-        `modo: pointerCoarse=${mqCoarse.matches} shortSide=${shortSide} isMobile=${isMobile} orientation=${mqPortrait.matches ? "portrait" : "landscape"} ua="${navigator.userAgent.slice(0, 60)}"`
-      );
-      // So aplica o padrao (controles ligados em celular) uma vez, na
-      // primeira deteccao — depois disso e o usuario quem manda no toggle,
-      // girar a tela nao pode resetar a escolha dele.
-      if (!defaultApplied) {
-        defaultApplied = true;
-        setShowControls(isMobile);
-      }
+      if (mqCoarse.matches) setPointerCoarse(true);
     };
-    sync();
     mqCoarse.addEventListener("change", sync);
-    mqPortrait.addEventListener("change", sync);
-    window.addEventListener("resize", sync);
-    return () => {
-      mqCoarse.removeEventListener("change", sync);
-      mqPortrait.removeEventListener("change", sync);
-      window.removeEventListener("resize", sync);
-    };
+    return () => mqCoarse.removeEventListener("change", sync);
   }, []);
 
+  if (pointerCoarse) return <MobilePlayer slug={slug} />;
+  return <DesktopPlayer slug={slug} />;
+}
+
+function MobilePlayer({ slug }: { slug: string }) {
+  const frameRef = useRef<HTMLIFrameElement>(null);
+
+  const handleLoad = () => {
+    const win = frameRef.current?.contentWindow as GameScreenWindow | null | undefined;
+    win?.GameController?.setGame(`/game-wrapper.html?slug=${encodeURIComponent(slug)}`, slug);
+  };
+
+  return (
+    <div className="mobile-player">
+      <Link to="/" className="mobile-player-back" aria-label="Voltar pra biblioteca">
+        ←
+      </Link>
+      <iframe
+        ref={frameRef}
+        src="/GameScreen.html"
+        className="mobile-player-frame"
+        title="Game Controller"
+        onLoad={handleLoad}
+        allow="fullscreen"
+        allowFullScreen
+      />
+    </div>
+  );
+}
+
+function DesktopPlayer({ slug }: { slug: string }) {
+  const [game, setGame] = useState<GameDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const stageRef = useRef<HTMLDivElement>(null);
+  const sessionRef = useRef<GameStorageSession | null>(null);
+  const flushIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     setGame(null);
@@ -88,7 +109,6 @@ export default function Player() {
         player.style.height = "100%";
         stageRef.current.innerHTML = "";
         stageRef.current.appendChild(player);
-        playerElRef.current = player;
 
         await player.ruffle().load({
           url: `/games/${slug}/${detail.swf}`,
@@ -100,7 +120,6 @@ export default function Player() {
           scale: "showAll",
           forceScale: true,
         });
-        dlog(`ruffle: jogo carregado (${detail.swf}), playerEl anexado, tabIndex=${(player as unknown as HTMLElement).tabIndex}`);
 
         const flush = (keepalive = false) => {
           if (sessionRef.current) flushGameSave(slug, sessionRef.current, keepalive);
@@ -120,7 +139,6 @@ export default function Player() {
           if (flushIntervalRef.current) window.clearInterval(flushIntervalRef.current);
           flush(true);
           if (stageRef.current) stageRef.current.innerHTML = "";
-          playerElRef.current = null;
         };
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Erro ao carregar o jogo");
@@ -135,122 +153,31 @@ export default function Player() {
     };
   }, [slug]);
 
-  const hasControls = !!game?.controls;
-  const isHandheld = pointerCoarse && portrait; // celular vertical: shell de portatil
-  const isMobileLandscape = pointerCoarse && !portrait; // celular horizontal: tela cheia
-
-  useEffect(() => {
-    if (!game) return;
-    dlog(
-      `estado: showControls=${showControls} hasControls=${hasControls} isHandheld=${isHandheld} isMobileLandscape=${isMobileLandscape} game=${game.slug}`
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showControls, hasControls, isHandheld, isMobileLandscape, game?.slug]);
-
-  const pageClass = [
-    "player-page",
-    isHandheld ? "is-handheld" : "",
-    isMobileLandscape ? "is-mobile-landscape" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  // A stage (onde o <ruffle-player> mora) precisa ficar sempre montada, sem
-  // nunca desmontar, senao o jogo recarrega do zero a cada troca de
-  // orientacao. So a posicao/tamanho dela mudam por modo.
-  let stageStyle: CSSProperties;
-  if (isHandheld) {
-    stageStyle = shellRect
-      ? { position: "fixed", left: shellRect.left, top: shellRect.top, width: shellRect.width, height: shellRect.height, borderRadius: "13px 13px 4px 4px" }
-      : { position: "fixed", opacity: 0, width: 0, height: 0 };
-  } else if (isMobileLandscape) {
-    stageStyle = fsRect
-      ? { position: "fixed", left: fsRect.left, top: fsRect.top, width: fsRect.width, height: fsRect.height, borderRadius: 0 }
-      : { position: "fixed", opacity: 0, width: 0, height: 0 };
-  } else {
-    stageStyle = {
-      position: "relative",
-      width: "100%",
-      maxWidth: 960,
-      margin: "0 auto",
-      aspectRatio: game ? `${game.width}/${game.height}` : "4/3",
-    };
-  }
-
   return (
-    <div className={pageClass}>
-      {isHandheld && (
-        <>
-          <div className="shell-topbar">
-            <Link to="/" className="shell-back" aria-label="Voltar pra biblioteca">
-              ←
-            </Link>
-            <span className="shell-title">{game?.title ?? "Carregando..."}</span>
-            <button
-              className="shell-toggle"
-              onClick={() => setShowControls((v) => !v)}
-              title="Mostrar/ocultar controles"
-            >
-              🎮
-            </button>
-          </div>
-
-          <div className="shell">
-            <img className="shell-img" src="/images/handheld-bg.webp" alt="" />
-            <div className="shell-screen-slot" ref={setShellSlot} />
-            {showControls && hasControls && (
-              <TouchControls controls={game!.controls!} targetRef={playerElRef} placement="shell" />
-            )}
-          </div>
-        </>
-      )}
-
-      {!isHandheld && !isMobileLandscape && (
-        <div className="player-topbar glass">
-          <Link to="/" className="back-link">
-            ← Biblioteca
-          </Link>
-          <h1>{game?.title ?? "Carregando..."}</h1>
-          <button
-            className="toggle-controls-btn"
-            onClick={() => setShowControls((v) => !v)}
-            title="Mostrar/ocultar controles de toque"
-          >
-            🎮
-          </button>
-        </div>
-      )}
-
-      {isMobileLandscape && (
-        <>
-          <div className="landscape-screen-slot" ref={setFsSlot} />
-          <div className="mobile-landscape-bar">
-            <Link to="/" className="back-link" aria-label="Voltar pra biblioteca">
-              ←
-            </Link>
-            <button
-              className="toggle-controls-btn"
-              onClick={() => setShowControls((v) => !v)}
-              title="Mostrar/ocultar controles de toque"
-            >
-              🎮
-            </button>
-          </div>
-          {showControls && hasControls && (
-            <TouchControls controls={game!.controls!} targetRef={playerElRef} placement="fullscreen" />
-          )}
-        </>
-      )}
+    <div className="player-page">
+      <div className="player-topbar glass">
+        <Link to="/" className="back-link">
+          ← Biblioteca
+        </Link>
+        <h1>{game?.title ?? "Carregando..."}</h1>
+      </div>
 
       {error && <p className="error-text">{error}</p>}
 
-      <div className="player-stage-wrapper" style={stageStyle}>
+      <div
+        className="player-stage-wrapper"
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: 960,
+          margin: "0 auto",
+          aspectRatio: game ? `${game.width}/${game.height}` : "4/3",
+        }}
+      >
         <div className="player-stage" ref={stageRef} />
       </div>
 
-      {!isHandheld && !isMobileLandscape && game?.description && (
-        <p className="player-description">{game.description}</p>
-      )}
+      {game?.description && <p className="player-description">{game.description}</p>}
     </div>
   );
 }

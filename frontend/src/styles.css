@@ -652,35 +652,14 @@ a {
   color: var(--cyan);
 }
 
-.toggle-controls-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 11px;
-  font-size: 1.1rem;
-  color: var(--text);
-  transition: border-color 0.15s ease;
-}
-
-.toggle-controls-btn:hover {
-  border-color: var(--cyan);
-}
-
 .player-stage-wrapper {
   background: #000;
   overflow: hidden;
   touch-action: none;
   z-index: 20;
-}
-
-.player-page:not(.is-handheld):not(.is-mobile-landscape) .player-stage-wrapper {
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.15), 0 20px 60px -20px rgba(255, 46, 154, 0.35), 0 0 50px -18px rgba(0, 229, 255, 0.3);
-}
-
-.is-handheld .player-stage-wrapper {
-  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.65);
 }
 
 .player-stage {
@@ -699,396 +678,53 @@ a {
 }
 
 /* ============================================================
-   MODO "HANDHELD" (celular na vertical)
-   Um portatil de jogos com a tela e os botoes reais da imagem —
-   os controles ficam quase invisiveis, sobre os botoes impressos.
+   PLAYER MOBILE (touch)
+   A tela inteira vira o GameScreen.html (frontend/public/GameScreen.html,
+   copia fiel do modelo de referencia) — ele cuida sozinho do shell de
+   portatil, d-pad, analogicos, botoes e do fullscreen nativo, em retrato e
+   paisagem. So o link de voltar pra biblioteca e nosso (o GameScreen.html
+   em si nao tem nenhuma navegacao propria).
    ============================================================ */
 
-.player-page.is-handheld {
+.mobile-player {
   position: fixed;
   inset: 0;
   z-index: 50;
-  max-width: none;
-  width: 100%;
-  height: 100dvh;
-  padding: 0;
-  gap: 0;
-  align-items: center;
-  justify-content: flex-start;
-  overflow: hidden;
+  background: #0a0a0a;
   overscroll-behavior: none;
-  background: var(--void);
 }
 
-.shell-topbar {
-  flex: 0 0 auto;
+.mobile-player-frame {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  max-width: min(440px, 96vw);
+  height: 100%;
+  border: none;
+}
+
+.mobile-player-back {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 10px;
+  z-index: 51;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: calc(env(safe-area-inset-top, 0px) + 8px) 4px 8px;
-}
-
-.shell-back,
-.shell-toggle {
-  pointer-events: auto;
-  background: rgba(255, 255, 255, 0.06);
+  justify-content: center;
+  background: rgba(10, 7, 20, 0.55);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-dim);
   text-decoration: none;
   font-size: 1rem;
-  line-height: 1;
-  padding: 8px 12px;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.shell-back:hover,
-.shell-toggle:hover {
+.mobile-player-back:hover {
   border-color: var(--cyan);
   color: var(--text);
-}
-
-.shell-title {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.92rem;
-  color: var(--text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.shell {
-  position: relative;
-  /* contain-fit: usa a altura disponivel (viewport menos a topbar) como
-     limite tambem, nao so a largura — sem isso, em celulares bem altos o
-     shell ficava pequeno e "grudado" no topo, sobrando um vao vazio embaixo. */
-  --shell-avail-h: calc(100dvh - 56px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-  width: min(440px, 96vw, calc(var(--shell-avail-h) * 2 / 3));
-  aspect-ratio: 2 / 3;
-  flex-shrink: 0;
-  /* Topbar fica grudada no topo (flex-start no pai); a margem automatica
-     centraliza so o shell no espaco que sobra abaixo dela, em vez de deixar
-     o vao inteiro largado embaixo. */
-  margin-top: auto;
-  margin-bottom: auto;
-}
-
-.shell-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-  pointer-events: none;
-  -webkit-user-drag: none;
-}
-
-.shell-screen-slot {
-  position: absolute;
-  top: 2.56%;
-  left: 4.05%;
-  width: 92.8%;
-  height: 40.79%;
-  pointer-events: none;
-}
-
-/* ============================================================
-   MODO TELA CHEIA (celular na horizontal)
-   ============================================================ */
-
-.mobile-landscape-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 45;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px;
-  pointer-events: none;
-}
-
-.mobile-landscape-bar .back-link,
-.mobile-landscape-bar .toggle-controls-btn {
-  pointer-events: auto;
-  background: rgba(10, 7, 20, 0.55);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-}
-
-.player-page.is-mobile-landscape {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  padding: 0;
-  gap: 0;
-  max-width: none;
-  width: 100%;
-  height: 100dvh;
-  overflow: hidden;
-  overscroll-behavior: none;
-  background: #000;
-}
-
-.landscape-screen-slot {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: #000;
-}
-
-/* ============================================================
-   CONTROLES DE TOQUE
-   Mesmo esquema fisico nos dois modos (d-pad, d-pad2, analogico de
-   mira, botoes X/Y/A/B + FN/SELECT/START) — so a posicao/tamanho
-   mudam. "shell": percentuais medidos sobre a imagem do portatil.
-   "fullscreen": cantos da tela, reaproveitando os mesmos controles.
-   Quase invisiveis: sem preenchimento nem borda, so um flash
-   translucido leve ao tocar.
-   ============================================================ */
-
-.touch-controls {
-  user-select: none;
-}
-
-.touch-controls.placement-shell {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 30;
-}
-
-.touch-controls.placement-fullscreen {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 46;
-}
-
-.dp,
-.ctl-stick,
-.ctl-btn {
-  pointer-events: auto;
-  touch-action: none;
-  cursor: pointer;
-  background: transparent;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 60ms ease;
-}
-
-.dp.pressed,
-.ctl-stick.pressed,
-.ctl-btn.pressed {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.ctl-stick,
-.ctl-btn {
-  border-radius: 50%;
-}
-
-/* ---------- d-pad ---------- */
-
-.ctl-dpad {
-  pointer-events: none;
-}
-
-.placement-shell .ctl-dpad {
-  position: absolute;
-  top: 51%;
-  left: 10.1%;
-  width: 16%;
-  aspect-ratio: 1;
-}
-
-.placement-shell .ctl-dpad2 {
-  top: 74%;
-  left: 10%;
-  width: 15%;
-}
-
-.placement-shell .dp {
-  position: absolute;
-}
-.placement-shell .dp-up {
-  top: 0;
-  left: 33%;
-  width: 34%;
-  height: 34%;
-  border-radius: 3px 3px 0 0;
-}
-.placement-shell .dp-right {
-  top: 53%;
-  right: -13px;
-  width: 34%;
-  height: 34%;
-  border-radius: 0 3px 3px 0;
-}
-.placement-shell .dp-down {
-  bottom: -26px;
-  left: 33%;
-  width: 34%;
-  height: 34%;
-  border-radius: 0 0 3px 3px;
-}
-.placement-shell .dp-left {
-  top: 52%;
-  left: -15px;
-  width: 34%;
-  height: 34%;
-  border-radius: 3px 0 0 3px;
-}
-
-.placement-fullscreen .ctl-dpad {
-  position: fixed;
-  left: 14px;
-  bottom: 14px;
-  width: 120px;
-  height: 120px;
-  display: grid;
-  grid-template-columns: 40px 40px 40px;
-  grid-template-rows: 40px 40px 40px;
-}
-.placement-fullscreen .ctl-dpad2 {
-  left: auto;
-  right: 14px;
-}
-.placement-fullscreen .dp {
-  position: static;
-  border-radius: 8px;
-}
-.placement-fullscreen .dp-up {
-  grid-column: 2;
-  grid-row: 1;
-}
-.placement-fullscreen .dp-left {
-  grid-column: 1;
-  grid-row: 2;
-}
-.placement-fullscreen .dp-right {
-  grid-column: 3;
-  grid-row: 2;
-}
-.placement-fullscreen .dp-down {
-  grid-column: 2;
-  grid-row: 3;
-}
-
-/* ---------- analogico de mira (stick direito) ---------- */
-
-.placement-shell .ctl-stick-r {
-  position: absolute;
-  top: 74%;
-  left: 75%;
-  width: 15%;
-  aspect-ratio: 1;
-}
-
-.placement-fullscreen .ctl-stick-r {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  width: 100px;
-  height: 100px;
-}
-
-/* ---------- botoes de acao (X/Y/A/B + FN/SELECT/START) ---------- */
-
-.placement-shell .ctl-btn {
-  position: absolute;
-  aspect-ratio: 1;
-}
-.placement-shell .slot-x {
-  top: 50.8%;
-  left: 79.5%;
-  width: 5.5%;
-}
-.placement-shell .slot-y {
-  top: 56.8%;
-  left: 70.2%;
-  width: 5.5%;
-}
-.placement-shell .slot-a {
-  top: 57.2%;
-  left: 88.8%;
-  width: 5.5%;
-}
-.placement-shell .slot-b {
-  top: 63.7%;
-  left: 79.6%;
-  width: 5.5%;
-}
-.placement-shell .slot-fn {
-  top: 63.5%;
-  left: 47%;
-  width: 6%;
-}
-.placement-shell .slot-select {
-  top: 70%;
-  left: 35%;
-  width: 11%;
-  height: 3.8%;
-  aspect-ratio: unset;
-  border-radius: 20px;
-}
-.placement-shell .slot-start {
-  top: 70%;
-  left: 53.5%;
-  width: 11%;
-  height: 3.8%;
-  aspect-ratio: unset;
-  border-radius: 20px;
-}
-
-.placement-fullscreen .ctl-btn {
-  position: fixed;
-  width: 42px;
-  height: 42px;
-}
-.placement-fullscreen .slot-x {
-  right: 150px;
-  bottom: 195px;
-}
-.placement-fullscreen .slot-y {
-  right: 175px;
-  bottom: 170px;
-}
-.placement-fullscreen .slot-a {
-  right: 125px;
-  bottom: 170px;
-}
-.placement-fullscreen .slot-b {
-  right: 150px;
-  bottom: 145px;
-}
-.placement-fullscreen .slot-fn {
-  right: 208px;
-  bottom: 24px;
-}
-.placement-fullscreen .slot-select,
-.placement-fullscreen .slot-start {
-  top: calc(env(safe-area-inset-top, 0px) + 52px);
-  width: 62px;
-  height: 30px;
-  border-radius: 8px;
-  font-size: 0.65rem;
-}
-.placement-fullscreen .slot-select {
-  right: 84px;
-}
-.placement-fullscreen .slot-start {
-  right: 14px;
 }
 
 /* ---------- Responsive ---------- */
@@ -1134,76 +770,3 @@ a {
   }
 }
 
-/* ---------- Painel de debug temporario (toque) ---------- */
-
-.debug-fab {
-  position: fixed;
-  right: 10px;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
-  z-index: 999;
-  background: rgba(255, 46, 154, 0.85);
-  color: #05040a;
-  border: none;
-  border-radius: 999px;
-  padding: 8px 12px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.8rem;
-  pointer-events: auto;
-}
-
-.debug-panel {
-  position: fixed;
-  left: 6px;
-  right: 6px;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
-  z-index: 999;
-  max-height: 42vh;
-  display: flex;
-  flex-direction: column;
-  background: rgba(5, 4, 10, 0.94);
-  border: 1px solid rgba(255, 46, 154, 0.5);
-  border-radius: 10px;
-  pointer-events: auto;
-  box-shadow: 0 0 24px rgba(255, 46, 154, 0.35);
-}
-
-.debug-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--magenta);
-  font-family: var(--font-display);
-  font-size: 0.72rem;
-}
-
-.debug-panel-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.debug-panel-actions button {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: var(--text);
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 0.68rem;
-}
-
-.debug-panel-body {
-  overflow-y: auto;
-  padding: 6px 8px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.debug-line {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.62rem;
-  line-height: 1.35;
-  color: #b7ffcf;
-  white-space: pre-wrap;
-  word-break: break-word;
-}

@@ -29,6 +29,26 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, game_slug)
   );
+
+  -- Remapeamento de teclas do GameScreen.html (botoes X/Y/A/B/FN/SEL/START):
+  -- um por JOGO, compartilhado entre TODOS os usuarios (nao por conta) —
+  -- pra quem configurar uma vez, todo mundo reaproveita o mesmo mapeamento
+  -- pra aquele jogo dali em diante.
+  CREATE TABLE IF NOT EXISTS game_keymaps (
+    game_slug TEXT PRIMARY KEY,
+    keymap TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- Layout de posicao dos controles em tela cheia (paisagem) — um por
+  -- USUARIO (conta), global (nao por jogo): o jogador arrasta os botoes
+  -- pra onde quiser uma vez e essa posicao vale pra qualquer jogo dali em
+  -- diante, em qualquer aparelho que ele entrar.
+  CREATE TABLE IF NOT EXISTS user_control_layouts (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    layout TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 export default db;
