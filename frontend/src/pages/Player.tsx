@@ -6,7 +6,6 @@ import { loadRuffleScript } from "../loadRuffleScript";
 import { prepareGameStorage, flushGameSave, type GameStorageSession } from "../ruffleSave";
 import { useContainFit } from "../useContainFit";
 import TouchControls from "../components/TouchControls";
-import DebugPanel from "../components/DebugPanel";
 import { dlog } from "../debugLog";
 
 export default function Player() {
@@ -252,8 +251,6 @@ export default function Player() {
       {!isHandheld && !isMobileLandscape && game?.description && (
         <p className="player-description">{game.description}</p>
       )}
-
-      {pointerCoarse && <DebugPanel />}
     </div>
   );
 }

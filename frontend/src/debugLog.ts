@@ -27,3 +27,12 @@ export function subscribeDebugLog(fn: Listener): () => void {
 export function getDebugLogText(): string {
   return lines.join("\n");
 }
+
+// Hook sem UI pra inspecionar o log via devtools/scripts externos (ex.:
+// `window.__flashgamesDebugLog()` num teste automatizado) sem precisar
+// renderizar o DebugPanel na tela — o painel visual cobria os controles
+// de toque inferiores (analogico, FN/SELECT/START) com pointer-events:auto
+// por cima deles, "engolindo" o toque antes que chegasse no controle.
+if (typeof window !== "undefined") {
+  (window as unknown as { __flashgamesDebugLog?: () => string }).__flashgamesDebugLog = getDebugLogText;
+}
