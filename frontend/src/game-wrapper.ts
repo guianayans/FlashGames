@@ -47,7 +47,9 @@ function codeFor(key: string): string {
 }
 
 interface RufflePlayerElement extends HTMLElement {
-  ruffle(): { load(options: { url: string; scale?: string; forceScale?: boolean }): Promise<void> };
+  ruffle(): {
+    load(options: { url: string; scale?: string; forceScale?: boolean; backgroundColor?: string }): Promise<void>;
+  };
 }
 
 function focusPlayer(player: RufflePlayerElement | null) {
@@ -59,7 +61,15 @@ function focusPlayer(player: RufflePlayerElement | null) {
   }
 }
 
+// Todas as teclas que JA foram despachadas como "keydown" sem o "keyup"
+// correspondente ainda — usado pela rede de seguranca (releaseAllHeldKeys)
+// pra garantir que nada fique preso no Ruffle, independente do que
+// aconteceu la em cima no GameScreen.html.
+const heldKeys = new Set<string>();
+
 function dispatchKey(type: "keydown" | "keyup", key: string) {
+  if (type === "keydown") heldKeys.add(key);
+  else heldKeys.delete(key);
   window.dispatchEvent(
     new KeyboardEvent(type, { key, code: codeFor(key), bubbles: true, cancelable: true })
   );
@@ -123,6 +133,7 @@ async function main() {
   const player = ruffle.createPlayer() as RufflePlayerElement;
   player.style.width = "100%";
   player.style.height = "100%";
+  player.style.backgroundColor = "#000";
   stage.appendChild(player);
 
   await player.ruffle().load({
@@ -131,6 +142,10 @@ async function main() {
     // forceScale ignora o Stage.scaleMode que o jogo tente setar sozinho.
     scale: "showAll",
     forceScale: true,
+    // Sem isso a area de letterbox (o "sobra" quando a proporcao do jogo
+    // nao bate com a da tela) fica branca — o padrao do Ruffle quando o
+    // .swf nao define uma cor de fundo propria.
+    backgroundColor: "#000000",
   });
   focusPlayer(player);
 
@@ -156,7 +171,10 @@ async function main() {
   function releaseRightStickDpad() {
     rightStickHeld.forEach((dir) => {
       const key = rightStickDpad?.[dir];
-      if (key) dispatchKey("keyup", key);
+      if (key) {
+        focusPlayer(player);
+        dispatchKey("keyup", key);
+      }
     });
     rightStickHeld.clear();
   }
@@ -179,6 +197,7 @@ async function main() {
         dispatchKey("keydown", key);
       } else if (!shouldHold && isHeld) {
         rightStickHeld.delete(dir);
+        focusPlayer(player);
         dispatchKey("keyup", key);
       }
     });
@@ -216,9 +235,49 @@ async function main() {
     }, 200);
   }
 
+  // Rede de seguranca definitiva contra teclas/mira presas: solta TUDO
+  // que este wrapper ja despachou pro Ruffle, sem depender de nenhum
+  // bookkeeping de origem (GameScreen.html, analogico direito, mira) —
+  // e a camada final antes do Ruffle, entao e o lugar mais confiavel pra
+  // garantir isso. Disparado por 1) um postMessage explicito do
+  // GameScreen.html quando ELE detecta que nenhum dedo mais toca a tela,
+  // e 2) o proprio touchend/touchcancel deste documento (cobre o caso de
+  // um toque ter sido roteado direto pra dentro deste iframe — na
+  // paisagem o jogo ocupa a tela inteira embaixo dos controles — sem
+  // passar pelos handlers do GameScreen.html).
+  function releaseAllHeldKeys() {
+    if (heldKeys.size > 0) {
+      focusPlayer(player);
+      Array.from(heldKeys).forEach((key) => dispatchKey("keyup", key));
+    }
+    rightStickHeld.clear();
+    window.clearTimeout(rightStickIdleTimer);
+    if (aiming) {
+      aiming = false;
+      window.clearTimeout(aimIdleTimer);
+      const canvas = getCanvas(player);
+      if (canvas) {
+        const r = canvas.getBoundingClientRect();
+        dispatchPointer(canvas, "pointerup", r.left + r.width / 2, r.top + r.height / 2, false);
+      }
+    }
+  }
+
+  document.addEventListener("touchend", (e) => {
+    if (e.touches.length === 0) releaseAllHeldKeys();
+  });
+  document.addEventListener("touchcancel", (e) => {
+    if (e.touches.length === 0) releaseAllHeldKeys();
+  });
+
   window.addEventListener("message", (e: MessageEvent) => {
     const d = e.data as { type?: string; key?: string; stick?: string; x?: number; y?: number } | null;
     if (!d || !d.type) return;
+
+    if (d.type === "releaseAll") {
+      releaseAllHeldKeys();
+      return;
+    }
 
     if (d.type === "keydown" || d.type === "keyup") {
       const rawKey = d.key;
@@ -227,7 +286,11 @@ async function main() {
       if (dir) {
         const mapped = arrowDpad?.[dir];
         if (mapped) {
-          if (d.type === "keydown") focusPlayer(player);
+          // Foca em keydown E keyup (nao so keydown): se o Ruffle perder o
+          // foco interno enquanto a tecla esta segurada, o keyup de soltar
+          // seria ignorado por ele e o personagem ficaria andando sozinho
+          // mesmo com o GameScreen.html mandando o evento certinho.
+          focusPlayer(player);
           dispatchKey(d.type, mapped);
         }
         return;
@@ -235,7 +298,7 @@ async function main() {
       // Botoes (X/Y/A/B/FN/SEL/START): a tecla que o usuario configurou no
       // proprio GameScreen.html (remapeavel la, ver comentario acima) vai
       // direto pro jogo, sem indireção por manifest.
-      if (d.type === "keydown") focusPlayer(player);
+      focusPlayer(player);
       dispatchKey(d.type, rawKey);
       return;
     }

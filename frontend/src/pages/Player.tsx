@@ -107,6 +107,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
         const player = ruffle.createPlayer();
         player.style.width = "100%";
         player.style.height = "100%";
+        player.style.backgroundColor = "#000";
         stageRef.current.innerHTML = "";
         stageRef.current.appendChild(player);
 
@@ -119,6 +120,8 @@ function DesktopPlayer({ slug }: { slug: string }) {
           // nosso container.
           scale: "showAll",
           forceScale: true,
+          // Sem isso a area de letterbox fica branca por padrao do Ruffle.
+          backgroundColor: "#000000",
         });
 
         const flush = (keepalive = false) => {

@@ -2,7 +2,12 @@ export {};
 
 interface RufflePlayerElement extends HTMLElement {
   ruffle(): {
-    load(options: { url: string; scale?: string; forceScale?: boolean }): Promise<void>;
+    load(options: {
+      url: string;
+      scale?: string;
+      forceScale?: boolean;
+      backgroundColor?: string;
+    }): Promise<void>;
   };
 }
 

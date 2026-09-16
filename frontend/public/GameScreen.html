@@ -5,7 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>GameController</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: none; }
+* {
+  box-sizing: border-box; margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
+  touch-action: none;
+  /* user-select:none sozinho nao basta no iOS Safari — sem isso, segurar
+     o dedo (ex.: empurrando o analogico com mais forca) ainda mostra a
+     lupa/menu de selecao de texto nativo por cima dos controles. */
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
 html, body {
   width: 100%; height: 100%;
   overflow: hidden;
@@ -244,7 +254,20 @@ body.landscape #log-label, body.landscape #log-keys { display: none; }
 body.landscape #dpad {
   top: 50%; left: 14px; right: auto; bottom: auto;
   transform: translateY(-50%);
-  width: 116px;
+  /* MESMO tamanho que o retrato renderiza (16% de um shell ~390px de
+     largura) — nao um valor novo pra paisagem. As 4 sub-areas (.dp) abaixo
+     usam offsets em PIXELS fixos (nao %) pra se encaixar direitinho nesse
+     tamanho especifico; um #dpad maior (ex.: 116px) deixava a posicao de
+     cada uma "meio errada" porque os mesmos pixels nao escalam com o
+     container. */
+  width: 62px;
+  /* Caixa unica e limpa ao redor do d-pad inteiro — as 4 sub-areas (.dp)
+     se sobrepoem entre si (de proposito, pro toque em diagonal), entao dar
+     fundo individual a cada uma criava um "borrao" com bordas visiveis se
+     sobrepondo em vez de um d-pad encaixotado direito. */
+  background: rgba(255,255,255,.10);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.08);
 }
 body.landscape .stick-zone { width: 92px; }
 body.landscape #stick-l { top: auto; left: 14px; right: auto; bottom: 14px; }
@@ -269,6 +292,24 @@ body.landscape #btn-start  { width: 68px; height: 28px; left: 192px; }
 
 body.landscape #remap-btn { top: 10px; bottom: auto; right: 10px; }
 
+/* No retrato os botoes ficam invisiveis de proposito (o desenho impresso
+   no shell ja mostra onde estao). Na paisagem nao tem desenho embaixo —
+   tela cheia, so os controles soltos — entao aqui eles ganham o MESMO
+   fundo bem sutil que os analogicos ja usam, so pra dar uma referencia de
+   onde tocar, sem atrapalhar o jogo por baixo quando sobrepoe a tela. */
+body.landscape .btn,
+body.landscape .cbtn {
+  background: rgba(255,255,255,.10);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.08);
+}
+/* especificidade maior que a regra acima, senao o toque nao mudaria nada
+   visualmente na paisagem (o fundo sutil ganharia da cor de "pressionado") */
+body.landscape .dp.pressed,
+body.landscape .btn.pressed,
+body.landscape .cbtn.pressed {
+  background: rgba(255,255,255,.3);
+}
+
 /* Botao de "editar layout" (arrastar controles) — so existe na paisagem. */
 #layout-btn {
   position: absolute; top: 10px; right: 44px; bottom: auto; left: auto;
@@ -284,6 +325,28 @@ body.landscape #layout-btn { display: flex; }
 #layout-btn.active {
   background: rgba(0,229,255,.85); color: #000; border-color: rgba(0,229,255,.85);
 }
+
+/* Botao que alterna entre presets de quais controles ficam visiveis
+   (tudo / so d-pad+XYBA / so analogico esquerdo+XYBA / nenhum), so na
+   paisagem — ver CONTROL_PRESETS no <script>. */
+#hide-controls-btn {
+  position: absolute; top: 10px; right: 78px; bottom: auto; left: auto;
+  width: 24px; height: 24px; border-radius: 4px;
+  background: rgba(0,0,0,.6);
+  border: 1px solid rgba(255,255,255,.18);
+  color: rgba(255,255,255,.75); cursor: pointer;
+  font-size: 12px; display: none;
+  align-items: center; justify-content: center; z-index: 10;
+  touch-action: auto;
+}
+body.landscape #hide-controls-btn { display: flex; }
+#hide-controls-btn.active {
+  background: rgba(255,46,110,.85); color: #000; border-color: rgba(255,46,110,.85);
+}
+/* Precisa da classe .landscape tambem (so vale na paisagem) — protege o
+   retrato de qualquer jeito, mesmo se algum controle ficar marcado como
+   escondido do preset por algum motivo ao girar a tela pra vertical. */
+body.landscape .controls-preset-hidden { display: none; }
 
 /* Realce visual dos controles arrastaveis enquanto o modo de layout
    esta ativo, e feedback mais forte no que esta sendo arrastado agora. */
@@ -307,6 +370,7 @@ body.layout-edit [data-draggable] {
     <iframe id="game-iframe" allowfullscreen title="Game"></iframe>
     <button id="remap-btn" title="Remapear botoes">⚙</button>
     <button id="layout-btn" title="Arrastar controles">✥</button>
+    <button id="hide-controls-btn" title="Alternar controles visiveis">👁</button>
   </div>
 
   <!-- D-PAD -->
@@ -365,6 +429,54 @@ function getWin() {
   try { return iframe.contentWindow; } catch(e) { return null; }
 }
 
+// Cada mecanismo de controle (d-pad, sub-areas do d-pad, botoes,
+// analogicos) registra aqui a propria funcao de "soltar tudo". Serve pra
+// rede de seguranca global abaixo, que forca a soltura de TUDO assim que
+// nenhum dedo mais toca a tela — nao depende de pointerId, captura de
+// ponteiro nem de qual elemento recebeu o evento, entao cobre qualquer
+// caso que as redes de seguranca especificas (lostpointercapture, window
+// pointerup/pointercancel) nao peguem.
+const activeReleasers = [];
+
+// ═══════════════════════════════════════════
+//  REDE DE SEGURANCA GLOBAL — nenhum dedo tocando, nenhum controle preso
+// ═══════════════════════════════════════════
+function releaseEverything() {
+  activeReleasers.forEach(fn => { try { fn(); } catch(err) {} });
+  // Manda pro wrapper (dentro do #game-iframe) soltar TUDO que ele mesmo
+  // tenha despachado pro Ruffle — ele e quem tem a visao definitiva do
+  // que realmente foi enviado, entao isso cobre mesmo se algum toque
+  // tiver sido roteado direto pra dentro do iframe dele (paisagem: o jogo
+  // ocupa a tela inteira embaixo dos controles) sem passar pelos
+  // handlers acima.
+  const win = getWin();
+  if (win) try { win.postMessage({ type: 'releaseAll' }, '*'); } catch(e) {}
+}
+document.addEventListener('touchend', e => {
+  if (e.touches.length === 0) releaseEverything();
+}, { passive: true });
+document.addEventListener('touchcancel', e => {
+  if (e.touches.length === 0) releaseEverything();
+}, { passive: true });
+
+// ═══════════════════════════════════════════
+//  BLOQUEIA ZOOM POR DUPLO TOQUE
+//  touch-action:none + viewport user-scalable=no ja deveriam bastar, mas
+//  alguns navegadores mobile ainda deixam passar em certas situacoes —
+//  isso causava um "piscar" na tela e deixava os controles travados
+//  (o gesto de zoom rouba o toque no meio do gesto). Bloqueio extra via
+//  JS, o jeito classico de garantir em qualquer navegador.
+// ═══════════════════════════════════════════
+let lastTouchEndAt = 0;
+document.addEventListener('touchend', e => {
+  // Deixa o campo de busca do remapeamento se comportar normal (cursor,
+  // selecao de palavra por duplo toque etc).
+  if (e.target.closest && e.target.closest('#remap-input')) return;
+  const now = Date.now();
+  if (now - lastTouchEndAt <= 350) e.preventDefault();
+  lastTouchEndAt = now;
+}, { passive: false });
+
 function sendKey(key, type) {
   const ev = type === 'down' ? 'keydown' : 'keyup';
   const kc = KEY_CODES[key] || 0;
@@ -401,23 +513,31 @@ document.getElementById('screen').style.borderRadius = '15px 15px 8px 8px';
 //  feito depois pelo usuario — ver secao REMAPEAR BOTOES mais abaixo.
 // ═══════════════════════════════════════════
 document.querySelectorAll('.btn, .cbtn').forEach(el => {
+  // Rastreia o pointerId manualmente e solta pelo WINDOW (nao so pelo
+  // elemento) — mesmo motivo do analogico/d-pad: se setPointerCapture
+  // falhar silenciosamente, pointerup/pointercancel nem chegam a disparar
+  // no elemento (vao pro que estiver embaixo do dedo), deixando o botao
+  // "pressionado" pra sempre do ponto de vista do jogo.
+  let pid = null;
+  function release() {
+    if (pid === null) return;
+    pid = null;
+    if (remapMode) return;
+    el.classList.remove('pressed'); sendKey(el.dataset.key, 'up');
+  }
+  activeReleasers.push(release);
   el.addEventListener('pointerdown', e => {
     e.preventDefault();
     if (remapMode) { startListening(el); return; }
-    el.setPointerCapture(e.pointerId);
+    pid = e.pointerId;
+    el.setPointerCapture(pid);
     el.classList.add('pressed'); sendKey(el.dataset.key, 'down');
   });
-  // "lostpointercapture" e a rede de seguranca: dispara sempre que a
-  // captura do ponteiro termina, por QUALQUER motivo (inclusive quando o
-  // navegador rouba o gesto pro sistema sem entregar pointerup/pointercancel
-  // normalmente — causa real, ainda que rara, de botao "grudado" pressionado
-  // pra sempre). Sem ela, alguns toques ficavam presos.
-  ['pointerup','pointercancel','pointerleave','lostpointercapture'].forEach(ev =>
-    el.addEventListener(ev, () => {
-      if (remapMode) return;
-      el.classList.remove('pressed'); sendKey(el.dataset.key, 'up');
-    })
+  ['pointerup','pointercancel'].forEach(ev =>
+    window.addEventListener(ev, e => { if (e.pointerId === pid) release(); })
   );
+  el.addEventListener('pointerleave', release);
+  el.addEventListener('lostpointercapture', release);
 });
 
 // ═══════════════════════════════════════════
@@ -428,14 +548,24 @@ const DIR_KEYS = { up:'ArrowUp', down:'ArrowDown', left:'ArrowLeft', right:'Arro
 // Tap nas sub-áreas
 document.querySelectorAll('.dp').forEach(el => {
   const key = DIR_KEYS[el.dataset.dir];
+  let pid = null;
+  function release() {
+    if (pid === null) return;
+    pid = null;
+    el.classList.remove('pressed'); sendKey(key, 'up');
+  }
+  activeReleasers.push(release);
   el.addEventListener('pointerdown', e => {
     e.preventDefault(); e.stopPropagation();
-    el.setPointerCapture(e.pointerId);
+    pid = e.pointerId;
+    el.setPointerCapture(pid);
     el.classList.add('pressed'); sendKey(key, 'down');
   });
-  ['pointerup','pointercancel','pointerleave','lostpointercapture'].forEach(ev =>
-    el.addEventListener(ev, () => { el.classList.remove('pressed'); sendKey(key, 'up'); })
+  ['pointerup','pointercancel'].forEach(ev =>
+    window.addEventListener(ev, e => { if (e.pointerId === pid) release(); })
   );
+  el.addEventListener('pointerleave', release);
+  el.addEventListener('lostpointercapture', release);
 });
 
 // Arrasto no container inteiro
@@ -468,19 +598,36 @@ document.querySelectorAll('.dp').forEach(el => {
     }
   }
 
+  // pointermove/pointerup/pointercancel no WINDOW (nao no dpad) e
+  // rastreando o pointerId manualmente em vez de confiar em
+  // hasPointerCapture — mesmo motivo do analogico (ver comentario na
+  // secao ANALÓGICOS): se a captura falhar silenciosamente, o dedo
+  // arrastando pra fora da area pequena do d-pad para de gerar pointermove
+  // NELE, travando a direcao ativa pra sempre (o pointerup tambem nao
+  // chegaria a disparar no dpad nesse caso).
+  let dpadPid = null;
+  activeReleasers.push(() => { dpadPid = null; setDir(null); });
   dpad.addEventListener('pointerdown', e => {
-    e.preventDefault(); dpad.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    dpadPid = e.pointerId;
+    dpad.setPointerCapture(dpadPid);
     const r = dpad.getBoundingClientRect();
     setDir(dirFromAngle(e.clientX - (r.left + r.width/2), e.clientY - (r.top + r.height/2)));
   });
-  dpad.addEventListener('pointermove', e => {
-    if (!dpad.hasPointerCapture(e.pointerId)) return;
+  window.addEventListener('pointermove', e => {
+    if (e.pointerId !== dpadPid) return;
     const r = dpad.getBoundingClientRect();
     setDir(dirFromAngle(e.clientX - (r.left + r.width/2), e.clientY - (r.top + r.height/2)));
   });
-  ['pointerup','pointercancel','lostpointercapture'].forEach(ev =>
-    dpad.addEventListener(ev, () => setDir(null))
+  ['pointerup','pointercancel'].forEach(ev =>
+    window.addEventListener(ev, e => {
+      if (e.pointerId !== dpadPid) return;
+      dpadPid = null;
+      setDir(null);
+    })
   );
+  dpad.addEventListener('lostpointercapture', () => { dpadPid = null; setDir(null); });
+  dpad.addEventListener('pointerleave', () => { if (dpadPid !== null) { dpadPid = null; setDir(null); } });
 })();
 
 // ═══════════════════════════════════════════
@@ -549,6 +696,7 @@ document.querySelectorAll('.dp').forEach(el => {
       zone.classList.remove('active');
       pid = null;
     }
+    activeReleasers.push(() => { if (pid !== null) release(); });
 
     zone.addEventListener('pointerdown', e => {
       e.preventDefault();
@@ -562,19 +710,27 @@ document.querySelectorAll('.dp').forEach(el => {
       maxR = rct.width/2;
       move(e.clientX - cx, e.clientY - cy);
     });
-    zone.addEventListener('pointermove', e => {
+    // pointermove/pointerup/pointercancel ficam no WINDOW, nao na zone —
+    // essa era a causa real do analogico "travando" (o personagem seguia
+    // andando sozinho depois de soltar o dedo): se setPointerCapture falhar
+    // silenciosamente (acontece em alguns navegadores/situacoes), o
+    // pointermove some assim que o dedo sai da area pequena da zone
+    // (congelando a direcao no que estava) e o pointerup nem chega a
+    // disparar nela (vai pro elemento que estiver por baixo do dedo na
+    // hora em vez da zone) — o solta nunca era chamado. Ouvindo no window
+    // e filtrando pelo pointerId, o gesto inteiro (mover E soltar)
+    // funciona independente da captura ter pegado ou nao.
+    window.addEventListener('pointermove', e => {
       if (e.pointerId !== pid) return;
       move(e.clientX - cx, e.clientY - cy);
     });
     ['pointerup','pointercancel'].forEach(ev =>
-      zone.addEventListener(ev, e => { if (e.pointerId === pid) release(); })
+      window.addEventListener(ev, e => { if (e.pointerId === pid) release(); })
     );
-    // Rede de seguranca — ver comentario na secao BOTÕES FACE + CENTRO.
-    // Esse era o analogico "travando" (o personagem seguia andando sozinho
-    // depois de soltar o dedo): se pointerup/pointercancel nao chegasse
-    // (gesto roubado pelo navegador/SO), as teclas seguravas em `held`
-    // nunca soltavam. "lostpointercapture" cobre esse caso tambem.
+    // Redes de seguranca extras, cobrindo os casos em que a captura ATE
+    // funcionou mas foi perdida/encerrada por outro motivo.
     zone.addEventListener('lostpointercapture', () => { if (pid !== null) release(); });
+    zone.addEventListener('pointerleave', () => { if (pid !== null) release(); });
   });
 })();
 
@@ -596,6 +752,7 @@ let listeningEl = null;
 let currentSlug = null;
 
 const remapBtn = document.getElementById('remap-btn');
+const hideControlsBtn = document.getElementById('hide-controls-btn');
 const remappableEls = Array.from(document.querySelectorAll('.btn, .cbtn'));
 const remapPanel = document.getElementById('remap-panel');
 const remapInput = document.getElementById('remap-input');
@@ -686,10 +843,18 @@ function startListening(el) {
   remapInput.focus();
 }
 
-remapBtn.addEventListener('click', () => {
-  remapMode = !remapMode;
+function setRemapMode(on) {
+  remapMode = on;
   remapBtn.classList.toggle('active', remapMode);
   if (!remapMode) closePanel();
+  // Revela todo controle enquanto remapeia (mesmo os escondidos pelo
+  // preset atual) — senao nao da pra tocar num botao escondido pra
+  // configura-lo. Volta pro preset escolhido ao sair do modo.
+  if (typeof syncControlsVisibility === 'function') syncControlsVisibility();
+}
+
+remapBtn.addEventListener('click', () => {
+  setRemapMode(!remapMode);
   if (remapMode) setLayoutEditMode(false); // modos sao mutuamente exclusivos
 }, { passive: false });
 
@@ -721,6 +886,10 @@ function syncOrientation() {
     // arrasto e um botao do retrato poderia ganhar posicao customizada,
     // violando "botoes na vertical nunca mudam de posicao".
     if (typeof setLayoutEditMode === 'function') setLayoutEditMode(false);
+    // Preset de controles visiveis tambem so faz sentido na paisagem (o
+    // retrato tem os botoes impressos no shell — sempre visiveis, por
+    // definicao). Volta pro preset "tudo visivel" (indice 0).
+    if (typeof resetControlsPreset === 'function') resetControlsPreset();
   }
 }
 mqLandscape.addEventListener('change', syncOrientation);
@@ -792,16 +961,55 @@ function setLayoutEditMode(on) {
   layoutEditMode = on;
   layoutBtn.classList.toggle('active', layoutEditMode);
   document.body.classList.toggle('layout-edit', layoutEditMode);
+  // Mesma logica do remapear: revela todo controle enquanto arrasta,
+  // senao nao da pra pegar um que o preset atual esconde.
+  if (typeof syncControlsVisibility === 'function') syncControlsVisibility();
 }
 
 layoutBtn.addEventListener('click', () => {
   setLayoutEditMode(!layoutEditMode);
-  if (layoutEditMode && remapMode) {
-    remapMode = false;
-    remapBtn.classList.remove('active');
-    closePanel();
-  }
+  if (layoutEditMode) setRemapMode(false); // modos sao mutuamente exclusivos
 }, { passive: false });
+
+// ═══════════════════════════════════════════
+//  PRESETS DE CONTROLES VISIVEIS (so na paisagem)
+//  Toca o olho pra alternar: tudo visivel -> so d-pad+XYBA -> so
+//  analogico esquerdo+XYBA -> nada visivel -> tudo de novo. A tecla
+//  configurada de cada botao (remapeamento) NAO muda entre presets — so
+//  a visibilidade. Escondido = display:none (nao recebe toque).
+// ═══════════════════════════════════════════
+const CONTROL_PRESETS = [
+  { hidden: [] },
+  { hidden: ['dpad', 'stick-l', 'stick-r', 'btn-x', 'btn-y', 'btn-a', 'btn-b', 'btn-fn', 'btn-select', 'btn-start'] },
+  { hidden: ['stick-l', 'stick-r'] },
+  { hidden: ['dpad', 'stick-r'] },
+];
+let presetIndex = 0;
+
+// Chamada tambem pelo modo remapear/arrastar (ver acima) — enquanto
+// qualquer um dos dois esta ativo, mostra TUDO independente do preset
+// (senao nao da pra tocar num botao que o preset atual esconde).
+function syncControlsVisibility() {
+  const hidden = new Set((remapMode || layoutEditMode) ? [] : CONTROL_PRESETS[presetIndex].hidden);
+  draggableEls.forEach(el => {
+    el.classList.toggle('controls-preset-hidden', hidden.has(el.dataset.draggable));
+  });
+  hideControlsBtn.classList.toggle('active', presetIndex !== 0);
+}
+
+function resetControlsPreset() {
+  presetIndex = 0;
+  syncControlsVisibility();
+}
+
+hideControlsBtn.addEventListener('click', () => {
+  presetIndex = (presetIndex + 1) % CONTROL_PRESETS.length;
+  syncControlsVisibility();
+  setLayoutEditMode(false);
+  setRemapMode(false);
+}, { passive: false });
+
+syncControlsVisibility();
 
 // Intercepta o toque ANTES de qualquer handler normal de botao/d-pad/
 // analogico (capture na raiz) — assim nao precisa mexer em nenhum desses
