@@ -69,6 +69,67 @@ document.addEventListener("touchcancel", (e) => {
   if (e.touches.length === 0) releaseAllHeld();
 });
 
+// Swipe da borda esquerda — em paisagem o jogo ocupa a tela toda, entao
+// e' este iframe (nao o GameScreen.html por fora dele) quem recebe o
+// toque perto da borda. Mesma logica de GameScreen.html: bloqueia o
+// gesto nativo de "voltar" do iOS e avisa window.top (a react app, que
+// tem o botao — ver mobile-player-back em Player.tsx) pra revelar o
+// botao em vez de navegar direto.
+const EDGE_PX = 24;
+const MOVE_PX = 36;
+let swipeStartX: number | null = null;
+let swipeStartY: number | null = null;
+let watchingEdgeSwipe = false;
+let edgeSwipeSent = false;
+
+document.addEventListener(
+  "touchstart",
+  (e) => {
+    const t = e.touches[0];
+    if (!t || t.clientX > EDGE_PX) {
+      watchingEdgeSwipe = false;
+      return;
+    }
+    swipeStartX = t.clientX;
+    swipeStartY = t.clientY;
+    watchingEdgeSwipe = true;
+    edgeSwipeSent = false;
+  },
+  { passive: true }
+);
+
+document.addEventListener(
+  "touchmove",
+  (e) => {
+    if (!watchingEdgeSwipe || swipeStartX === null || swipeStartY === null) return;
+    const t = e.touches[0];
+    if (!t) return;
+    const dx = t.clientX - swipeStartX;
+    const dy = Math.abs(t.clientY - swipeStartY);
+    if (dx < 8 && dy < 8) return;
+    if (dy > dx) {
+      watchingEdgeSwipe = false;
+      return;
+    }
+    e.preventDefault();
+    if (!edgeSwipeSent && dx > MOVE_PX) {
+      edgeSwipeSent = true;
+      try {
+        window.top?.postMessage({ type: "gc:revealBack" }, location.origin);
+      } catch {
+        // ignore
+      }
+    }
+  },
+  { passive: false }
+);
+
+function stopWatchingEdgeSwipe() {
+  watchingEdgeSwipe = false;
+}
+document.addEventListener("touchend", stopWatchingEdgeSwipe, { passive: true });
+document.addEventListener("touchcancel", stopWatchingEdgeSwipe, { passive: true });
+
 window.addEventListener("message", (e: MessageEvent) => {
   const d = e.data as { type?: string; key?: string } | null;
   if (!d || !d.type) return;

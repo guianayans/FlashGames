@@ -2,10 +2,29 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <!--
+      Um unico meta viewport, sempre com viewport-fit=cover (sem JS
+      injetando depois) — a altura real da pagina vem inteira de
+      var(--app-height) (100dvh, ver styles.css), que ja lida certo com
+      standalone/Safari sozinha; nao precisa mais condicionar o cover a
+      "so quando for PWA" pra compensar um calculo de altura fragil.
+      maximum-scale=1/user-scalable=no: preserva o pinch-zoom desligado
+      que o app ja tinha (controles em tela cheia nao devem dar zoom).
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!--
+      "black-translucent" faz o proprio iOS desenhar a status bar do PWA
+      como vidro fosco de verdade (nao e' CSS nosso, e' o SO) — borra
+      qualquer coisa colorida logo abaixo dela (capas de jogo, cabecalho).
+      So faz efeito em modo standalone, por isso o blur nunca aparecia no
+      Safari normal. "black" = barra solida opaca, sem nenhum blur, e o
+      resto do full-bleed (viewport-fit=cover, env(safe-area-inset-*))
+      continua igual — isso so muda como a PROPRIA barra e' desenhada, nao
+      se o conteudo se estende por tras dela.
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="FlashGames" />
     <meta name="theme-color" content="#0a0714" />
     <meta name="description" content="Emuladores de console retro no navegador (SNES, NES, Mega Drive, GBA), com controles de toque." />

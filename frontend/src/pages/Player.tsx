@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import type { GameDetail } from "../types";
 import { loadEmulator } from "../loadEmulatorScript";
@@ -15,6 +15,22 @@ function detectPointerCoarse(): boolean {
   if (typeof window === "undefined") return false;
   const shortSide = Math.min(window.innerWidth, window.innerHeight);
   return window.matchMedia("(pointer: coarse)").matches || shortSide <= 560;
+}
+
+// "Voltar" via navigate(-1) em vez de Link to="/" — assim o navegador
+// restaura a URL exata de onde o usuario veio (com ?q=...&system=...&page=
+// que a Library grava nos searchParams), voltando pra pesquisa/filtro/
+// pagina/scroll de onde ele tinha parado, sem recarregar nada. location.key
+// === "default" quer dizer que nao tem historico dentro do SPA (link
+// direto/refresh na propria pagina do jogo) — ai navigate(-1) sairia do
+// app, entao cai pra "/" mesmo (sem estado pra restaurar de qualquer jeito).
+function useLibraryBack() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return () => {
+    if (location.key !== "default") navigate(-1);
+    else navigate("/");
+  };
 }
 
 export default function Player() {
@@ -44,8 +60,37 @@ export default function Player() {
   return <DesktopPlayer slug={slug} />;
 }
 
+// Quanto tempo o botao de voltar fica visivel depois de revelado pelo
+// swipe da borda, se o jogador nao tocar nele.
+const BACK_BUTTON_AUTO_HIDE_MS = 3000;
+
 function MobilePlayer({ slug }: { slug: string }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const goBack = useLibraryBack();
+
+  // Escondido por padrao — so aparece quando o GameScreen.html (ou o
+  // game-wrapper.ts dele, em paisagem) avisa via postMessage que detectou
+  // um swipe partindo da borda esquerda (ver GameScreen.html, secao
+  // "SWIPE DA BORDA"). Isso substitui o gesto nativo de "voltar" do iOS,
+  // que antes tirava o jogador do jogo sem querer — agora o gesto so
+  // revela o botao, e sair exige um toque nele.
+  const [showBack, setShowBack] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== location.origin) return;
+      if ((e.data as { type?: string } | null)?.type !== "gc:revealBack") return;
+      setShowBack(true);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      hideTimer.current = setTimeout(() => setShowBack(false), BACK_BUTTON_AUTO_HIDE_MS);
+    }
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, []);
 
   const handleLoad = () => {
     const win = frameRef.current?.contentWindow as GameScreenWindow | null | undefined;
@@ -54,9 +99,14 @@ function MobilePlayer({ slug }: { slug: string }) {
 
   return (
     <div className="mobile-player">
-      <Link to="/" className="mobile-player-back" aria-label="Voltar pra biblioteca">
+      <button
+        type="button"
+        onClick={goBack}
+        className={`mobile-player-back${showBack ? " visible" : ""}`}
+        aria-label="Voltar pra biblioteca"
+      >
         ←
-      </Link>
+      </button>
       <iframe
         ref={frameRef}
         src="/GameScreen.html"
@@ -75,6 +125,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
   const [error, setError] = useState<string | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const nostalgistRef = useRef<Nostalgist | null>(null);
+  const goBack = useLibraryBack();
 
   useEffect(() => {
     setGame(null);
@@ -124,9 +175,9 @@ function DesktopPlayer({ slug }: { slug: string }) {
   return (
     <div className="player-page">
       <div className="player-topbar glass">
-        <Link to="/" className="back-link">
+        <button type="button" onClick={goBack} className="back-link">
           ← Biblioteca
-        </Link>
+        </button>
         <h1>{game?.title ?? "Carregando..."}</h1>
       </div>
 
