@@ -1,0 +1,85 @@
+// Lista curada de "Top Games" — pesquisada (best-sellers da Wikipedia +
+// listas de "melhores jogos de SNES" de sites como Nintendo Life,
+// GamesRadar e IGN) e cruzada com os slugs que realmente existem na
+// biblioteca (ver ROMS.md pra como ela e' montada). So slugs presentes na
+// pasta SNES/ entram aqui — nada e' referenciado sem existir.
+//
+// Nota: alguns titulos (Final Fantasy IV/V/VI, Super Mario RPG, Front
+// Mission, Tales of Phantasia, Star Ocean, Bahamut Lagoon) so existem
+// nesta colecao em japones (sem patch de traducao) — sao historicamente
+// dos RPGs mais aclamados do SNES, mas o texto do jogo nao vai estar em
+// portugues/ingles. Mantidos na lista por merito, com esse aviso aqui.
+export const TOP_GAME_SLUGS = new Set([
+  // Mais vendidos (best-sellers oficiais, Wikipedia)
+  "snes-super-mario-world-usa",
+  "snes-super-mario-all-stars-usa",
+  "snes-donkey-kong-country-usa",
+  "snes-super-mario-kart-usa",
+  "snes-street-fighter-ii-the-world-warrior-usa",
+  "snes-donkey-kong-country-2-diddy-s-kong-quest-usa-en-fr",
+  "snes-legend-of-zelda-the-a-link-to-the-past-usa",
+  "snes-super-mario-world-2-yoshi-s-island-usa",
+  "snes-street-fighter-ii-turbo-hyper-fighting-usa",
+  "snes-star-fox-usa",
+  "snes-donkey-kong-country-3-dixie-kong-s-double-trouble-usa-en-fr",
+  "snes-final-fantasy-vi-japan",
+  "snes-killer-instinct-usa",
+  "snes-f-zero-usa",
+  "snes-chrono-trigger-usa",
+  "snes-final-fantasy-v-japan",
+  "snes-mario-paint-europe",
+  "snes-super-mario-rpg-japan",
+  "snes-pilotwings-usa",
+  "snes-super-street-fighter-ii-the-new-challengers-usa",
+  "snes-simcity-usa",
+  "snes-secret-of-mana-usa",
+  "snes-final-fantasy-iv-japan-rev-a",
+  "snes-aladdin-usa",
+  "snes-mortal-kombat-2-usa",
+  "snes-final-fight-usa",
+  "snes-kirby-super-star-usa",
+  "snes-super-metroid-europe-en-fr-de",
+  "snes-lion-king-the-usa",
+  "snes-nba-jam-usa",
+  "snes-mortal-kombat-3-usa",
+  "snes-magical-quest-starring-mickey-mouse-the-usa",
+  "snes-super-ghouls-n-ghosts-usa",
+  "snes-final-fight-2-usa",
+  "snes-tetris-2-usa",
+  "snes-super-star-wars-usa",
+  "snes-super-bomberman-2-usa",
+  "snes-super-bomberman-usa",
+
+  // Classicos cult / criticamente aclamados (nao venderam milhoes mas
+  // aparecem quase sempre no topo das listas de "melhores de todos")
+  "snes-earthbound-usa",
+  "snes-terranigma-europe",
+  "snes-super-castlevania-iv-usa",
+  "snes-castlevania-dracula-x-usa",
+  "snes-contra-iii-the-alien-wars-usa",
+  "snes-teenage-mutant-ninja-turtles-iv-turtles-in-time-usa",
+  "snes-super-punch-out-usa",
+  "snes-actraiser-usa",
+  "snes-actraiser-2-usa",
+  "snes-kirby-s-dream-course-usa",
+  "snes-kirby-s-avalanche-usa",
+  "snes-international-superstar-soccer-usa",
+  "snes-harvest-moon-usa",
+  "snes-breath-of-fire-usa",
+  "snes-breath-of-fire-ii-usa",
+  "snes-illusion-of-gaia-usa",
+  "snes-zombies-ate-my-neighbors-usa",
+  "snes-pocky-rocky-usa",
+  "snes-u-n-squadron-usa",
+  "snes-gradius-iii-usa",
+  "snes-axelay-usa",
+  "snes-super-r-type-usa",
+  "snes-uniracers-usa",
+  "snes-rock-n-roll-racing-usa",
+  "snes-battletoads-in-battlemaniacs-usa",
+  "snes-ogre-battle-the-march-of-the-black-queen-usa",
+  "snes-front-mission-japan",
+  "snes-tales-of-phantasia-japan",
+  "snes-star-ocean-japan",
+  "snes-bahamut-lagoon-japan",
+]);

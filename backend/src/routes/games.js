@@ -1,6 +1,7 @@
 import { Router } from "express";
 import path from "node:path";
 import { listGames, getGame, ROMS_DIR } from "../gamesLibrary.js";
+import { TOP_GAME_SLUGS } from "../topGames.js";
 
 const router = Router();
 
@@ -19,6 +20,7 @@ function toSummary(g) {
     tags: Array.isArray(g.tags) ? g.tags : [],
     system: g.system,
     cover: toPublicUrl("roms", g.cover),
+    top: TOP_GAME_SLUGS.has(g.slug),
   };
 }
 
