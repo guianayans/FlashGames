@@ -102,12 +102,38 @@ function scanAll() {
   return games;
 }
 
+// scanAll() varre o disco (milhares de ROMs, cada uma com ate 5 stat/exists
+// sincronos pra achar capa e overrides) — sem cache isso rodava inteiro em
+// TODA request de /api/games e /api/games/:slug, deixando a lista lenta
+// pra carregar. Cacheia por CACHE_TTL_MS; a lib so muda quando alguem
+// adiciona ROMs no disco, entao alguns segundos de atraso pra aparecer nao
+// tem problema.
+const CACHE_TTL_MS = 30_000;
+let cache = null;
+let cacheAt = 0;
+
+function getGamesMap() {
+  const now = Date.now();
+  if (!cache || now - cacheAt > CACHE_TTL_MS) {
+    cache = scanAll();
+    cacheAt = now;
+  }
+  return cache;
+}
+
+// Jogos com capa primeiro (ordem alfabetica), depois os sem capa (tambem
+// alfabetica) — a tela inicial fica mais "apresentavel" logo de cara em vez
+// de misturar aleatoriamente com os sem arte.
 export function listGames() {
-  return Array.from(scanAll().values()).sort((a, b) => a.title.localeCompare(b.title));
+  return Array.from(getGamesMap().values()).sort((a, b) => {
+    const coverDiff = (a.cover ? 0 : 1) - (b.cover ? 0 : 1);
+    if (coverDiff !== 0) return coverDiff;
+    return a.title.localeCompare(b.title);
+  });
 }
 
 export function getGame(slug) {
-  return scanAll().get(slug) || null;
+  return getGamesMap().get(slug) || null;
 }
 
 export { ROMS_DIR };

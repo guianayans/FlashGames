@@ -49,6 +49,15 @@ db.exec(`
     layout TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- Jogos favoritados, por USUARIO (conta) — so guarda o slug, os dados do
+  -- jogo em si continuam vindo do scan da pasta de ROMs (gamesLibrary.js).
+  CREATE TABLE IF NOT EXISTS user_favorites (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    game_slug TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, game_slug)
+  );
 `);
 
 export default db;

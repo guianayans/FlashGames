@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.js";
 import gamesRoutes from "./routes/games.js";
 import savesRoutes from "./routes/saves.js";
 import controlsRoutes from "./routes/controls.js";
+import favoritesRoutes from "./routes/favorites.js";
 import { ROMS_DIR } from "./gamesLibrary.js";
 import { readAuth } from "./auth.js";
 
@@ -31,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/games", gamesRoutes);
 app.use("/api/saves", savesRoutes);
 app.use("/api/controls", controlsRoutes);
+app.use("/api/favorites", favoritesRoutes);
 
 // As ROMs (e capas) de cada sistema, servidas diretamente das pastas
 // SNES/NES/GENESIS/GBA
