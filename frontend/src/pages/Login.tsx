@@ -30,7 +30,7 @@ export default function Login() {
 
       <div className="login-content">
         <div className="login-wordmark">
-          <h1>FLASHGAMES</h1>
+          <img src="/logo.png" alt="FlashGames" className="login-logo" />
           <p>Entre com seu usuario pra carregar seus saves e jogar.</p>
         </div>
 

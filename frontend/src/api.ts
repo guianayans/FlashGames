@@ -35,6 +35,15 @@ export const api = {
   listGames() {
     return request<{ games: GameSummary[] }>("/api/games");
   },
+  listFavorites() {
+    return request<{ slugs: string[] }>("/api/favorites");
+  },
+  addFavorite(slug: string) {
+    return request<{ ok: true }>(`/api/favorites/${slug}`, { method: "PUT" });
+  },
+  removeFavorite(slug: string) {
+    return request<{ ok: true }>(`/api/favorites/${slug}`, { method: "DELETE" });
+  },
   getGame(slug: string) {
     return request<{ game: GameDetail }>(`/api/games/${slug}`);
   },

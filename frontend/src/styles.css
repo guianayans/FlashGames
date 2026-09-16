@@ -67,8 +67,17 @@
   --font-display: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* Altura real da tela, com fallback pra navegadores sem suporte a dvh.
+     100dvh (dynamic viewport height) e' o que sobe/desce sozinho com a
+     barra de endereco do Safari (aba normal) E cobre a tela inteira no
+     PWA standalone, sem precisar calcular nada por JS. */
+  --app-height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-height: 100dvh;
+  }
 }
 
 * {
@@ -78,7 +87,17 @@
 html,
 body,
 #root {
-  height: 100%;
+  /* height:100% (em vez de min-height) na cadeia html>body>#root e' o que
+     quebrava no PWA standalone: qualquer padding/margem extra em QUALQUER
+     nivel dessa cadeia (mesmo respeitando box-sizing:border-box) faz o
+     documento passar de 100% da tela, viram scroll "fantasma" que nao
+     deveria existir — como .mobile-player (tela do jogo) e' position:fixed
+     e nao acompanha esse scroll, aquela sobra aparecia como uma faixa
+     preta vazia embaixo. min-height nunca cria esse excesso: so garante
+     que a pagina ocupa NO MINIMO a tela toda, e cresce alem dela numa boa
+     se o conteudo (ex.: lista de jogos) precisar. */
+  width: 100%;
+  min-height: var(--app-height);
 }
 
 body {
@@ -137,7 +156,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  min-height: var(--app-height);
   color: var(--text-dim);
   font-family: var(--font-display);
   letter-spacing: 0.02em;
@@ -242,17 +261,15 @@ a {
   text-align: center;
 }
 
-.login-wordmark h1 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(2.4rem, 8vw, 3.4rem);
-  letter-spacing: 0.02em;
-  line-height: 1;
-  background: linear-gradient(90deg, var(--cyan), var(--magenta) 55%, var(--violet));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+.login-logo {
+  /* width em vez de height: assim o limite e' sempre "nao passar de X% da
+     tela", que e' o que importa pra nao estourar no mobile — a altura
+     acompanha sozinha pela proporcao natural do PNG (nao usa aspect-ratio
+     fixo pra nao depender de manter o valor certo se a imagem trocar). */
+  width: min(360px, 78vw);
+  height: auto;
+  display: block;
+  margin: 0 auto;
   filter: drop-shadow(0 0 22px rgba(255, 46, 154, 0.45)) drop-shadow(0 0 40px rgba(0, 229, 255, 0.25));
 }
 
@@ -341,6 +358,33 @@ a {
   padding: 0 16px 48px;
 }
 
+.pull-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: height 0.2s ease;
+}
+
+.pull-refresh-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--cyan);
+  box-sizing: border-box;
+}
+
+.pull-refresh-spinner.spinning {
+  animation: pull-refresh-spin 0.7s linear infinite;
+}
+
+@keyframes pull-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .library-header {
   position: sticky;
   top: env(safe-area-inset-top, 0px);
@@ -351,19 +395,170 @@ a {
   align-items: center;
   gap: 18px;
   flex-wrap: wrap;
+  /* Sobrescreve o blur forte do .glass — ele fica grudado no topo (sticky)
+     entao o fosco ficava sempre visivel, borrando o conteudo passando por
+     baixo o tempo todo. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.library-brand {
+  /* Fica fora do .library-header (que e' sticky e "some" atras da busca
+     quando rola) — assim a logo sempre aparece no topo da pagina, fixa no
+     fluxo normal, nao dentro do container de pesquisa. */
+  margin-top: max(14px, env(safe-area-inset-top, 0px));
+  margin-bottom: 4px;
 }
 
 .library-logo {
-  margin: 0;
+  /* Mesmo tamanho da logo na pagina de login (ver .login-logo). */
+  width: min(360px, 78vw);
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.library-alpha-trigger {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.3rem;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-  background: linear-gradient(90deg, var(--cyan), var(--magenta));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-size: 0.75rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.library-alpha-trigger:hover {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+
+.library-alpha-trigger.active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow: 0 0 14px -4px var(--cyan);
+}
+
+/* ---------- Overlay: filtro por letra ---------- */
+
+.alpha-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Respiro pras safe areas (notch/home indicator) no PWA standalone —
+     senao o card pode nascer colado/atras delas em telas pequenas. */
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+    max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgba(4, 3, 10, 0.6);
+}
+
+.alpha-card {
+  width: 100%;
+  max-width: 420px;
+  /* Nunca mais alto que o espaco que sobrou do padding acima — em telas
+     baixas (celular deitado) o grid rola por dentro em vez do card
+     estourar pra fora da tela. */
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  overflow: hidden;
+}
+
+.alpha-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.alpha-card-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.alpha-close {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.alpha-close:hover {
+  border-color: var(--magenta);
+  color: var(--text);
+}
+
+.alpha-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.alpha-chip {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.alpha-chip:not(:disabled):hover {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+
+.alpha-chip.active {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: #05040a;
+}
+
+.alpha-chip:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.alpha-chip-all {
+  grid-column: 1 / -1;
+  aspect-ratio: auto;
+  padding: 10px;
 }
 
 .library-search {
@@ -503,8 +698,8 @@ a {
   text-decoration: none;
   border: 1px solid var(--border-soft);
   background: var(--surface-strong);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -572,6 +767,39 @@ a {
   box-shadow: 0 0 14px -2px var(--accent);
 }
 
+.game-card-favorite {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 4, 10, 0.55);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  color: var(--text-dim);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.game-card-favorite:hover {
+  color: var(--amber);
+  border-color: var(--amber);
+  transform: scale(1.08);
+}
+
+.game-card-favorite.active {
+  color: var(--amber);
+  border-color: var(--amber);
+  text-shadow: 0 0 10px rgba(255, 176, 32, 0.7);
+}
+
 .game-card-body {
   padding: 13px 15px 16px;
   display: flex;
@@ -604,6 +832,41 @@ a {
   padding: 60px 20px;
   color: var(--text-faint);
   font-family: var(--font-display);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.pagination button {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: var(--radius-sm);
+  padding: 9px 16px;
+  font-size: 0.82rem;
+  font-family: var(--font-display);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.pagination button:hover:not(:disabled) {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+
+.pagination button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.pagination-status {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 /* ============================================================
@@ -640,6 +903,10 @@ a {
 }
 
 .back-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   text-decoration: none;
   color: var(--text-dim);
   font-family: var(--font-display);
@@ -697,6 +964,7 @@ a {
 .mobile-player-frame {
   position: absolute;
   inset: 0;
+  z-index: 1;
   width: 100%;
   height: 100%;
   border: none;
@@ -719,7 +987,19 @@ a {
   color: var(--text-dim);
   text-decoration: none;
   font-size: 1rem;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+  /* Escondido por padrao — so o swipe da borda esquerda (ver GameScreen.html)
+     ou o toque direto revelam ele (classe .visible, via Player.tsx). Sem
+     isso, o gesto nativo de "voltar" do iOS tirava o jogador do jogo sem
+     querer; agora ele so revela o botao, sair exige tocar nele. */
+  opacity: 0;
+  pointer-events: none;
+  transition: border-color 0.15s ease, color 0.15s ease, opacity 0.2s ease;
+}
+
+.mobile-player-back.visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .mobile-player-back:hover {
@@ -744,15 +1024,9 @@ a {
     padding: 12px 14px;
     gap: 12px;
   }
-  .library-logo {
-    font-size: 1.1rem;
-  }
 }
 
 @media (max-width: 480px) {
-  .login-wordmark h1 {
-    font-size: 2.4rem;
-  }
   .login-card {
     padding: 24px 20px;
   }
