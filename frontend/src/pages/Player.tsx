@@ -6,6 +6,8 @@ import { loadRuffleScript } from "../loadRuffleScript";
 import { prepareGameStorage, flushGameSave, type GameStorageSession } from "../ruffleSave";
 import { useContainFit } from "../useContainFit";
 import TouchControls from "../components/TouchControls";
+import DebugPanel from "../components/DebugPanel";
+import { dlog } from "../debugLog";
 
 export default function Player() {
   const { slug = "" } = useParams();
@@ -38,6 +40,9 @@ export default function Player() {
       const isMobile = mqCoarse.matches || shortSide <= 560;
       setPointerCoarse(isMobile);
       setPortrait(mqPortrait.matches);
+      dlog(
+        `modo: pointerCoarse=${mqCoarse.matches} shortSide=${shortSide} isMobile=${isMobile} orientation=${mqPortrait.matches ? "portrait" : "landscape"} ua="${navigator.userAgent.slice(0, 60)}"`
+      );
       // So aplica o padrao (controles ligados em celular) uma vez, na
       // primeira deteccao — depois disso e o usuario quem manda no toggle,
       // girar a tela nao pode resetar a escolha dele.
@@ -96,6 +101,7 @@ export default function Player() {
           scale: "showAll",
           forceScale: true,
         });
+        dlog(`ruffle: jogo carregado (${detail.swf}), playerEl anexado, tabIndex=${(player as unknown as HTMLElement).tabIndex}`);
 
         const flush = (keepalive = false) => {
           if (sessionRef.current) flushGameSave(slug, sessionRef.current, keepalive);
@@ -133,6 +139,14 @@ export default function Player() {
   const hasControls = !!game?.controls;
   const isHandheld = pointerCoarse && portrait; // celular vertical: shell de portatil
   const isMobileLandscape = pointerCoarse && !portrait; // celular horizontal: tela cheia
+
+  useEffect(() => {
+    if (!game) return;
+    dlog(
+      `estado: showControls=${showControls} hasControls=${hasControls} isHandheld=${isHandheld} isMobileLandscape=${isMobileLandscape} game=${game.slug}`
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showControls, hasControls, isHandheld, isMobileLandscape, game?.slug]);
 
   const pageClass = [
     "player-page",
@@ -238,6 +252,8 @@ export default function Player() {
       {!isHandheld && !isMobileLandscape && game?.description && (
         <p className="player-description">{game.description}</p>
       )}
+
+      {pointerCoarse && <DebugPanel />}
     </div>
   );
 }

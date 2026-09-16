@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ControlsConfig, DpadConfig } from "../types";
+import { dlog } from "../debugLog";
 
 interface Props {
   controls: ControlsConfig;
@@ -40,11 +41,16 @@ function codeFor(key: string): string {
 // no elemento <ruffle-player>, que ele proprio marca com tabindex=-1). Sem isso, todo
 // keydown/keyup sintetico e silenciosamente ignorado.
 function focusPlayer(target: HTMLElement | null) {
-  if (!target) return;
+  if (!target) {
+    dlog("focus: playerEl e null (Ruffle ainda nao carregou?)");
+    return;
+  }
   try {
     target.focus({ preventScroll: true });
-  } catch {
-    // ignore
+    const ok = document.activeElement === target;
+    dlog(`focus: .focus() chamado, activeElement===player? ${ok}`);
+  } catch (err) {
+    dlog(`focus: erro ao chamar .focus() — ${err}`);
   }
 }
 
@@ -57,6 +63,7 @@ function dispatchKey(type: "keydown" | "keyup", key: string) {
   });
   // O Ruffle registra o listener de teclado em `window`.
   window.dispatchEvent(ev);
+  dlog(`dispatchKey: ${type} key="${key}" code="${codeFor(key)}" em window`);
 }
 
 function getCanvas(playerEl: HTMLElement | null): HTMLElement | null {
@@ -83,6 +90,7 @@ function dispatchPointer(canvas: HTMLElement, type: string, clientX: number, cli
     view: window,
   });
   canvas.dispatchEvent(ev);
+  if (type !== "pointermove") dlog(`dispatchPointer: ${type} em <canvas> (${Math.round(clientX)},${Math.round(clientY)})`);
 }
 
 // React marca onTouchStart/onTouchEnd como listeners passivos por padrao (pra
@@ -99,14 +107,22 @@ function usePressZone(onStart: () => void, onEnd: () => void) {
 
   useEffect(() => {
     const el = elRef.current;
-    if (!el) return;
+    if (!el) {
+      dlog(`usePressZone: ref nao anexado no mount (elemento nao existe ainda)`);
+      return;
+    }
+    const cls = el.className;
+    dlog(`usePressZone: listeners anexados em ".${cls}"`);
 
     const start = (e: TouchEvent) => {
+      const t = e.touches[0];
+      dlog(`TOUCHSTART em ".${cls}" (${t ? Math.round(t.clientX) : "?"},${t ? Math.round(t.clientY) : "?"})`);
       e.preventDefault();
       el.classList.add("pressed");
       onStartRef.current();
     };
     const end = (e: TouchEvent) => {
+      dlog(`touchend em ".${cls}"`);
       e.preventDefault();
       el.classList.remove("pressed");
       onEndRef.current();
@@ -265,6 +281,13 @@ export default function TouchControls({ controls, targetRef, placement }: Props)
   const stick = controls.aimJoystick;
   const buttons = controls.buttons || [];
 
+  useEffect(() => {
+    dlog(
+      `TouchControls montado: placement=${placement} dpad=${!!dpad} dpad2=${!!dpad2} stick=${!!stick} buttons=${buttons.length} playerEl=${!!targetRef.current} canvas=${!!getCanvas(targetRef.current)}`
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placement]);
+
   return (
     <div className={`touch-controls placement-${placement}`}>
       {dpad && <Dpad config={dpad} className="ctl-dpad" targetRef={targetRef} />}
@@ -275,6 +298,7 @@ export default function TouchControls({ controls, targetRef, placement }: Props)
           className="ctl-stick ctl-stick-r"
           ref={stickBase}
           onPointerDown={(e) => {
+            dlog(`STICK pointerdown (pointerType=${e.pointerType}) em (${Math.round(e.clientX)},${Math.round(e.clientY)})`);
             e.preventDefault();
             e.currentTarget.classList.add("pressed");
             try {
