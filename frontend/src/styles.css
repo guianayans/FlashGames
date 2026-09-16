@@ -135,16 +135,26 @@ a {
   color: #fff;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 :focus-visible {
@@ -448,6 +458,15 @@ a {
   box-shadow: 0 0 14px -4px var(--cyan);
 }
 
+/* Cursor generico do modo "Big Picture" (controle fisico) — aplicavel em
+   qualquer elemento navegavel que nao tenha um destaque proprio (cards e
+   chips de letra ja tem o deles: .gamepad-focused). Cobre busca, trigger
+   A-Z, chips de categoria e paginacao. */
+.bp-focused {
+  border-color: var(--cyan) !important;
+  box-shadow: 0 0 0 2px var(--cyan), 0 0 20px -4px var(--cyan) !important;
+}
+
 /* ---------- Overlay: filtro por letra ---------- */
 
 .alpha-overlay {
@@ -550,6 +569,13 @@ a {
   color: #05040a;
 }
 
+/* Cursor do modo "Big Picture" dentro do overlay (ver .game-card.gamepad-
+   focused, mesmo criterio) — sempre visivel, independente de :active. */
+.alpha-chip.gamepad-focused {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px var(--cyan), 0 0 20px -4px var(--cyan);
+}
+
 .alpha-chip:disabled {
   opacity: 0.25;
   cursor: default;
@@ -583,11 +609,34 @@ a {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-soft);
   border-radius: 999px;
-  padding: 10px 16px 10px 38px;
+  padding: 10px 34px 10px 38px;
   color: var(--text);
   font-family: var(--font-body);
   font-size: 0.92rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.library-search-clear {
+  position: absolute;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.library-search-clear:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
 }
 
 .library-search input:focus {
@@ -708,6 +757,15 @@ a {
   transform: translateY(-5px);
   border-color: var(--accent);
   box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--accent), 0 0 28px -4px var(--accent);
+}
+
+/* Card com foco do modo "Big Picture" (controle fisico) — mesmo destaque
+   do :hover, so que sempre visivel (nao depende de mouse) e com o anel
+   um pouco mais forte, pra achar facil de longe/na TV. */
+.game-card.gamepad-focused {
+  transform: translateY(-5px);
+  border-color: var(--accent);
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 2px var(--accent), 0 0 32px -2px var(--accent);
 }
 
 .game-card-media {
@@ -900,6 +958,12 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.gamepad-badge-paused {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border);
+  color: var(--text-faint);
 }
 
 .gamepad-badge {
