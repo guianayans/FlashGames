@@ -1,0 +1,18 @@
+{
+  "slug": "papas-pancakeria",
+  "title": "Papa's Pancakeria",
+  "description": "Empilhe panquecas na hora certa e finalize com a cobertura que cada cliente pediu, sem deixar ninguem esperando.",
+  "category": "simulacao",
+  "tags": [
+    "culinaria",
+    "gerenciamento-de-tempo"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

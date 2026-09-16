@@ -1,0 +1,27 @@
+{
+  "slug": "gun-mayhem-redux",
+  "title": "Gun Mayhem Redux",
+  "description": "A versao definitiva de Gun Mayhem, com tudo dos dois primeiros jogos reunido numa arena so.",
+  "category": "acao",
+  "tags": [
+    "tiro",
+    "plataforma",
+    "multiplayer-local"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 1000,
+  "height": 560,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

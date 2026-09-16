@@ -1,0 +1,19 @@
+{
+  "slug": "dont-escape-2",
+  "title": "Don't Escape 2",
+  "description": "Nova fuga contra o tempo: junte pistas e objetos pelo cenario antes que a noite (ou algo pior) termine com voce trancado.",
+  "category": "puzzle",
+  "tags": [
+    "aponte-e-clique",
+    "terror",
+    "escape"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 720,
+  "height": 540,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

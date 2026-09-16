@@ -1,0 +1,26 @@
+{
+  "slug": "give-up-robot",
+  "title": "Give Up, Robot",
+  "description": "Plataforma de puzzle cheio de armadilhas: escape de cada sala experimental sem desistir, por mais dificil que fique.",
+  "category": "plataforma",
+  "tags": [
+    "puzzle",
+    "precisao"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

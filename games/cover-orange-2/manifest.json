@@ -1,0 +1,18 @@
+{
+  "slug": "cover-orange-2",
+  "title": "Cover Orange 2",
+  "description": "Mais fases, mais objetos pra combinar: continue protegendo as laranjas do sol nessa sequencia do puzzle fisico.",
+  "category": "puzzle",
+  "tags": [
+    "fisica",
+    "puzzle"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 700,
+  "height": 525,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

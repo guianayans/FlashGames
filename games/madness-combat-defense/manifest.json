@@ -1,0 +1,18 @@
+{
+  "slug": "madness-combat-defense",
+  "title": "Madness Combat Defense",
+  "description": "Spin-off de defesa no universo caotico de Madness Combat: posicione e sobreviva a ondas de inimigos com a violencia estilizada que a serie ficou famosa.",
+  "category": "estrategia",
+  "tags": [
+    "tower-defense",
+    "acao"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 730,
+  "height": 530,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "slug": "sift-heads-4",
+  "title": "Sift Heads 4",
+  "description": "Quarto capitulo da saga: mais missoes, mais armas e a trama do submundo do crime ficando cada vez mais pessoal.",
+  "category": "acao",
+  "tags": [
+    "tiro",
+    "mafia",
+    "stealth"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 440,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

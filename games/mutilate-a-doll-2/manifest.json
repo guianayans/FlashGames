@@ -1,0 +1,19 @@
+{
+  "slug": "mutilate-a-doll-2",
+  "title": "Mutilate a Doll 2",
+  "description": "Sandbox de fisica com bonecos de pano: solte armas, explosivos e engenhocas malucas so pra ver o que acontece.",
+  "category": "arcade",
+  "tags": [
+    "fisica",
+    "sandbox",
+    "humor-negro"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 600,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

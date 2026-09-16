@@ -1,0 +1,27 @@
+{
+  "slug": "moto-x3m",
+  "title": "Moto X3M",
+  "description": "Corra contra o cronometro em pistas cheias de rampas e obstaculos, fazendo manobras no ar pra ganhar tempo bonus.",
+  "category": "arcade",
+  "tags": [
+    "motocross",
+    "tempo",
+    "estilo"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 720,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "slug": "snail-bob-2",
+  "title": "Snail Bob 2",
+  "description": "Bob o caracol esta de volta: guie-o por armadilhas e mecanismos ainda mais elaborados puxando alavancas e botoes no cenario.",
+  "category": "puzzle",
+  "tags": [
+    "aponte-e-clique",
+    "logica"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

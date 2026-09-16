@@ -1,0 +1,18 @@
+{
+  "slug": "sushi-cat",
+  "title": "Sushi Cat",
+  "description": "Guie um gato guloso caindo por um cenario cheio de sushi: coma o suficiente pra crescer e alcancar a saida de cada fase.",
+  "category": "puzzle",
+  "tags": [
+    "fisica",
+    "puzzle"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 700,
+  "height": 650,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

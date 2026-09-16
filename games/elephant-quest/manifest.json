@@ -1,0 +1,26 @@
+{
+  "slug": "elephant-quest",
+  "title": "Elephant Quest",
+  "description": "Um elefante aventureiro parte em busca de tesouros: explore, lute contra criaturas e evolua equipamentos pelo caminho.",
+  "category": "plataforma",
+  "tags": [
+    "aventura",
+    "evolucao"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 500,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

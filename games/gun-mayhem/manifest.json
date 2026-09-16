@@ -1,0 +1,27 @@
+{
+  "slug": "gun-mayhem",
+  "title": "Gun Mayhem",
+  "description": "Arena de tiro numa plataforma so: pule, desvie e derrube os oponentes pra fora da tela antes que facam o mesmo com voce.",
+  "category": "acao",
+  "tags": [
+    "tiro",
+    "plataforma",
+    "multiplayer-local"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 900,
+  "height": 600,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

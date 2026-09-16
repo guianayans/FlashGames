@@ -1,0 +1,19 @@
+{
+  "slug": "monsters-den",
+  "title": "Monsters' Den",
+  "description": "Monte um grupo de aventureiros e desca numa masmorra cheia de monstros em combates por turnos cheios de itens e evolucao.",
+  "category": "estrategia",
+  "tags": [
+    "rpg",
+    "masmorra",
+    "turnos"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 550,
+  "height": 450,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

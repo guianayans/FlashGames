@@ -1,0 +1,18 @@
+{
+  "slug": "papas-freezeria",
+  "title": "Papa's Freezeria",
+  "description": "Prepare sorvetes em camadas exatas, do jeito que cada cliente da ilha pediu, correndo contra o relogio.",
+  "category": "simulacao",
+  "tags": [
+    "culinaria",
+    "gerenciamento-de-tempo"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

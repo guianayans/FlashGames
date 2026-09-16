@@ -1,0 +1,18 @@
+{
+  "slug": "cargo-bridge",
+  "title": "Cargo Bridge",
+  "description": "Construa pontes resistentes o suficiente pra atravessar carga de um lado ao outro sem desabar - fisica de verdade, tentativa e erro garantidos.",
+  "category": "puzzle",
+  "tags": [
+    "engenharia",
+    "fisica"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 550,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

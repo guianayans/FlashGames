@@ -1,0 +1,18 @@
+{
+  "slug": "bowmaster-prelude",
+  "title": "Bowmaster Prelude",
+  "description": "Puxe o arco e acerte o alvo em desafios cada vez mais malucos - de macas na cabeca a situacoes completamente absurdas.",
+  "category": "arcade",
+  "tags": [
+    "pontaria",
+    "arco-e-flecha"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 2000,
+  "height": 1000,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

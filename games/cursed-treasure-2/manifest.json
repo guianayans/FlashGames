@@ -1,0 +1,17 @@
+{
+  "slug": "cursed-treasure-2",
+  "title": "Cursed Treasure 2",
+  "description": "Mais criaturas, mais mapas: continue protegendo o tesouro do mal nessa sequencia do tower defense as avessas.",
+  "category": "estrategia",
+  "tags": [
+    "tower-defense"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 600,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

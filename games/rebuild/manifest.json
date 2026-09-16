@@ -1,0 +1,18 @@
+{
+  "slug": "rebuild",
+  "title": "Rebuild",
+  "description": "O apocalipse zumbi acabou de comecar: reconstrua a civilizacao bairro por bairro, gerenciando sobreviventes e recursos escassos.",
+  "category": "estrategia",
+  "tags": [
+    "zumbis",
+    "gerenciamento"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 550,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

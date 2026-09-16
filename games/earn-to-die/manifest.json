@@ -1,0 +1,35 @@
+{
+  "slug": "earn-to-die",
+  "title": "Earn to Die",
+  "description": "Dirija (e atropele) seu caminho por hordas de zumbis: acelere, cabeceie o carro nas subidas e gaste os upgrades pra chegar mais longe a cada tentativa.",
+  "category": "acao",
+  "tags": [
+    "zumbis",
+    "carros",
+    "upgrades"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 700,
+  "height": 500,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    },
+    "buttons": [
+      {
+        "id": "nitro",
+        "label": "Nitro",
+        "key": " ",
+        "position": "x"
+      }
+    ]
+  }
+}

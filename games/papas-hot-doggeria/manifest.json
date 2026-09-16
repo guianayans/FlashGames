@@ -1,0 +1,18 @@
+{
+  "slug": "papas-hot-doggeria",
+  "title": "Papa's Hot Doggeria",
+  "description": "Grelhe salsichas, escolha o pao certo e capriche nos toppings pra fechar o pedido perfeito antes do tempo acabar.",
+  "category": "simulacao",
+  "tags": [
+    "culinaria",
+    "gerenciamento-de-tempo"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

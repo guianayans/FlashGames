@@ -1,0 +1,18 @@
+{
+  "slug": "warfare-1944",
+  "title": "Warfare 1944",
+  "description": "A guerra continua na Segunda Guerra Mundial: novas unidades e taticas pra levar seu exercito a vitoria.",
+  "category": "estrategia",
+  "tags": [
+    "guerra",
+    "trincheiras"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 500,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

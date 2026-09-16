@@ -1,0 +1,18 @@
+{
+  "slug": "gemcraft",
+  "title": "GemCraft",
+  "description": "Misture gemas magicas pra criar torres cada vez mais poderosas nesse hibrido de tower defense com RPG que vicia rapido.",
+  "category": "estrategia",
+  "tags": [
+    "tower-defense",
+    "rpg"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

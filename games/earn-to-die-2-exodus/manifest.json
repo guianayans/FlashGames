@@ -1,0 +1,35 @@
+{
+  "slug": "earn-to-die-2-exodus",
+  "title": "Earn to Die 2: Exodus",
+  "description": "A jornada continua: mais veiculos, mais upgrades e hordas ainda maiores entre voce e a fuga final.",
+  "category": "acao",
+  "tags": [
+    "zumbis",
+    "carros",
+    "upgrades"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 750,
+  "height": 500,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    },
+    "buttons": [
+      {
+        "id": "nitro",
+        "label": "Nitro",
+        "key": " ",
+        "position": "x"
+      }
+    ]
+  }
+}

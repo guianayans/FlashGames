@@ -1,0 +1,19 @@
+{
+  "slug": "clicker-heroes",
+  "title": "Clicker Heroes",
+  "description": "Clique pra derrotar monstros, junte ouro e contrate herois que continuam lutando (e rendendo) mesmo enquanto voce nao esta clicando.",
+  "category": "arcade",
+  "tags": [
+    "idle",
+    "clicker",
+    "evolucao"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 1000,
+  "height": 563,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

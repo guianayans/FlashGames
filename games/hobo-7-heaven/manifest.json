@@ -1,0 +1,26 @@
+{
+  "slug": "hobo-7-heaven",
+  "title": "Hobo 7: Heaven",
+  "description": "Do inferno ao paraiso - literalmente - nesse capitulo final da saga do mendigo mais destrutivo dos flash games.",
+  "category": "acao",
+  "tags": [
+    "luta",
+    "humor-negro"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 600,
+  "height": 450,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

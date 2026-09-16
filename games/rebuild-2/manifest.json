@@ -1,0 +1,18 @@
+{
+  "slug": "rebuild-2",
+  "title": "Rebuild 2",
+  "description": "Mais bairros pra reconquistar e decisoes ainda mais dificeis nessa sequencia da reconstrucao pos-apocalipse zumbi.",
+  "category": "estrategia",
+  "tags": [
+    "zumbis",
+    "gerenciamento"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 600,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

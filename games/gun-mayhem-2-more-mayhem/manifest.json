@@ -1,0 +1,27 @@
+{
+  "slug": "gun-mayhem-2-more-mayhem",
+  "title": "Gun Mayhem 2: More Mayhem",
+  "description": "Mais mapas, mais armas e mais caos: a sequencia do sucesso de tiro em plataforma, agora com ainda mais formas de derrubar o adversario da arena.",
+  "category": "acao",
+  "tags": [
+    "tiro",
+    "plataforma",
+    "multiplayer-local"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 900,
+  "height": 600,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

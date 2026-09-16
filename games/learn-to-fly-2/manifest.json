@@ -1,0 +1,19 @@
+{
+  "slug": "learn-to-fly-2",
+  "title": "Learn to Fly 2",
+  "description": "Mais gelo, mais distancia: o pinguim volta com novos veiculos e upgrades pra voar cada vez mais longe.",
+  "category": "arcade",
+  "tags": [
+    "fisica",
+    "lancamento",
+    "upgrades"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

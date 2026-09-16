@@ -1,0 +1,26 @@
+{
+  "slug": "epic-battle-fantasy",
+  "title": "Epic Battle Fantasy",
+  "description": "RPG por turnos com humor bobo e chefes enormes: explore fases em plataforma e monte sua estrategia de ataques e magias nos combates.",
+  "category": "plataforma",
+  "tags": [
+    "rpg",
+    "turnos"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 700,
+  "height": 400,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "slug": "canabalt",
+  "title": "Canabalt",
+  "description": "O pai dos endless runners: corra sem parar por telhados desmoronando e pule no momento exato - um so botao, tensao do comeco ao fim.",
+  "category": "arcade",
+  "tags": [
+    "corrida-infinita",
+    "plataforma"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 920,
+  "height": 320,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "buttons": [
+      {
+        "id": "jump",
+        "label": "Pular",
+        "key": " ",
+        "position": "x"
+      }
+    ]
+  }
+}

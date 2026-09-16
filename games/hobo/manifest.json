@@ -1,0 +1,26 @@
+{
+  "slug": "hobo",
+  "title": "Hobo",
+  "description": "Um mendigo com superforca desce o pau em qualquer um que cruzar seu caminho - arrase a cidade inteira nesse beat-em-up tosco e violento.",
+  "category": "acao",
+  "tags": [
+    "luta",
+    "humor-negro"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 600,
+  "height": 450,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

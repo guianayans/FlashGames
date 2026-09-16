@@ -1,0 +1,18 @@
+{
+  "slug": "stick-war-2",
+  "title": "Stick War 2",
+  "description": "Mais unidades, mais estrategia: continue a guerra dos bonecos-palito com um exercito ainda maior pra comandar.",
+  "category": "estrategia",
+  "tags": [
+    "rts",
+    "batalha"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 850,
+  "height": 700,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

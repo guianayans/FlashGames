@@ -1,0 +1,32 @@
+{
+  "slug": "zombotron",
+  "title": "Zombotron",
+  "description": "Metroidvania de tiro: explore uma ilha cheia de zumbis e robos, ganhe armas novas e abra caminho atirando e pulando.",
+  "category": "acao",
+  "tags": [
+    "tiro",
+    "zumbis",
+    "plataforma"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "w",
+      "down": "s",
+      "left": "a",
+      "right": "d"
+    },
+    "aimJoystick": {
+      "label": "Mirar / Atirar",
+      "fireOnHold": true,
+      "radius": 140
+    }
+  }
+}

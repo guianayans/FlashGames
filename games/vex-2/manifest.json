@@ -1,0 +1,26 @@
+{
+  "slug": "vex-2",
+  "title": "Vex 2",
+  "description": "Plataforma de precisao sem do: corra, pule e deslize por armadilhas mortais que matam de primeira - decore o percurso ou morra tentando.",
+  "category": "plataforma",
+  "tags": [
+    "precisao",
+    "obstaculos"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 560,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "slug": "raze-2",
+  "title": "Raze 2",
+  "description": "Mais armas, mais inimigos, mais caos: a sequencia do tiroteio sci-fi que virou referencia nos portais de flash.",
+  "category": "acao",
+  "tags": [
+    "tiro",
+    "sci-fi"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 600,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "w",
+      "down": "s",
+      "left": "a",
+      "right": "d"
+    },
+    "aimJoystick": {
+      "label": "Mirar / Atirar",
+      "fireOnHold": true,
+      "radius": 140
+    }
+  }
+}

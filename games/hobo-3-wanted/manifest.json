@@ -1,0 +1,26 @@
+{
+  "slug": "hobo-3-wanted",
+  "title": "Hobo 3: Wanted",
+  "description": "Agora procurado pela policia, o mendigo mais forte da cidade continua a destruicao nesse terceiro capitulo.",
+  "category": "acao",
+  "tags": [
+    "luta",
+    "humor-negro"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 600,
+  "height": 450,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

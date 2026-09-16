@@ -1,0 +1,18 @@
+{
+  "slug": "burrito-bison-revenge",
+  "title": "Burrito Bison Revenge",
+  "description": "Mais distancia, mais upgrades: a vinganca do lutador de burrito contra o mundo dos doces continua.",
+  "category": "arcade",
+  "tags": [
+    "fisica",
+    "lancamento"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 720,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

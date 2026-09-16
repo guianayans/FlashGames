@@ -1,0 +1,19 @@
+{
+  "slug": "age-of-war-2",
+  "title": "Age of War 2",
+  "description": "A sequencia do classico RTS de evolucao: novas eras, novas unidades e chefes ainda mais dificeis pra sua base aguentar.",
+  "category": "estrategia",
+  "tags": [
+    "rts",
+    "evolucao",
+    "base"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 720,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

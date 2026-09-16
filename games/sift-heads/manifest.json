@@ -1,0 +1,19 @@
+{
+  "slug": "sift-heads",
+  "title": "Sift Heads",
+  "description": "Missoes de acao e infiltracao no submundo do crime: complete objetivos, troque de arma e sobreviva aos confrontos que deram nome a serie.",
+  "category": "acao",
+  "tags": [
+    "tiro",
+    "mafia",
+    "stealth"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 1000,
+  "height": 550,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "slug": "papas-cupcakeria",
+  "title": "Papa's Cupcakeria",
+  "description": "Comande a fabrica de cupcakes: misture a massa, asse no tempo certo e decore cada um do jeito que o cliente pediu.",
+  "category": "simulacao",
+  "tags": [
+    "culinaria",
+    "gerenciamento-de-tempo"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

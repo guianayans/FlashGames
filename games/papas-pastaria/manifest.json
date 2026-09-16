@@ -1,0 +1,18 @@
+{
+  "slug": "papas-pastaria",
+  "title": "Papa's Pastaria",
+  "description": "Cozinhe o macarrao no ponto, escolha o molho certo e monte o prato completo pra cada cliente da pastelaria.",
+  "category": "simulacao",
+  "tags": [
+    "culinaria",
+    "gerenciamento-de-tempo"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

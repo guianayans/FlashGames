@@ -1,0 +1,19 @@
+{
+  "slug": "sift-heads-world-ultimatum",
+  "title": "Sift Heads World: The Ultimatum",
+  "description": "O confronto final da saga Sift Heads World: acerte contas com os inimigos que perseguiram Vinnie Sift a serie inteira.",
+  "category": "acao",
+  "tags": [
+    "tiro",
+    "mafia",
+    "stealth"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 440,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

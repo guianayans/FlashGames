@@ -1,0 +1,26 @@
+{
+  "slug": "vex-3",
+  "title": "Vex 3",
+  "description": "Mais armadilhas, mais movimentos novos: a precisao insana de Vex continua nessa terceira fase da corrida mortal.",
+  "category": "plataforma",
+  "tags": [
+    "precisao",
+    "obstaculos"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 560,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

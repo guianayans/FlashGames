@@ -1,0 +1,19 @@
+{
+  "slug": "dont-escape-3",
+  "title": "Don't Escape 3",
+  "description": "Mais um pesadelo pra escapar: explore, combine itens e resolva os puzzles antes que o prazo acabe.",
+  "category": "puzzle",
+  "tags": [
+    "aponte-e-clique",
+    "terror",
+    "escape"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 720,
+  "height": 540,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

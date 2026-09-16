@@ -1,0 +1,70 @@
+{
+  "slug": "the-last-stand-2",
+  "title": "The Last Stand 2",
+  "description": "Sobreviva noite apos noite construindo barricadas e trocando de arma contra ondas cada vez maiores de zumbis, no jogo que deu origem a Union City.",
+  "category": "acao",
+  "tags": [
+    "tiro",
+    "zumbis",
+    "sobrevivencia"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 420,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "w",
+      "down": "s",
+      "left": "a",
+      "right": "d"
+    },
+    "aimJoystick": {
+      "label": "Mirar / Atirar",
+      "fireOnHold": true,
+      "radius": 140
+    },
+    "buttons": [
+      {
+        "id": "reload",
+        "label": "R",
+        "key": "r",
+        "position": "fn"
+      },
+      {
+        "id": "weapon1",
+        "label": "1",
+        "key": "1",
+        "position": "x"
+      },
+      {
+        "id": "weapon2",
+        "label": "2",
+        "key": "2",
+        "position": "y"
+      },
+      {
+        "id": "weapon3",
+        "label": "3",
+        "key": "3",
+        "position": "a"
+      },
+      {
+        "id": "weapon4",
+        "label": "4",
+        "key": "4",
+        "position": "b"
+      },
+      {
+        "id": "enter",
+        "label": "Enter",
+        "key": "Enter",
+        "position": "start"
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "slug": "hobo-6-hell",
+  "title": "Hobo 6: Hell",
+  "description": "Direto pro inferno: a destruicao do hobo continua num cenario ainda mais bizarro.",
+  "category": "acao",
+  "tags": [
+    "luta",
+    "humor-negro"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 600,
+  "height": 450,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

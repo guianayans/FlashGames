@@ -1,0 +1,18 @@
+{
+  "slug": "gemcraft-labyrinth",
+  "title": "GemCraft Labyrinth",
+  "description": "Um labirinto gigante de fases conectadas: monte sua estrategia de gemas e avance pelos corredores desse capitulo mais ambicioso da serie.",
+  "category": "estrategia",
+  "tags": [
+    "tower-defense",
+    "rpg"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 600,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

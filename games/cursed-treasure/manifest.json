@@ -1,0 +1,17 @@
+{
+  "slug": "cursed-treasure",
+  "title": "Cursed Treasure",
+  "description": "Defenda seu tesouro amaldicoado dos herois que tentam rouba-lo, posicionando criaturas malignas pelo caminho.",
+  "category": "estrategia",
+  "tags": [
+    "tower-defense"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 800,
+  "height": 600,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "slug": "monsters-den-chronicles",
+  "title": "Monsters' Den Chronicles",
+  "description": "Uma masmorra ainda maior, com mais classes e equipamentos pra montar o grupo perfeito nesse capitulo mais robusto da serie.",
+  "category": "estrategia",
+  "tags": [
+    "rpg",
+    "masmorra",
+    "turnos"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

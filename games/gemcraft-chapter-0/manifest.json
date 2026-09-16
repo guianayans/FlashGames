@@ -1,0 +1,18 @@
+{
+  "slug": "gemcraft-chapter-0",
+  "title": "GemCraft Chapter 0",
+  "description": "As origens da saga: a historia por tras das gemas antes dos eventos do GemCraft original.",
+  "category": "estrategia",
+  "tags": [
+    "tower-defense",
+    "rpg"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 690,
+  "height": 540,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

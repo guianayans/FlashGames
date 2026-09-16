@@ -1,0 +1,18 @@
+{
+  "slug": "cover-orange",
+  "title": "Cover Orange",
+  "description": "Proteja as laranjas do sol: arraste objetos pra bloquear a luz e resolva cada fase de fisica antes que elas derretam.",
+  "category": "puzzle",
+  "tags": [
+    "fisica",
+    "puzzle"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

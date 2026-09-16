@@ -1,0 +1,31 @@
+{
+  "slug": "raze",
+  "title": "Raze",
+  "description": "Tiroteio alienigena em ritmo frenetico: corra, pule e atire em ondas de inimigos por cenarios sci-fi cada vez mais hostis.",
+  "category": "acao",
+  "tags": [
+    "tiro",
+    "sci-fi"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 700,
+  "height": 600,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "w",
+      "down": "s",
+      "left": "a",
+      "right": "d"
+    },
+    "aimJoystick": {
+      "label": "Mirar / Atirar",
+      "fireOnHold": true,
+      "radius": 140
+    }
+  }
+}

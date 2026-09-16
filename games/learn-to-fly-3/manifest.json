@@ -1,0 +1,19 @@
+{
+  "slug": "learn-to-fly-3",
+  "title": "Learn to Fly 3",
+  "description": "Terceira leva de tentativas: construa contraptions malucas e tente bater seu proprio recorde de distancia.",
+  "category": "arcade",
+  "tags": [
+    "fisica",
+    "lancamento",
+    "upgrades"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 720,
+  "height": 540,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

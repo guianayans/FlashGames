@@ -1,0 +1,18 @@
+{
+  "slug": "burrito-bison",
+  "title": "Burrito Bison",
+  "description": "Lance um lutador de burrito por um mundo de doces, quicando em gomas e ursinhos pra ganhar a maior distancia possivel.",
+  "category": "arcade",
+  "tags": [
+    "fisica",
+    "lancamento"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 720,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}

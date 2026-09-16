@@ -1,0 +1,26 @@
+{
+  "slug": "hobo-4-total-war",
+  "title": "Hobo 4: Total War",
+  "description": "Guerra total nas ruas: o hobo enfrenta gangues, policiais e ate militares nesse capitulo mais caotico da serie.",
+  "category": "acao",
+  "tags": [
+    "luta",
+    "humor-negro"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 600,
+  "height": 450,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

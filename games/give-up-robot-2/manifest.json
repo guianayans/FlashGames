@@ -1,0 +1,26 @@
+{
+  "slug": "give-up-robot-2",
+  "title": "Give Up, Robot 2",
+  "description": "Salas ainda mais elaboradas e novas mecanicas nessa sequencia do plataforma de fuga robotica.",
+  "category": "plataforma",
+  "tags": [
+    "puzzle",
+    "precisao"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 640,
+  "height": 480,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  },
+  "controls": {
+    "dpad": {
+      "up": "ArrowUp",
+      "down": "ArrowDown",
+      "left": "ArrowLeft",
+      "right": "ArrowRight"
+    }
+  }
+}

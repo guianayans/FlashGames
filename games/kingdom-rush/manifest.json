@@ -1,0 +1,18 @@
+{
+  "slug": "kingdom-rush",
+  "title": "Kingdom Rush",
+  "description": "Um dos tower defenses mais aclamados ja feitos: monte torres, invoque herois e defenda o reino de ondas cada vez mais criativas de inimigos.",
+  "category": "estrategia",
+  "tags": [
+    "tower-defense",
+    "fantasia"
+  ],
+  "cover": null,
+  "swf": "game.swf",
+  "width": 700,
+  "height": 600,
+  "source": {
+    "name": "Colecao local do usuario (gamesAdicionar)",
+    "url": null
+  }
+}
