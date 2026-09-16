@@ -1,20 +1,29 @@
 import { Router } from "express";
-import { listGames, getGame } from "../gamesLibrary.js";
+import path from "node:path";
+import { listGames, getGame, ROMS_DIR } from "../gamesLibrary.js";
 
 const router = Router();
 
-router.get("/", (_req, res) => {
-  const games = listGames().map((g) => ({
+function toPublicUrl(prefix, absolutePath) {
+  if (!absolutePath) return null;
+  const rel = path.relative(ROMS_DIR, absolutePath).split(path.sep).join("/");
+  return `/${prefix}/${rel.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function toSummary(g) {
+  return {
     slug: g.slug,
     title: g.title,
     description: g.description || "",
     category: g.category || "outros",
     tags: Array.isArray(g.tags) ? g.tags : [],
-    cover: g.cover ? `/games/${g.slug}/${g.cover}` : null,
-    width: g.width,
-    height: g.height,
-  }));
-  res.json({ games });
+    system: g.system,
+    cover: toPublicUrl("roms", g.cover),
+  };
+}
+
+router.get("/", (_req, res) => {
+  res.json({ games: listGames().map(toSummary) });
 });
 
 router.get("/:slug", (req, res) => {
@@ -22,10 +31,9 @@ router.get("/:slug", (req, res) => {
   if (!game) return res.status(404).json({ error: "not_found" });
   res.json({
     game: {
-      ...game,
-      category: game.category || "outros",
-      tags: Array.isArray(game.tags) ? game.tags : [],
-      cover: game.cover ? `/games/${game.slug}/${game.cover}` : null,
+      ...toSummary(game),
+      launcher: game.launcher,
+      rom: toPublicUrl("roms", game.rom),
     },
   });
 });

@@ -1,20 +1,18 @@
 import { Router } from "express";
 import db from "../db.js";
 import { requireAuth } from "../auth.js";
-import { getGame } from "../gamesLibrary.js";
 
 const router = Router();
 
-const SLUG_RE = /^[a-z0-9-]{1,64}$/;
 const MAX_KEYMAP_ENTRIES = 16;
 const MAX_KEYMAP_KEY_LEN = 40;
 const MAX_LAYOUT_JSON_LEN = 20_000;
 
-const getKeymapStmt = db.prepare("SELECT keymap FROM game_keymaps WHERE game_slug = ?");
+const getKeymapStmt = db.prepare("SELECT keymap FROM control_keymap WHERE id = 1");
 const upsertKeymapStmt = db.prepare(`
-  INSERT INTO game_keymaps (game_slug, keymap, updated_at)
-  VALUES (?, ?, datetime('now'))
-  ON CONFLICT(game_slug) DO UPDATE SET keymap = excluded.keymap, updated_at = excluded.updated_at
+  INSERT INTO control_keymap (id, keymap, updated_at)
+  VALUES (1, ?, datetime('now'))
+  ON CONFLICT(id) DO UPDATE SET keymap = excluded.keymap, updated_at = excluded.updated_at
 `);
 const getLayoutStmt = db.prepare("SELECT layout FROM user_control_layouts WHERE user_id = ?");
 const upsertLayoutStmt = db.prepare(`
@@ -23,30 +21,17 @@ const upsertLayoutStmt = db.prepare(`
   ON CONFLICT(user_id) DO UPDATE SET layout = excluded.layout, updated_at = excluded.updated_at
 `);
 
-function validSlug(req, res) {
-  const { slug } = req.params;
-  if (!SLUG_RE.test(slug) || !getGame(slug)) {
-    res.status(404).json({ error: "not_found" });
-    return null;
-  }
-  return slug;
-}
-
-// Remapeamento de teclas por jogo — leitura publica (nenhum jogo/tela
-// precisa de login pra saber que teclas usar), escrita exige login (mas
-// nao um usuario "dono": qualquer conta pode configurar, valendo pra
-// todo mundo — ver comentario no schema em db.js).
-router.get("/keymap/:slug", (req, res) => {
-  const slug = validSlug(req, res);
-  if (!slug) return;
-  const row = getKeymapStmt.get(slug);
+// Remapeamento de teclas do controle fisico (botoes X/Y/A/B/L/R/FN/SEL/
+// START) — agora um unico mapeamento global (o controle e sempre o mesmo
+// gamepad de console, nao muda por jogo). Leitura publica, escrita exige
+// login (mas nao um usuario "dono": qualquer conta pode configurar, valendo
+// pra todo mundo).
+router.get("/keymap", (_req, res) => {
+  const row = getKeymapStmt.get();
   res.json({ keymap: row ? JSON.parse(row.keymap) : null });
 });
 
-router.put("/keymap/:slug", requireAuth, (req, res) => {
-  const slug = validSlug(req, res);
-  if (!slug) return;
-
+router.put("/keymap", requireAuth, (req, res) => {
   const keymap = req.body?.keymap;
   if (!keymap || typeof keymap !== "object" || Array.isArray(keymap)) {
     return res.status(400).json({ error: "invalid_keymap" });
@@ -64,7 +49,7 @@ router.put("/keymap/:slug", requireAuth, (req, res) => {
     }
   }
 
-  upsertKeymapStmt.run(slug, JSON.stringify(keymap));
+  upsertKeymapStmt.run(JSON.stringify(keymap));
   res.json({ ok: true });
 });
 

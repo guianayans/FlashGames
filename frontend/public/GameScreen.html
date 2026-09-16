@@ -111,15 +111,15 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: .35; }
 }
-#btn-x { top:50.8%; left:79.5%; width:5.5%; aspect-ratio:1; }
-#btn-y { top:56.8%; left:70.2%; width:5.5%; aspect-ratio:1; }
-#btn-a { top:57.2%; left:88.8%; width:5.5%; aspect-ratio:1; }
-#btn-b { top:63.7%; left:79.6%; width:5.5%; aspect-ratio:1; }
+#btn-x { top:49.6%; left:78.5%; width:8.5%; aspect-ratio:1; }
+#btn-y { top:56%;   left:69.2%; width:8.5%; aspect-ratio:1; }
+#btn-a { top:56%;   left:87.5%; width:8.5%; aspect-ratio:1; }
+#btn-b { top:62.7%; left:78.6%; width:8.5%; aspect-ratio:1; }
 
 /* ── D-PAD ── */
 #dpad {
   position: absolute;
-  top: 51%; left: 10.1%;
+  top: 53%; left: 10.1%;
   width: 16%; aspect-ratio: 1;
   touch-action: none; cursor: pointer;
 }
@@ -128,10 +128,10 @@ body {
   transition: background 50ms; touch-action: none;
 }
 .dp.pressed { background: rgba(255,255,255,.18); }
-#dp-up    { top:-2px;     left:29%;    width:42%; height:42%; border-radius:3px 3px 0 0; }
-#dp-right { top:48%;      right:-13px; width:42%; height:42%; border-radius:0 3px 3px 0; }
-#dp-down  { bottom:-24px; left:28%;    width:42%; height:42%; border-radius:0 0 3px 3px; }
-#dp-left  { top:48%;      left:-15px;  width:42%; height:42%; border-radius:3px 0 0 3px; }
+#dp-up    { top:-15px;    left:29%;    width:42%; height:42%; border-radius:3px 3px 0 0; }
+#dp-right { top:30%;      right:-15px; width:42%; height:42%; border-radius:0 3px 3px 0; }
+#dp-down  { bottom:-19px; left:28%;    width:42%; height:42%; border-radius:0 0 3px 3px; }
+#dp-left  { top:30%;      left:-18px;  width:42%; height:42%; border-radius:3px 0 0 3px; }
 
 /* ── ANALÓGICOS ── */
 .stick-zone {
@@ -171,9 +171,33 @@ body {
   transition: background 50ms;
 }
 .cbtn.pressed { background: rgba(255,255,255,.18); }
-#btn-fn     { top:63.5%; left:47%;   width:6%;  aspect-ratio:1; border-radius:50%; }
-#btn-select { top:70%;   left:38%;   width:6%;  height:3.8%; }
-#btn-start  { top:70%;   left:56%;   width:6%;  height:3.8%; }
+#btn-fn     { top:63%; left:46%;   width:8%; aspect-ratio:1; border-radius:50%; }
+#btn-select { top:69%; left:37%;   width:8%; height:5.8%; }
+#btn-start  { top:69%; left:55%;   width:8%; height:5.8%; }
+
+/* ── GATILHOS L/R ── a arte do shell (foto de frente) nao mostra a borda
+   de cima do aparelho, onde ficariam gatilhos de verdade — sem desenho pra
+   se alinhar, viram pills visiveis (mesmo criterio usado na paisagem pra
+   qualquer botao sem arte por baixo). Posicao calibrada pelo usuario
+   testando no aparelho de verdade (perto da base do shell, abaixo do
+   analogico/botoes, em vez de sobrepor a tela). */
+.shoulder {
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 5;
+}
+.shoulder::after {
+  content: attr(data-label);
+  color: rgba(255,255,255,.75);
+  font: 700 clamp(9px, 2.6vw, 12px)/1 system-ui, sans-serif;
+  pointer-events: none;
+}
+.shoulder.pressed { background: rgba(255,255,255,.32); }
+.shoulder.pressed::after { color: #000; }
+#btn-l { top:90.56%; left:9.85%;  width:16%; height:4.4%; }
+#btn-r { top:90.56%; right:9.85%; left:auto; width:16%; height:4.4%; }
 
 /* ── PAINEL DE ESCOLHA DE TECLA (remapeamento) ── */
 #remap-panel {
@@ -242,7 +266,7 @@ body {
 /* ── PAISAGEM: gamepad some, jogo em tela cheia na resolucao nativa,
    controles vao pras bordas esquerda/direita — ficam fora da area do
    jogo quando sobra faixa de letterbox, ou sobrepondo quando nao sobra
-   (o Ruffle sempre letterboxa sem cortar, entao a faixa, quando existe,
+   (o emulador sempre letterboxa sem cortar, entao a faixa, quando existe,
    fica exatamente nas bordas onde os controles estao ancorados). ── */
 body.landscape #shell-img { display: none; }
 body.landscape #shell {
@@ -255,11 +279,7 @@ body.landscape #dpad {
   top: 50%; left: 14px; right: auto; bottom: auto;
   transform: translateY(-50%);
   /* MESMO tamanho que o retrato renderiza (16% de um shell ~390px de
-     largura) — nao um valor novo pra paisagem. As 4 sub-areas (.dp) abaixo
-     usam offsets em PIXELS fixos (nao %) pra se encaixar direitinho nesse
-     tamanho especifico; um #dpad maior (ex.: 116px) deixava a posicao de
-     cada uma "meio errada" porque os mesmos pixels nao escalam com o
-     container. */
+     largura) — nao um valor novo pra paisagem. */
   width: 62px;
   /* Caixa unica e limpa ao redor do d-pad inteiro — as 4 sub-areas (.dp)
      se sobrepoem entre si (de proposito, pro toque em diagonal), entao dar
@@ -269,6 +289,13 @@ body.landscape #dpad {
   border-radius: 10px;
   box-shadow: 0 0 0 1.5px rgba(255,255,255,.08);
 }
+/* Ajuste fino dos 4 quadrantes do d-pad SO na paisagem (retrato fica com os
+   offsets originais, acima) — valores calibrados pelo usuario testando no
+   aparelho de verdade. */
+body.landscape #dp-up    { top: -18px; left: 29%;   width: 42%; height: 42%; border-radius: 3px 3px 0 0; }
+body.landscape #dp-down  { bottom: -19px; left: 28%; width: 42%; height: 42%; border-radius: 0 0 3px 3px; }
+body.landscape #dp-right { top: 27%; right: -19px;  width: 42%; height: 42%; border-radius: 0 3px 3px 0; }
+body.landscape #dp-left  { top: 27%; left: -19px;   width: 42%; height: 42%; border-radius: 3px 0 0 3px; }
 body.landscape .stick-zone { width: 92px; }
 body.landscape #stick-l { top: auto; left: 14px; right: auto; bottom: 14px; }
 body.landscape #stick-r { top: auto; right: 14px; left: auto; bottom: 14px; }
@@ -289,6 +316,13 @@ body.landscape #btn-fn, body.landscape #btn-select, body.landscape #btn-start {
 body.landscape #btn-fn     { width: 40px; left: 64px; }
 body.landscape #btn-select { width: 68px; height: 28px; left: 114px; }
 body.landscape #btn-start  { width: 68px; height: 28px; left: 192px; }
+
+/* Gatilhos: cantos externos, uma fileira abaixo do topo (top:10px ali em
+   cima ja tem o botao de voltar a esquerda e o cluster de icones ⚙/✥/👁 a
+   direita) — simetrico com os analogicos, que ficam nos cantos inferiores. */
+body.landscape .shoulder { top: 56px; bottom: auto; width: 52px; height: 28px; }
+body.landscape #btn-l { left: 14px; right: auto; }
+body.landscape #btn-r { right: 14px; left: auto; }
 
 body.landscape #remap-btn { top: 10px; bottom: auto; right: 10px; }
 
@@ -387,6 +421,10 @@ body.layout-edit [data-draggable] {
   <div id="btn-a" class="btn" data-key="z"     data-label="A" data-draggable="btn-a"></div>
   <div id="btn-b" class="btn" data-key="Shift" data-label="B" data-draggable="btn-b"></div>
 
+  <!-- GATILHOS (L/R) -->
+  <div id="btn-l" class="cbtn shoulder" data-key="q" data-label="L" data-draggable="btn-l"></div>
+  <div id="btn-r" class="cbtn shoulder" data-key="e" data-label="R" data-draggable="btn-r"></div>
+
   <!-- ANALÓGICOS -->
   <div id="stick-l" class="stick-zone" data-stick="left" data-draggable="stick-l">
     <div class="stick-thumb"></div>
@@ -444,7 +482,7 @@ const activeReleasers = [];
 function releaseEverything() {
   activeReleasers.forEach(fn => { try { fn(); } catch(err) {} });
   // Manda pro wrapper (dentro do #game-iframe) soltar TUDO que ele mesmo
-  // tenha despachado pro Ruffle — ele e quem tem a visao definitiva do
+  // tenha despachado pro emulador — ele e quem tem a visao definitiva do
   // que realmente foi enviado, entao isso cobre mesmo se algum toque
   // tiver sido roteado direto pra dentro do iframe dele (paisagem: o jogo
   // ocupa a tela inteira embaixo dos controles) sem passar pelos
@@ -735,21 +773,21 @@ document.querySelectorAll('.dp').forEach(el => {
 })();
 
 // ═══════════════════════════════════════════
-//  REMAPEAR BOTOES (X/Y/A/B/FN/SEL/START)
+//  REMAPEAR BOTOES (X/Y/A/B/L/R/FN/SEL/START)
 //  O usuario escolhe livremente a tecla do teclado que quiser pra cada um
 //  desses botoes: toca a engrenagem pra entrar em "modo remapear" e depois
 //  toca o botao que quer mudar — abre um campo de busca com uma lista que
 //  filtra em tempo real (digitando no teclado virtual do celular OU num
 //  teclado fisico), incluindo teclas que nao existem fisicamente no
-//  celular (Ctrl, Shift, F1 etc). Fica gravado no SERVIDOR por JOGO
-//  (nao por aparelho) e vale pra TODOS os usuarios do app — quem
-//  configurar uma vez, todo mundo reaproveita pra aquele jogo dali em
-//  diante (ver /api/controls/keymap/:slug no backend). D-pad e
-//  analogicos NAO entram nesse esquema — ja tem funcao fixa (setas).
+//  celular (Ctrl, Shift, F1 etc). Fica gravado no SERVIDOR uma UNICA vez,
+//  global pra TODOS os jogos e TODOS os usuarios do app — diferente do
+//  Flash, o mapeamento botao-fisico -> botao-de-console e sempre o mesmo,
+//  entao nao existe mais remap por jogo (ver /api/controls/keymap no
+//  backend). D-pad e analogicos NAO entram nesse esquema — ja tem funcao
+//  fixa (setas).
 // ═══════════════════════════════════════════
 let remapMode = false;
 let listeningEl = null;
-let currentSlug = null;
 
 const remapBtn = document.getElementById('remap-btn');
 const hideControlsBtn = document.getElementById('hide-controls-btn');
@@ -774,8 +812,8 @@ const KEY_OPTIONS = [
   ...Array.from({ length: 12 }, (_, i) => ({ key: 'F' + (i + 1), label: 'F' + (i + 1) })),
 ];
 
-function loadKeymapForSlug(slug) {
-  fetch('/api/controls/keymap/' + encodeURIComponent(slug), { credentials: 'include' })
+function loadKeymap() {
+  fetch('/api/controls/keymap', { credentials: 'include' })
     .then(r => r.ok ? r.json() : { keymap: null })
     .then(d => {
       if (d && d.keymap) {
@@ -786,16 +824,17 @@ function loadKeymapForSlug(slug) {
 }
 
 function saveKeymap() {
-  if (!currentSlug) return;
   const map = {};
   remappableEls.forEach(el => { map[el.id] = el.dataset.key; });
-  fetch('/api/controls/keymap/' + encodeURIComponent(currentSlug), {
+  fetch('/api/controls/keymap', {
     method: 'PUT',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ keymap: map }),
   }).catch(() => {});
 }
+
+loadKeymap();
 
 function renderKeyOptions(query) {
   const q = query.trim().toLowerCase();
@@ -980,7 +1019,7 @@ layoutBtn.addEventListener('click', () => {
 // ═══════════════════════════════════════════
 const CONTROL_PRESETS = [
   { hidden: [] },
-  { hidden: ['dpad', 'stick-l', 'stick-r', 'btn-x', 'btn-y', 'btn-a', 'btn-b', 'btn-fn', 'btn-select', 'btn-start'] },
+  { hidden: ['dpad', 'stick-l', 'stick-r', 'btn-x', 'btn-y', 'btn-a', 'btn-b', 'btn-l', 'btn-r', 'btn-fn', 'btn-select', 'btn-start'] },
   { hidden: ['stick-l', 'stick-r'] },
   { hidden: ['dpad', 'stick-r'] },
 ];
@@ -1063,8 +1102,6 @@ window.GameController = {
   setGame(src, slug) {
     document.getElementById('log-label').style.display = 'none';
     document.getElementById('log-keys').style.display  = 'none';
-    currentSlug = slug || null;
-    if (currentSlug) loadKeymapForSlug(currentSlug);
     iframe.src = src;
     iframe.style.display = 'block';
   },

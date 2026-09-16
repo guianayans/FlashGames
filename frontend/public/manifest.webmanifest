@@ -1,7 +1,7 @@
 {
   "name": "FlashGames",
   "short_name": "FlashGames",
-  "description": "Jogos em Flash no navegador via Ruffle, com controles de toque e save por usuario.",
+  "description": "Emuladores de console retro no navegador (SNES, NES, Mega Drive, GBA), com controles de toque.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

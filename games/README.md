@@ -1,4 +1,9 @@
-# Como adicionar um novo jogo
+> **Descontinuado.** O app abandonou Flash/Ruffle — os jogos `.swf` desta
+> pasta ficam aqui no disco (nada foi apagado) mas não aparecem mais na
+> biblioteca. Pra adicionar jogos agora (ROMs de emulador), ver
+> `/pendriver/FlashGames/ROMS.md`.
+
+# Como adicionar um novo jogo (legado, Flash)
 
 Esta pasta e montada dentro do container (bind mount), entao voce pode adicionar
 jogos direto no servidor em `/pendriver/FlashGames/games/` sem precisar rebuildar

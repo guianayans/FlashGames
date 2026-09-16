@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": "http://localhost:4070",
-      "/games": "http://localhost:4070",
+      "/roms": "http://localhost:4070",
       "/vendor": "http://localhost:4070",
     },
   },

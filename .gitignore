@@ -14,11 +14,19 @@ data/
 # manifest.json de cada jogo continua versionado normalmente.
 games/**/*.swf
 
+# ROMs de console (SNES/NES/Genesis/GBA) - mesmo motivo do .swf acima:
+# direitos autorais nao sao nossos pra redistribuir, ficam so no servidor
+# (bind mount, ver docker-compose.yml). Ver ROMS.md pra como adicionar.
+/SNES/
+/NES/
+/GENESIS/
+/GBA/
+
 # Fonte bruta (1.4MB) da imagem de fundo do modo retrato - a versao otimizada
 # (.webp, ~86KB) que o app de fato usa fica em frontend/public/images/.
 /imagens/
 
 # Prototipo HTML standalone (1.8MB, com a imagem em base64 embutida) usado
-# como referencia pro layout dos controles do shell - a logica ja foi
-# portada pra frontend/src/components/TouchControls.tsx e Player.tsx.
+# como referencia pro layout dos controles do shell - a copia real usada
+# pelo app fica em frontend/public/GameScreen.html.
 /elementos/

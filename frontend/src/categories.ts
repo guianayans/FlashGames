@@ -17,3 +17,14 @@ export const CATEGORY_META: Record<string, CategoryMeta> = {
 export function categoryMeta(slug: string): CategoryMeta {
   return CATEGORY_META[slug] || { label: slug, color: "#8b8ba7", icon: "○" };
 }
+
+export const SYSTEM_META: Record<string, CategoryMeta> = {
+  SNES: { label: "Super Nintendo", color: "#ff2e6d", icon: "◆" },
+  NES: { label: "NES", color: "#ffb020", icon: "✦" },
+  GENESIS: { label: "Mega Drive", color: "#00d4ff", icon: "▲" },
+  GBA: { label: "Game Boy Advance", color: "#39ff8f", icon: "■" },
+};
+
+export function systemMeta(slug: string): CategoryMeta {
+  return SYSTEM_META[slug] || { label: slug, color: "#8b8ba7", icon: "○" };
+}

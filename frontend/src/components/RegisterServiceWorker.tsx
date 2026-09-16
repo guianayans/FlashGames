@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-/** Registra o service worker do PWA (cache do Ruffle/.swf) só no navegador. */
+/** Registra o service worker do PWA (cache das ROMs/capas) só no navegador. */
 export function RegisterServiceWorker() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;

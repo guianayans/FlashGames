@@ -1,20 +1,21 @@
 // Service worker do FlashGames.
 //
 // Registro minimo (exigido pelo Chrome/Android pra considerar o app
-// instalavel), mas com uma otimizacao real: o Ruffle (ruffle.js + os .wasm,
-// ~30MB), os .swf dos jogos e as capas (.jpg) sao arquivos pesados e
-// praticamente estaticos, entao usamos stale-while-revalidate neles - carrega
-// instantaneo do cache nas proximas visitas, e atualiza o cache em segundo
-// plano (assim, se voce trocar um arquivo de jogo no servidor, o proximo
-// load ja pega a versao nova, so a visita atual que ainda usa a antiga).
+// instalavel), mas com uma otimizacao real: as ROMs e as capas (.jpg) sao
+// arquivos pesados e praticamente estaticos, entao usamos
+// stale-while-revalidate neles - carrega instantaneo do cache nas proximas
+// visitas, e atualiza o cache em segundo plano (assim, se voce trocar um
+// arquivo de jogo no servidor, o proximo load ja pega a versao nova, so a
+// visita atual que ainda usa a antiga). O motor de emulacao (Nostalgist.js
+// + cores) vem de um CDN externo (cross-origin) e nao passa por este SW.
 //
 // Tudo mais (API, HTML, JS/CSS do app) passa direto pra rede, sem cache, pra
 // nunca servir uma versao velha da tela ou de dado dinamico (saves, sessao).
 // As fontes (self-hosted, /fonts/) tambem sao cacheadas: nunca mudam de
 // conteudo pro mesmo caminho, entao dispensam revalidacao (cache-first).
 
-const CACHE_NAME = "flashgames-assets-v2";
-const REVALIDATE_RE = /\/vendor\/ruffle\/|\/games\/.+\.(swf|jpg|jpeg|png|webp)$/;
+const CACHE_NAME = "flashgames-assets-v4";
+const REVALIDATE_RE = /\/roms\/.+\.(zip|sfc|smc|nes|md|gen|bin|gba|jpg|jpeg|png|webp)$/;
 const CACHE_FIRST_RE = /\/fonts\/.+\.woff2?$/;
 
 self.addEventListener("install", () => {

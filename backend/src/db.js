@@ -30,12 +30,12 @@ db.exec(`
     PRIMARY KEY (user_id, game_slug)
   );
 
-  -- Remapeamento de teclas do GameScreen.html (botoes X/Y/A/B/FN/SEL/START):
-  -- um por JOGO, compartilhado entre TODOS os usuarios (nao por conta) —
-  -- pra quem configurar uma vez, todo mundo reaproveita o mesmo mapeamento
-  -- pra aquele jogo dali em diante.
-  CREATE TABLE IF NOT EXISTS game_keymaps (
-    game_slug TEXT PRIMARY KEY,
+  -- Remapeamento de teclas do GameScreen.html (botoes X/Y/A/B/L/R/FN/SEL/
+  -- START): agora um UNICO mapeamento global (nao mais por jogo, ja que
+  -- botao fisico -> botao de console e sempre o mesmo em qualquer jogo de
+  -- qualquer sistema), compartilhado entre TODOS os usuarios.
+  CREATE TABLE IF NOT EXISTS control_keymap (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
     keymap TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );

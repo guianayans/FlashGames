@@ -1,7 +1,7 @@
 # FlashGames — atras do Traefik (Coolify), no mesmo padrao dos outros apps em /pendriver.
-# Build a partir de /pendriver/FlashGames; os jogos ficam em
-# /pendriver/FlashGames/games (bind mount, da pra adicionar jogo novo sem
-# rebuildar a imagem).
+# Build a partir de /pendriver/FlashGames; as ROMs ficam em pastas por
+# sistema na raiz do projeto (/pendriver/FlashGames/SNES, /NES, /GENESIS,
+# /GBA — bind mount, da pra adicionar ROM nova sem rebuildar a imagem).
 
 services:
   flashgames:
@@ -11,13 +11,16 @@ services:
       dockerfile: Dockerfile
     working_dir: /app
     volumes:
-      - /pendriver/FlashGames/games:/app/games
+      - /pendriver/FlashGames/SNES:/app/roms/SNES
+      - /pendriver/FlashGames/NES:/app/roms/NES
+      - /pendriver/FlashGames/GENESIS:/app/roms/GENESIS
+      - /pendriver/FlashGames/GBA:/app/roms/GBA
       - flashgames_data:/app/data
     environment:
       NODE_ENV: production
       PORT: "4070"
       DATA_DIR: /app/data
-      GAMES_DIR: /app/games
+      ROMS_DIR: /app/roms
       SESSION_SECRET: ${SESSION_SECRET:?Defina SESSION_SECRET no Coolify/.env (string aleatoria longa)}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://flashgames.gvtserver.online}
     restart: unless-stopped
