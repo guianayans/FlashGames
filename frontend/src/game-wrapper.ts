@@ -12,6 +12,7 @@
 //      -> botao-de-console e sempre o mesmo em qualquer jogo de qualquer
 //      sistema, entao nao existe remap por manifest aqui
 import { api } from "./api";
+import { systemMeta } from "./categories";
 import { loadEmulator } from "./loadEmulatorScript";
 import type { Nostalgist } from "nostalgist";
 
@@ -168,6 +169,22 @@ function hideLoadingOverlay() {
   document.getElementById("loading-overlay")?.classList.add("hidden");
 }
 
+// Icone do console do jogo (ver frontend/public/images/consoles/) pulando
+// no lugar do spinner generico, mesmo criterio do player desktop
+// (Player.tsx/styles.css) — so em DOM/CSS puro aqui (essa pagina nao usa
+// React). Sem icone cadastrado pro sistema, o spinner original continua
+// visivel (fica escondido por padrao no HTML, ver game-wrapper.html).
+function setLoadingIcon(system: string) {
+  const iconImage = systemMeta(system).iconImage;
+  if (!iconImage) return;
+  const img = document.getElementById("loading-icon-img") as HTMLImageElement | null;
+  const stage = document.getElementById("loading-icon-stage");
+  const spinner = document.getElementById("loading-spinner");
+  if (img) img.src = iconImage;
+  stage?.classList.remove("hidden");
+  spinner?.classList.add("hidden");
+}
+
 async function main() {
   const stage = document.getElementById("stage");
   if (!stage || !slug) return;
@@ -177,6 +194,7 @@ async function main() {
   // especialmente ruim no mobile, sem devtools a mao.
   try {
     const { game } = await api.getGame(slug);
+    setLoadingIcon(game.system);
 
     const canvas = document.createElement("canvas");
     // object-fit:contain preserva a proporcao original do jogo sem cortar

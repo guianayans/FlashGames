@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
+import { systemMeta } from "../categories";
 import type { GameDetail, SystemLauncher } from "../types";
 
 // Proporcao nativa de cada console — usada pra dimensionar o palco do jogo
@@ -451,7 +452,20 @@ function DesktopPlayer({ slug }: { slug: string }) {
         <div className="player-stage" ref={stageRef} />
         {loading && !error && (
           <div className="player-loading-overlay">
-            <div className="player-loading-spinner" />
+            <div className="player-loading-icon-stage">
+              {game && systemMeta(game.system).iconImage ? (
+                <>
+                  <img
+                    src={systemMeta(game.system).iconImage}
+                    alt=""
+                    className="player-loading-icon-img"
+                  />
+                  <div className="player-loading-icon-shadow" />
+                </>
+              ) : (
+                <div className="player-loading-spinner" />
+              )}
+            </div>
             <div className="player-loading-bar">
               <div className="player-loading-bar-fill" style={{ width: `${Math.round(loadProgress * 100)}%` }} />
             </div>
