@@ -13,6 +13,22 @@ export interface EmulatorConfig {
   canvas: HTMLCanvasElement;
 }
 
+// O Nostalgist, quando o "rom"/"bios" que a gente manda NAO e' uma URL
+// absoluta (comeca com "http(s)://" ou "//"), tenta ser "esperto": pela
+// extensao do arquivo, monta sozinho uma URL pra um repositorio de ROMs
+// homebrew dele no GitHub (ex: qualquer ".bin" vira
+// cdn.jsdelivr.net/.../retrobrews/md-games/...) — um atalho pensado pra
+// quem passa so um nome de arquivo solto tipo "flappybird.nes" sem
+// backend proprio. Isso NUNCA e' o que a gente quer (os nossos arquivos
+// sao sempre nossos, servidos pelo nosso backend em /roms/...) e derrubou
+// silenciosamente jogos de PS1 com faixa em .bin separada (o .cue carrega,
+// mas a faixa vem de um 404 de um jogo de Genesis aleatorio do GitHub).
+// Resolvendo pra URL absoluta (com origin) ANTES de mandar pro Nostalgist
+// a gente desliga esse "adivinhador" de vez, pra qualquer sistema/extensao.
+function toAbsoluteUrl(relativeOrAbsolute: string): string {
+  return new URL(relativeOrAbsolute, window.location.origin).href;
+}
+
 // Nostalgist.js roda os mesmos cores libretro/RetroArch que o EmulatorJS
 // usava por baixo dos panos, mas SEM nenhuma UI propria (sem menu, sem
 // gamepad de toque) — a gente e quem desenha/controla tudo. Cada metodo
@@ -21,8 +37,9 @@ export interface EmulatorConfig {
 // nao guardados numa tabela de funcoes soltas) pra preservar o `this`
 // interno da classe.
 export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> {
-  const rom =
-    config.romExtras && config.romExtras.length > 0 ? [config.romUrl, ...config.romExtras] : config.romUrl;
+  const romUrl = toAbsoluteUrl(config.romUrl);
+  const romExtras = (config.romExtras || []).map(toAbsoluteUrl);
+  const rom = romExtras.length > 0 ? [romUrl, ...romExtras] : romUrl;
   const opts = { rom, element: config.canvas };
   switch (config.launcher) {
     case "snes":
@@ -46,7 +63,7 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
       // segue sem bios mesmo (loga um aviso, mas nao trava o launch).
       let bios: string[] = [];
       try {
-        bios = (await api.listBios()).files;
+        bios = (await api.listBios()).files.map(toAbsoluteUrl);
       } catch {
         // sem bios configurada ainda - segue sem, RetroArch vai reclamar
         // sozinho na tela se o jogo realmente precisar de uma.
