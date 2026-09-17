@@ -576,6 +576,14 @@ function SaveStateMenu({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  // Salvar/carregar/apagar um slot sempre pede confirmacao antes — os
+  // tres podem destruir progresso (salvar por cima, carregar troca o
+  // estado atual do jogo, apagar e' definitivo). So' guarda qual acao
+  // esta pendente (null = nenhum dialogo aberto).
+  const [confirmAction, setConfirmAction] = useState<{ type: "save" | "load" | "delete"; slot: number } | null>(null);
+  const confirmActionRef = useRef(confirmAction);
+  confirmActionRef.current = confirmAction;
+
   async function refresh() {
     try {
       const res = await api.listSaveStates(slug);
@@ -706,6 +714,16 @@ function SaveStateMenu({
       }
       if (gp) {
         setGpActive(true);
+
+        // Dialogo de confirmar salvar/carregar/apagar aberto: o controle
+        // vira dele (ele le o gamepad sozinho, ver ConfirmDialog) — nao
+        // pode continuar mexendo nos botoes do menu por tras ao mesmo
+        // tempo.
+        if (confirmActionRef.current) {
+          raf = requestAnimationFrame(poll);
+          return;
+        }
+
         const [ax, ay] = gp.axes;
         const left = !!gp.buttons[14]?.pressed || (typeof ax === "number" && ax < -GAMEPAD_STICK_DEAD);
         const right = !!gp.buttons[15]?.pressed || (typeof ax === "number" && ax > GAMEPAD_STICK_DEAD);
@@ -811,7 +829,7 @@ function SaveStateMenu({
                     disabled={busy}
                     className={gpActive && focusedKey === `${slot}:save` ? "bp-focused" : ""}
                     data-gp-id={`${slot}:save`}
-                    onClick={() => handleSave(slot)}
+                    onClick={() => setConfirmAction({ type: "save", slot })}
                   >
                     Salvar
                   </button>
@@ -822,7 +840,7 @@ function SaveStateMenu({
                         disabled={busy}
                         className={gpActive && focusedKey === `${slot}:load` ? "bp-focused" : ""}
                         data-gp-id={`${slot}:load`}
-                        onClick={() => handleLoad(slot)}
+                        onClick={() => setConfirmAction({ type: "load", slot })}
                       >
                         Carregar
                       </button>
@@ -831,7 +849,7 @@ function SaveStateMenu({
                         disabled={busy}
                         className={gpActive && focusedKey === `${slot}:delete` ? "bp-focused" : ""}
                         data-gp-id={`${slot}:delete`}
-                        onClick={() => handleDelete(slot)}
+                        onClick={() => setConfirmAction({ type: "delete", slot })}
                       >
                         Apagar
                       </button>
@@ -843,6 +861,30 @@ function SaveStateMenu({
           })}
         </div>
       </div>
+      {confirmAction &&
+        (() => {
+          const { type, slot } = confirmAction;
+          const filled = bySlot.has(slot);
+          const message =
+            type === "save"
+              ? `Salvar no slot ${slot}${filled ? " (substitui o que ja esta salvo)" : ""}?`
+              : type === "load"
+                ? `Carregar o slot ${slot}? O progresso atual do jogo sera perdido.`
+                : `Apagar o slot ${slot}? Essa acao nao pode ser desfeita.`;
+          return (
+            <ConfirmDialog
+              message={message}
+              confirmLabel={type === "delete" ? "Apagar" : "Sim"}
+              onConfirm={() => {
+                setConfirmAction(null);
+                if (type === "save") handleSave(slot);
+                else if (type === "load") handleLoad(slot);
+                else handleDelete(slot);
+              }}
+              onCancel={() => setConfirmAction(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

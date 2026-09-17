@@ -13,10 +13,13 @@ function normalize(s: string): string {
     .toLowerCase();
 }
 
-// Renderizar os ~2500 cards de uma vez deixava a pagina pesada pra montar,
-// principalmente no celular — pagina em blocos de PAGE_SIZE em vez de
-// jogar tudo no DOM de uma vez.
-const PAGE_SIZE = 48;
+// Cada pagina e' UMA LETRA inteira (A-Z/#), nao um bloco de tamanho fixo
+// cortando o alfabeto no meio — comeca uma letra nova, pagina nova; letra
+// grande demais (mais de LETTER_PAGE_SIZE jogos) so' ai' quebra em mais de
+// uma pagina pra nao pesar o DOM (~2500 cards de uma vez deixava a pagina
+// pesada pra montar, principalmente no celular). Testando 100 por pagina
+// (antes era 48 fixo, sem alinhar com letra nenhuma).
+const LETTER_PAGE_SIZE = 100;
 
 // "#" agrupa titulos que comecam com numero (bem comuns nessa colecao, ex.
 // "3 Ninjas Kick Back") — sem isso ficariam de fora do filtro por letra.
@@ -367,12 +370,43 @@ export default function Library() {
     return set;
   }, [games]);
 
-  const pageCount = groupedByConsole ? 1 : Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Pagina = 1 letra inteira (ver LETTER_PAGE_SIZE la em cima). Pra isso
+  // fazer sentido a lista precisa estar em ordem alfabetica de verdade —
+  // o backend devolve capa-primeiro-depois-sem-capa (cada bloco alfabetico
+  // por dentro, ver gamesLibrary.js), entao reordena aqui so' pra decidir
+  // as paginas (a ordem visual dentro de cada pagina tambem sai daqui).
+  // Letras fora do A-Z/# (raro, titulo comecando com simbolo) entram no
+  // fim, ordenadas entre si, pra nenhum jogo sumir sem pagina nenhuma.
+  const letterPages = useMemo(() => {
+    if (groupedByConsole) return [];
+    const sorted = [...filtered].sort((a, b) => a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" }));
+    const buckets = new Map<string, GameSummary[]>();
+    for (const g of sorted) {
+      const key = titleBucket(g.title);
+      const list = buckets.get(key);
+      if (list) list.push(g);
+      else buckets.set(key, [g]);
+    }
+    const extraKeys = Array.from(buckets.keys())
+      .filter((k) => !ALPHABET.includes(k))
+      .sort();
+    const pages: GameSummary[][] = [];
+    for (const letter of [...ALPHABET, ...extraKeys]) {
+      const letterGames = buckets.get(letter);
+      if (!letterGames || letterGames.length === 0) continue;
+      for (let i = 0; i < letterGames.length; i += LETTER_PAGE_SIZE) {
+        pages.push(letterGames.slice(i, i + LETTER_PAGE_SIZE));
+      }
+    }
+    return pages;
+  }, [filtered, groupedByConsole]);
+
+  const pageCount = groupedByConsole ? 1 : Math.max(1, letterPages.length);
   const pageSafe = Math.min(page, pageCount);
   const paged = useMemo(() => {
     if (groupedByConsole) return filtered.filter((g) => !collapsedSystems.has(g.system));
-    return filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
-  }, [filtered, pageSafe, groupedByConsole, collapsedSystems]);
+    return letterPages[pageSafe - 1] ?? [];
+  }, [filtered, letterPages, pageSafe, groupedByConsole, collapsedSystems]);
 
   // Refs "espelho" pros valores que o loop de poll do gamepad precisa —
   // assim o efeito abaixo roda so UMA vez (nao precisa reconectar os
