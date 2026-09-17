@@ -616,13 +616,13 @@ export default function Library() {
     }
   }
 
-  // L2/R2 alternam entre os filtros (Todos/Favoritos/Top Games/Recentes/
-  // cada sistema), na mesma ordem em que os chips aparecem na tela — ao
+  // L1/R1 alternam entre os filtros (Todos/Recentes/Favoritos/Top Games/
+  // cada sistema), na MESMA ordem em que os chips aparecem na tela — ao
   // contrario do X num chip focado (que so alterna liga/desliga O MESMO
   // filtro), aqui sempre anda pra frente/tras na lista inteira, dando a
   // volta nas pontas.
   function chipOrder(): string[] {
-    return ["chip:todos", "chip:fav", "chip:top", "chip:recent", ...systemsRef.current.map(([slug]) => `chip:system:${slug}`)];
+    return ["chip:todos", "chip:recent", "chip:fav", "chip:top", ...systemsRef.current.map(([slug]) => `chip:system:${slug}`)];
   }
   function currentChipKey(): string {
     const sp = searchParamsRef.current;
@@ -668,6 +668,15 @@ export default function Library() {
       right: { held: false, nextAt: 0 },
     };
     const btnState: Record<number, boolean> = {};
+    // Enquanto o dialogo de confirmar desfavoritar esta aberto, o poll
+    // abaixo retorna cedo (ver confirmUnfavoriteRef) sem NUNCA atualizar
+    // btnState — se o botao que confirmou la dentro (X/Sim) ainda
+    // estiver fisicamente pressionado no frame em que o dialogo fecha,
+    // btnState[0] continua "false" (congelado de antes de abrir), entao
+    // a grade de fundo interpretava como um clique NOVO e abria o jogo
+    // focado na hora, logo depois de desfavoritar. wasGatedByConfirm
+    // marca que precisa resincronizar sem agir no primeiro frame livre.
+    let wasGatedByConfirm = false;
 
     function onConnected(e: GamepadEvent) {
       gpIndex = e.gamepad.index;
@@ -740,6 +749,18 @@ export default function Library() {
         // (ConfirmDialog le o gamepad sozinho) — a grade de fundo nao
         // pode continuar respondendo ao mesmo tempo.
         if (confirmUnfavoriteRef.current) {
+          wasGatedByConfirm = true;
+          raf = requestAnimationFrame(poll);
+          return;
+        }
+        if (wasGatedByConfirm) {
+          // Primeiro frame livre depois do dialogo fechar — so'
+          // resincroniza o que esta pressionado agora, sem agir (ver
+          // comentario em wasGatedByConfirm la em cima).
+          wasGatedByConfirm = false;
+          [0, 1, 2, 3, 4, 5, 6, 7, 9].forEach((idx) => {
+            btnState[idx] = pressedNow(idx);
+          });
           raf = requestAnimationFrame(poll);
           return;
         }
