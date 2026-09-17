@@ -346,6 +346,14 @@ function DesktopPlayer({ slug }: { slug: string }) {
 
   const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef, toggleFullscreen);
 
+  // Progresso de carregamento (0..1) — so PS1/PS2 reportam de verdade (ver
+  // loadEmulatorScript.ts, prefetchWithProgress); os outros sistemas nunca
+  // chamam onProgress, entao a barra so fica visivel enquanto "loading"
+  // ainda e' true, sem se preocupar com o numero exato nesses casos (jogo
+  // pequeno, carrega rapido demais pra reparar mesmo).
+  const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(0);
+
   // Esconde o cursor do mouse depois de parado uns segundos em cima da
   // tela do jogo (padrao de player de video/jogo) — reaparece assim que
   // mexe de novo. So dentro do palco (fora dele, ex. na topbar, o cursor
@@ -369,6 +377,8 @@ function DesktopPlayer({ slug }: { slug: string }) {
   useEffect(() => {
     setGame(null);
     setError(null);
+    setLoading(true);
+    setLoadProgress(0);
 
     let cancelled = false;
 
@@ -391,14 +401,19 @@ function DesktopPlayer({ slug }: { slug: string }) {
           romUrl: detail.rom,
           romExtras: detail.romExtras,
           canvas,
+          onProgress: (f) => !cancelled && setLoadProgress(f),
         });
         if (cancelled) {
           instance.exit();
           return;
         }
         nostalgistRef.current = instance;
+        setLoading(false);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Erro ao carregar o jogo");
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Erro ao carregar o jogo");
+          setLoading(false);
+        }
       }
     }
 
@@ -435,6 +450,15 @@ function DesktopPlayer({ slug }: { slug: string }) {
         }}
       >
         <div className="player-stage" ref={stageRef} />
+        {loading && !error && (
+          <div className="player-loading-overlay">
+            <div className="player-loading-spinner" />
+            <div className="player-loading-bar">
+              <div className="player-loading-bar-fill" style={{ width: `${Math.round(loadProgress * 100)}%` }} />
+            </div>
+            <div className="player-loading-pct">{Math.round(loadProgress * 100)}%</div>
+          </div>
+        )}
         <button
           type="button"
           className="player-fullscreen-btn"

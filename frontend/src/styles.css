@@ -1078,6 +1078,59 @@ a {
   height: 100%;
 }
 
+/* Overlay de carregamento (ver DesktopPlayer, onProgress) — spinner +
+   barra de 0-100%. A barra so anda de verdade pra PS1/PS2 (unicos
+   sistemas que reportam progresso real, ver loadEmulatorScript.ts); nos
+   outros fica em 0% ate sumir de vez (jogo pequeno, carrega rapido
+   demais pra reparar). */
+.player-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #050308;
+}
+
+.player-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 229, 255, 0.15);
+  border-top-color: var(--cyan);
+  animation: player-loading-spin 0.9s linear infinite;
+}
+
+@keyframes player-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.player-loading-bar {
+  width: min(220px, 60%);
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.player-loading-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), var(--magenta));
+  transition: width 0.2s ease;
+}
+
+.player-loading-pct {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+
 /* Em tela cheia, o WRAPPER inteiro (nao so o canvas) e' o elemento que
    entra em fullscreen — refaz o mesmo calculo de "cresce sem distorcer"
    de cima, so que contra o viewport inteiro (sem o desconto do topbar),

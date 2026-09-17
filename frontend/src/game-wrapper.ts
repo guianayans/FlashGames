@@ -156,6 +156,18 @@ function showError(stage: HTMLElement, message: string) {
     `font:14px/1.4 system-ui,sans-serif;text-align:center;">${message}</div>`;
 }
 
+function setLoadProgress(fraction: number) {
+  const fill = document.getElementById("loading-bar-fill");
+  const pct = document.getElementById("loading-pct");
+  const percent = Math.round(fraction * 100);
+  if (fill) fill.style.width = `${percent}%`;
+  if (pct) pct.textContent = `${percent}%`;
+}
+
+function hideLoadingOverlay() {
+  document.getElementById("loading-overlay")?.classList.add("hidden");
+}
+
 async function main() {
   const stage = document.getElementById("stage");
   if (!stage || !slug) return;
@@ -177,9 +189,12 @@ async function main() {
       romUrl: game.rom,
       romExtras: game.romExtras,
       canvas,
+      onProgress: setLoadProgress,
     });
+    hideLoadingOverlay();
   } catch (err) {
     console.error("[game-wrapper] falha ao carregar o jogo", err);
+    hideLoadingOverlay();
     showError(stage, err instanceof Error ? err.message : "Erro ao carregar o jogo");
   }
 }

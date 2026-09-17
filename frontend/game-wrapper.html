@@ -20,11 +20,68 @@
       #stage {
         width: 100%;
         height: 100%;
+        position: relative;
+      }
+      /* Overlay de carregamento (ver game-wrapper.ts, onProgress) — mesmo
+         padrao visual do player desktop (Player.tsx/styles.css), so em
+         CSS/DOM puro aqui (esta pagina nao usa React). A barra so anda de
+         verdade pra PS1/PS2 (unicos sistemas com progresso real, ver
+         loadEmulatorScript.ts) — nos outros fica parada em 0% ate sumir. */
+      #loading-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: #050308;
+      }
+      #loading-overlay.hidden {
+        display: none;
+      }
+      #loading-spinner {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 3px solid rgba(0, 229, 255, 0.15);
+        border-top-color: #00e5ff;
+        animation: loading-spin 0.9s linear infinite;
+      }
+      @keyframes loading-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      #loading-bar {
+        width: min(220px, 60%);
+        height: 5px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+      }
+      #loading-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #00e5ff, #ff2e9a);
+        transition: width 0.2s ease;
+      }
+      #loading-pct {
+        font: 0.75rem system-ui, sans-serif;
+        letter-spacing: 0.04em;
+        color: rgba(255, 255, 255, 0.5);
       }
     </style>
   </head>
   <body>
-    <div id="stage"></div>
+    <div id="stage">
+      <div id="loading-overlay">
+        <div id="loading-spinner"></div>
+        <div id="loading-bar"><div id="loading-bar-fill"></div></div>
+        <div id="loading-pct">0%</div>
+      </div>
+    </div>
     <script type="module" src="/src/game-wrapper.ts"></script>
   </body>
 </html>
