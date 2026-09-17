@@ -633,36 +633,71 @@ export default function Library() {
     const cur = currentEl.getBoundingClientRect();
     const curCx = cur.left + cur.width / 2;
     const curCy = cur.top + cur.height / 2;
+    // 0 se as faixas se sobrepoem, senao a distancia entre as bordas mais
+    // proximas (nao centro-a-centro) — usado tanto pra decidir "mesma
+    // linha" (esquerda/direita, ver embaixo) quanto como penalidade no
+    // eixo cruzado de cima/baixo.
+    const rangeGap = (aStart: number, aEnd: number, bStart: number, bEnd: number) => {
+      if (aEnd < bStart) return bStart - aEnd;
+      if (bEnd < aStart) return aStart - bEnd;
+      return 0;
+    };
+
+    if (dir === "left" || dir === "right") {
+      // Esquerda/direita fica ESTRITAMENTE na mesma linha visual (faixa
+      // vertical se sobrepondo com a do foco atual) — um cabecalho de card
+      // expansivel (cobre a largura inteira do grupo) ou a barra de busca
+      // podiam "cortar caminho": o CENTRO deles calhava mais perto
+      // horizontalmente do proximo item de verdade do que o proprio item,
+      // e a antiga penalidade vertical (so multiplicava a distancia, nao
+      // desclassificava) nao bastava pra evitar — apertar direita/esquerda
+      // desviava pra cima/baixo antes de pousar no vizinho certo (ex: 2o
+      // pro 3o jogo da fileira subia pro cabecalho do card no meio do
+      // caminho). Sem candidato na mesma linha (ponta da fileira), NAO cai
+      // mais pra qualquer coisa da pagina — so os chips de filtro dao a
+      // volta (ver chipOrder/cycleChip, mesma ordem do L1/R1); os demais
+      // (jogos etc.) simplesmente param, sobra pro up/down levar pra fora.
+      let best: HTMLElement | null = null;
+      let bestScore = Infinity;
+      for (const el of all) {
+        if (el === currentEl) continue;
+        const r = el.getBoundingClientRect();
+        if (rangeGap(cur.top, cur.bottom, r.top, r.bottom) !== 0) continue;
+        const dxCenter = r.left + r.width / 2 - curCx;
+        if (dir === "right" ? dxCenter <= 4 : dxCenter >= -4) continue;
+        const score = dir === "right" ? dxCenter : -dxCenter;
+        if (score < bestScore) {
+          bestScore = score;
+          best = el;
+        }
+      }
+      if (best?.dataset.bpId) {
+        focusId(best.dataset.bpId);
+        return;
+      }
+      if (currentId?.startsWith("chip:")) {
+        const order = chipOrder();
+        const idx = order.indexOf(currentId);
+        if (idx !== -1) {
+          const nextIdx = (idx + (dir === "right" ? 1 : -1) + order.length) % order.length;
+          focusId(order[nextIdx]);
+        }
+      }
+      return;
+    }
+
+    // Cima/baixo continua cobrindo a pagina inteira por vizinho mais
+    // proximo (de proposito — e' assim que se desce dos chips pra grade,
+    // sobe de um jogo pro cabecalho do proprio card etc.), com peso maior
+    // no eixo cruzado (fica "na mesma coluna") do que esquerda/direita.
     let best: HTMLElement | null = null;
     let bestScore = Infinity;
     for (const el of all) {
       if (el === currentEl) continue;
       const r = el.getBoundingClientRect();
-      const dxCenter = r.left + r.width / 2 - curCx;
       const dyCenter = r.top + r.height / 2 - curCy;
-      // Penalidade no eixo PERPENDICULAR usa a distancia entre as BORDAS
-      // (0 se as faixas se sobrepoem), nao centro-a-centro — sem isso, o
-      // cabeçalho do card mais proximo dos filtros (que cobre a largura
-      // inteira do grupo) media uma distancia horizontal GRANDE ate um
-      // jogo numa coluna extrema (comparado ao proprio CENTRO do
-      // cabeçalho), perdendo pra um chip de filtro estreito que por
-      // acaso calha de ficar alinhado com aquela coluna — apertar pra
-      // cima de um jogo no topo pulava pros filtros em vez de ir pro
-      // cabeçalho do proprio card (so acontecia no card mais alto, os de
-      // baixo tem o filtro longe o bastante pra nao competir).
-      const rangeGap = (aStart: number, aEnd: number, bStart: number, bEnd: number) => {
-        if (aEnd < bStart) return bStart - aEnd;
-        if (bEnd < aStart) return aStart - bEnd;
-        return 0;
-      };
       let score: number;
-      if (dir === "right") {
-        if (dxCenter <= 4) continue;
-        score = dxCenter + rangeGap(cur.top, cur.bottom, r.top, r.bottom) * 4;
-      } else if (dir === "left") {
-        if (dxCenter >= -4) continue;
-        score = -dxCenter + rangeGap(cur.top, cur.bottom, r.top, r.bottom) * 4;
-      } else if (dir === "down") {
+      if (dir === "down") {
         if (dyCenter <= 4) continue;
         score = dyCenter + rangeGap(cur.left, cur.right, r.left, r.right) * 1.2;
       } else {
@@ -1268,6 +1303,18 @@ export default function Library() {
             ref={searchInputRef}
             value={query}
             onChange={(e) => updateFilters({ q: e.target.value || null })}
+            onKeyDown={(e) => {
+              // Esc tira o foco de verdade do campo (o guard do atalho de
+              // setas/Enter/Espaco ignora INPUT/TEXTAREA de proposito, pra
+              // nao atrapalhar digitar) e volta a navegacao espacial pra
+              // onde a busca fica (mesmo chip que o "digitar ja pesquisa"
+              // usa pra focar aqui, ver useEffect mais acima).
+              if (e.key === "Escape") {
+                e.currentTarget.blur();
+                setKeyboardNavActive(true);
+                focusId("search");
+              }
+            }}
             placeholder="Buscar jogos..."
             aria-label="Buscar jogos"
           />
