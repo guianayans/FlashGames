@@ -57,13 +57,15 @@ export default function Library() {
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const [alphaOpen, setAlphaOpen] = useState(false);
 
-  // Modo "Big Picture" — navegar a biblioteca inteira sem mouse/toque,
-  // so com o controle fisico. Aparece sozinho quando um gamepad e'
-  // detectado (mesma logica do player, ver Player.tsx). Select liga/
-  // desliga (o gamepad continua "conectado" — so pausa a navegacao).
+  // Modo "Big Picture" — navegar a biblioteca inteira sem mouse/toque, so
+  // com o controle fisico. Liga sozinho ao apertar QUALQUER botao/
+  // analogico do controle (mesmo se ja estava "pausado" por ter usado
+  // teclado/mouse depois); desliga sozinho ao digitar no teclado ou
+  // mexer o mouse — sem toggle manual (Select nao faz mais nada aqui,
+  // fica livre pra abrir o menu de save state dentro do jogo).
   const [gamepadActive, setGamepadActive] = useState(false);
   const [gamepadName, setGamepadName] = useState<string | null>(null);
-  const [bigPictureOn, setBigPictureOn] = useState(true);
+  const [bigPictureOn, setBigPictureOn] = useState(false);
   // Id unificado de foco — cobre a pagina inteira, nao so os cards:
   // "search", "alpha-trigger", "chip:todos"/"chip:fav"/"chip:top"/
   // "chip:system:<slug>", "card:<slug>", "page:prev"/"page:next".
@@ -496,10 +498,14 @@ export default function Library() {
       if (gp) {
         const pressedNow = (idx: number) => !!gp!.buttons[idx]?.pressed;
 
-        // Select (8) liga/desliga o modo Big Picture inteiro — funciona
-        // sempre, mesmo com ele desligado (senao nao tinha como religar).
-        if (pressedNow(8) && !btnState[8]) setBigPictureOn((v) => !v);
-        btnState[8] = pressedNow(8);
+        // Qualquer botao ou analogico religa o Big Picture sozinho, mesmo
+        // que tenha sido desligado por causa de teclado/mouse (ver
+        // useEffect de baixo) — nao precisa de toggle manual.
+        if (!bigPictureOnRef.current) {
+          const anyButton = gp.buttons.some((b) => b.pressed);
+          const anyStick = gp.axes.some((a) => Math.abs(a) > 0.5);
+          if (anyButton || anyStick) setBigPictureOn(true);
+        }
 
         if (!bigPictureOnRef.current) {
           raf = requestAnimationFrame(poll);
@@ -575,6 +581,23 @@ export default function Library() {
       cancelAnimationFrame(raf);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Digitar no teclado ou mexer o mouse desliga o Big Picture na hora,
+  // voltando pro modo normal (mouse/toque) — o poll do gamepad acima
+  // religa sozinho assim que o controle for usado de novo.
+  useEffect(() => {
+    function onUserInput() {
+      if (bigPictureOnRef.current) setBigPictureOn(false);
+    }
+    window.addEventListener("keydown", onUserInput);
+    window.addEventListener("mousemove", onUserInput);
+    window.addEventListener("mousedown", onUserInput);
+    return () => {
+      window.removeEventListener("keydown", onUserInput);
+      window.removeEventListener("mousemove", onUserInput);
+      window.removeEventListener("mousedown", onUserInput);
+    };
   }, []);
 
   // Restaura o scroll de onde o usuario parou ao voltar de um jogo (ver
@@ -737,12 +760,7 @@ export default function Library() {
         </div>
 
         <div className="library-user">
-          {gamepadActive && (
-            <span className={`gamepad-badge${bigPictureOn ? "" : " gamepad-badge-paused"}`}>
-              🎮 {gamepadName}
-              {!bigPictureOn && " (pausado — Select religa)"}
-            </span>
-          )}
+          {gamepadActive && <span className="gamepad-badge">🎮 {gamepadName}</span>}
           <button
             type="button"
             className={`library-covers-toggle${originalCovers ? " active" : ""}`}
