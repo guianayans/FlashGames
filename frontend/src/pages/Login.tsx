@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import CyberLogoGlitch from "../components/CyberLogoGlitch";
 
 export default function Login() {
   const { login } = useAuth();
@@ -30,7 +31,7 @@ export default function Login() {
 
       <div className="login-content">
         <div className="login-wordmark">
-          <img src="/logo.png" alt="FlashGames" className="login-logo" />
+          <CyberLogoGlitch text="FLASHGAMES" className="login-logo" />
           <p>Entre com seu usuario pra carregar seus saves e jogar.</p>
         </div>
 

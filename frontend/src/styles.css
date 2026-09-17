@@ -272,15 +272,16 @@ a {
 }
 
 .login-logo {
-  /* width em vez de height: assim o limite e' sempre "nao passar de X% da
-     tela", que e' o que importa pra nao estourar no mobile — a altura
-     acompanha sozinha pela proporcao natural do PNG (nao usa aspect-ratio
-     fixo pra nao depender de manter o valor certo se a imagem trocar). */
-  width: min(360px, 78vw);
-  height: auto;
-  display: block;
-  margin: 0 auto;
-  filter: drop-shadow(0 0 22px rgba(255, 46, 154, 0.45)) drop-shadow(0 0 40px rgba(0, 229, 255, 0.25));
+  /* Era um PNG (width: min(360px, 78vw), altura seguia a proporcao
+     natural da imagem) — virou o componente CyberLogoGlitch, que escala
+     TUDO (icone, texto, sublinhado) a partir de --size. clamp() aqui
+     reproduz o mesmo teto de 360px/78vw de antes, so que em cima do
+     tamanho de fonte em vez da largura da imagem (o glow/drop-shadow
+     proprio do componente ja cobre o brilho que o PNG tinha).
+     !important necessario: o componente seta --size direto no style=
+     inline do proprio elemento (prop "size"), que sem isso vence
+     qualquer regra daqui por especificidade normal. */
+  --size: clamp(18px, 10vw, 48px) !important;
 }
 
 .login-wordmark p {
@@ -415,17 +416,18 @@ a {
 .library-brand {
   /* Fica fora do .library-header (que e' sticky e "some" atras da busca
      quando rola) — assim a logo sempre aparece no topo da pagina, fixa no
-     fluxo normal, nao dentro do container de pesquisa. */
+     fluxo normal, nao dentro do container de pesquisa. text-align:center
+     centraliza o CyberLogoGlitch (inline-flex, nao bloco — nao responde a
+     margin:auto sozinho, ver .login-wordmark, mesmo criterio). */
   margin-top: max(14px, env(safe-area-inset-top, 0px));
   margin-bottom: 4px;
+  text-align: center;
 }
 
 .library-logo {
-  /* Mesmo tamanho da logo na pagina de login (ver .login-logo). */
-  width: min(360px, 78vw);
-  height: auto;
-  display: block;
-  margin: 0 auto;
+  /* Mesmo tamanho da logo na pagina de login — ver .login-logo pro porque
+     do !important. */
+  --size: clamp(18px, 10vw, 48px) !important;
 }
 
 .library-alpha-trigger {
@@ -1728,6 +1730,166 @@ a {
   }
 }
 
+/* ---------- Logo animada (CyberLogoGlitch) ----------
+   Wordmark acido com glitch RGB-split quase continuo + flicker de neon
+   quebrado, mais um icone de controle em line-art com pulso/flicker
+   combinando. Tamanho controlado por --size (px) — ver .library-logo/
+   .login-logo mais abaixo, onde cada pagina define ela via clamp()/vw
+   pra ficar responsiva do mesmo jeito que a logo em PNG de antes era
+   (width: min(360px, 78vw)). */
+.cl-root {
+  --cy: #22d3ff;
+  --pu: #b24bff;
+  --mg: #ff3bd4;
+  --pk: #ff3b6b;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--size) * 0.32);
+  background: transparent;
+  isolation: isolate;
+}
+
+.cl-icon {
+  position: relative;
+  flex: none;
+  filter: drop-shadow(0 0 6px rgba(178, 75, 255, 0.55));
+}
+.cl-icon svg {
+  display: block;
+  overflow: visible;
+}
+.cl-icon-glow {
+  animation: cl-icon-pulse 2s ease-in-out infinite;
+}
+@keyframes cl-icon-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+.cl-icon-dpad {
+  animation: cl-dpad-flicker 1.6s steps(1) infinite;
+}
+@keyframes cl-dpad-flicker {
+  0%, 92%, 100% { opacity: 1; }
+  93% { opacity: 0.3; }
+  95% { opacity: 1; }
+}
+.cl-icon-btn {
+  animation: cl-btn-blink 1.8s ease-in-out infinite;
+}
+.cl-icon-btn.b2 {
+  animation-delay: 0.3s;
+}
+@keyframes cl-btn-blink {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.cl-wordwrap {
+  position: relative;
+  z-index: 6;
+}
+.cl-word {
+  position: relative;
+  margin: 0;
+  font-family: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: var(--size);
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+.cl-word::before,
+.cl-word::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+}
+.cl-word::before {
+  color: var(--cy);
+  z-index: -1;
+  animation: cl-glitch-1 1.1s infinite linear;
+}
+.cl-word::after {
+  color: var(--mg);
+  z-index: -2;
+  animation: cl-glitch-2 0.9s infinite linear;
+}
+
+@keyframes cl-glitch-1 {
+  0% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+  4% { clip-path: inset(10% 0 65% 0); transform: translate(-5px, -2px); }
+  8% { clip-path: inset(55% 0 10% 0); transform: translate(5px, 1px); }
+  12% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+  34% { clip-path: inset(20% 0 55% 0); transform: translate(-4px, 2px); }
+  38% { clip-path: inset(70% 0 5% 0); transform: translate(4px, -1px); }
+  42% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+  66% { clip-path: inset(35% 0 40% 0); transform: translate(-6px, 1px); }
+  70% { clip-path: inset(5% 0 80% 0); transform: translate(6px, -2px); }
+  74% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+  100% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+}
+@keyframes cl-glitch-2 {
+  0% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+  6% { clip-path: inset(60% 0 15% 0); transform: translate(5px, 2px); }
+  10% { clip-path: inset(15% 0 60% 0); transform: translate(-5px, -1px); }
+  16% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+  40% { clip-path: inset(45% 0 30% 0); transform: translate(4px, -2px); }
+  45% { clip-path: inset(5% 0 75% 0); transform: translate(-4px, 1px); }
+  50% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+  72% { clip-path: inset(25% 0 50% 0); transform: translate(6px, 1px); }
+  77% { clip-path: inset(65% 0 10% 0); transform: translate(-6px, -2px); }
+  82% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+  100% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+}
+
+.cl-word span {
+  display: inline-block;
+  background: linear-gradient(100deg, var(--cy) 0%, #4b8bff 25%, var(--pu) 50%, var(--mg) 75%, var(--pk) 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 8px rgba(178, 75, 255, 0.5));
+  animation: cl-gradient-shift 6s ease-in-out infinite, cl-flicker 2.6s infinite;
+}
+@keyframes cl-gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes cl-flicker {
+  0%, 100% { opacity: 1; }
+  3% { opacity: 0.35; }
+  3.5% { opacity: 1; }
+  27% { opacity: 0.2; }
+  27.4% { opacity: 1; }
+  28% { opacity: 0.6; }
+  28.4% { opacity: 1; }
+  61% { opacity: 0.3; }
+  61.3% { opacity: 1; }
+  62% { opacity: 0.9; }
+  85% { opacity: 0.4; }
+  85.3% { opacity: 1; }
+}
+
+.cl-underline {
+  margin-top: calc(var(--size) * 0.1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cl-underline-bar {
+  height: 4px;
+  flex: 1;
+  background: repeating-linear-gradient(90deg, var(--cy) 0 8px, var(--pu) 8px 16px, var(--mg) 16px 24px, transparent 24px 30px);
+  filter: drop-shadow(0 0 4px rgba(178, 75, 255, 0.6));
+}
+
 /* ---------- Motion & acessibilidade ---------- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1737,6 +1899,9 @@ a {
   .game-card,
   .game-card-media img {
     transition: none;
+  }
+  .cl-root * {
+    animation: none !important;
   }
 }
 

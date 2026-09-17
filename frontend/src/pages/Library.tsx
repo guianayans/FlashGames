@@ -6,6 +6,7 @@ import type { GameSummary } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { systemMeta } from "../categories";
 import ConfirmDialog from "../components/ConfirmDialog";
+import CyberLogoGlitch from "../components/CyberLogoGlitch";
 
 // Tela pequena (mesmo corte de 700px usado no resto do CSS pra layout
 // mobile) — cards expansiveis (Favoritos/Top Games/Recentes) comecam
@@ -1101,7 +1102,7 @@ export default function Library() {
       )}
 
       <div className="library-brand">
-        <img src="/logo.png" alt="FlashGames" className="library-logo" />
+        <CyberLogoGlitch text="FLASHGAMES" className="library-logo" />
       </div>
 
       <header className="library-header glass">
