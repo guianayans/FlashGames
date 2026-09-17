@@ -41,10 +41,17 @@ self.addEventListener("fetch", (event) => {
   // respostas opacas de requisições cross-origin refeitas via SW.
   if (url.origin !== self.location.origin) return;
 
-  if (event.request.method !== "GET") {
-    event.respondWith(fetch(event.request));
-    return;
-  }
+  // Pra tudo que a gente NAO quer cachear (API, HTML, JS/CSS, navegacao
+  // de pagina como /play/:slug), a melhor forma de "deixar passar direto"
+  // e' simplesmente NAO chamar event.respondWith() — sem isso, o browser
+  // trata a requisicao normal, direto, sem o SW no meio. Chamar
+  // event.respondWith(fetch(event.request)) pra esses casos (como tinha
+  // antes) da "TypeError: Failed to fetch" em navegacao de pagina no
+  // Chrome quando o pedido envolve redirect (ex: HTTPS/HSTS do proxy) —
+  // o SW nao pode reencaminhar um response redirecionado pra uma
+  // navegacao do jeito que event.respondWith exige, e a pagina falha ao
+  // carregar (tela preta, precisa recarregar sozinha).
+  if (event.request.method !== "GET") return;
 
   if (CACHE_FIRST_RE.test(url.pathname)) {
     event.respondWith(
@@ -59,10 +66,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (!REVALIDATE_RE.test(url.pathname)) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
+  if (!REVALIDATE_RE.test(url.pathname)) return;
 
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
