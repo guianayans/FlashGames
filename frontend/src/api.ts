@@ -47,6 +47,15 @@ export const api = {
   removeFavorite(slug: string) {
     return request<{ ok: true }>(`/api/favorites/${slug}`, { method: "DELETE" });
   },
+  getPreferences() {
+    return request<{ originalCovers: boolean }>("/api/preferences");
+  },
+  updatePreferences(originalCovers: boolean) {
+    return request<{ ok: true }>("/api/preferences", {
+      method: "PUT",
+      body: JSON.stringify({ originalCovers }),
+    });
+  },
   getGame(slug: string) {
     return request<{ game: GameDetail }>(`/api/games/${slug}`);
   },

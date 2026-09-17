@@ -675,6 +675,35 @@ a {
   color: var(--text);
 }
 
+/* Toggle discreto de "capas em tamanho original" (ver Library.tsx,
+   toggleOriginalCovers) — so o icone, mesmo criterio visual minimalista
+   do botao de tela cheia do player. */
+.library-covers-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.library-covers-toggle:hover {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+
+.library-covers-toggle.active {
+  border-color: var(--cyan);
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--cyan);
+}
+
 .category-row {
   display: flex;
   gap: 8px;
@@ -735,6 +764,28 @@ a {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 20px;
+}
+
+/* Toggle "capas em tamanho original" (ver .library-covers-toggle): tira o
+   box fixo 8/5 + object-fit:cover da capa, deixando a imagem no proprio
+   tamanho/proporcao, sem cortar nada. align-items:start evita que o grid
+   estique os cards mais baixos pra igualar o mais alto da fileira (cada
+   capa tem sua propria proporcao, entao os cards ficam com alturas
+   diferentes de propósito — like um mosaico). */
+.game-grid.original-covers {
+  align-items: start;
+}
+
+/* So remove a proporcao fixa quando tem capa de verdade (:has(img)) — o
+   fallback (inicial do titulo, sem imagem nenhuma) nao tem tamanho
+   proprio pra herdar, e ficaria com altura zero sem o aspect-ratio. */
+.game-grid.original-covers .game-card-media:has(img) {
+  aspect-ratio: auto;
+}
+
+.game-grid.original-covers .game-card-media img {
+  height: auto;
+  object-fit: contain;
 }
 
 .game-card {

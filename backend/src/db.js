@@ -58,6 +58,15 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, game_slug)
   );
+
+  -- Preferencias de exibicao da biblioteca, por USUARIO (conta) — hoje so
+  -- o toggle de capa em tamanho original (sem cortar pra caber num box
+  -- fixo), ver routes/preferences.js e Library.tsx.
+  CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    original_covers INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 export default db;

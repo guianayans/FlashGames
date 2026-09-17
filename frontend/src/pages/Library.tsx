@@ -38,6 +38,10 @@ export default function Library() {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  // Toggle "capas em tamanho original" — por usuario, salvo no banco (ver
+  // routes/preferences.js), pra continuar valendo em qualquer aparelho
+  // que ele entrar, nao so localStorage deste navegador.
+  const [originalCovers, setOriginalCovers] = useState(false);
 
   // Busca, sistema, favoritos e pagina vivem na URL (searchParams) em vez de
   // useState puro — assim, ao abrir um jogo (navigate) e voltar
@@ -149,11 +153,29 @@ export default function Library() {
       // sem favoritos carregados, so a estrela fica sem estado — nao
       // impede o resto da biblioteca de funcionar.
     }
+    try {
+      const res = await api.getPreferences();
+      setOriginalCovers(res.originalCovers);
+    } catch {
+      // sem preferencia carregada, fica no padrao (capas cortadas) — nao
+      // impede o resto da biblioteca de funcionar.
+    }
   }
 
   useEffect(() => {
     loadLibrary();
   }, []);
+
+  async function toggleOriginalCovers() {
+    const next = !originalCovers;
+    setOriginalCovers(next);
+    try {
+      await api.updatePreferences(next);
+    } catch {
+      // falhou salvar no servidor - a troca visual ja aconteceu, so nao
+      // persiste pra proxima visita/aparelho.
+    }
+  }
 
   const PULL_THRESHOLD = 64;
   const PULL_MAX = 96;
@@ -721,6 +743,20 @@ export default function Library() {
               {!bigPictureOn && " (pausado — Select religa)"}
             </span>
           )}
+          <button
+            type="button"
+            className={`library-covers-toggle${originalCovers ? " active" : ""}`}
+            onClick={toggleOriginalCovers}
+            aria-pressed={originalCovers}
+            aria-label={originalCovers ? "Usar capas cortadas" : "Usar capas em tamanho original"}
+            title={originalCovers ? "Capas em tamanho original (clique pra cortar)" : "Capas cortadas (clique pra usar tamanho original)"}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="9" cy="9" r="2" />
+              <path d="m21 15-5-5L5 21" />
+            </svg>
+          </button>
           <span>
             Ola, <strong>{user?.username}</strong>
           </span>
@@ -825,7 +861,7 @@ export default function Library() {
         </p>
       )}
 
-      <div className="game-grid" ref={gridRef}>
+      <div className={`game-grid${originalCovers ? " original-covers" : ""}`} ref={gridRef}>
         {paged.map((g) => {
           const meta = systemMeta(g.system);
           const isFavorite = favorites.has(g.slug);
