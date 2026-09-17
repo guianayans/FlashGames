@@ -178,15 +178,18 @@ type GamepadSlot = {
 function useGamepadPlayer(
   nostalgistRef: React.RefObject<Nostalgist | null>,
   onToggleFullscreen: () => void,
-  onOpenSaveMenu: () => void
+  onToggleSaveMenu: () => void,
+  saveMenuOpen: boolean
 ): (string | null)[] {
   const [names, setNames] = useState<(string | null)[]>([null, null]);
   // Ref pra sempre chamar a versao mais atual sem precisar recriar o
   // efeito (que reconectaria os listeners de gamepad) toda renderizacao.
   const onToggleFullscreenRef = useRef(onToggleFullscreen);
   onToggleFullscreenRef.current = onToggleFullscreen;
-  const onOpenSaveMenuRef = useRef(onOpenSaveMenu);
-  onOpenSaveMenuRef.current = onOpenSaveMenu;
+  const onToggleSaveMenuRef = useRef(onToggleSaveMenu);
+  onToggleSaveMenuRef.current = onToggleSaveMenu;
+  const saveMenuOpenRef = useRef(saveMenuOpen);
+  saveMenuOpenRef.current = saveMenuOpen;
 
   useEffect(() => {
     const slots: GamepadSlot[] = [
@@ -285,9 +288,19 @@ function useGamepadPlayer(
           // (sem segurar, diferente do R2 de cima), ja que ele nao faz
           // mais nada em jogo (tirado do GAMEPAD_BUTTON_MAP).
           const selectPressed = !!gp.buttons[8]?.pressed;
-          if (selectPressed && !selectWasPressed) onOpenSaveMenuRef.current();
+          if (selectPressed && !selectWasPressed) onToggleSaveMenuRef.current();
           selectWasPressed = selectPressed;
         }
+
+        // Menu de save state aberto: o controle vira do jogo pro overlay
+        // (ver SaveStateMenu, que le o gamepad direto pra navegar nele) —
+        // solta qualquer botao/direcao que tivesse ficado preso e para de
+        // mandar input pro jogo ate o menu fechar.
+        if (saveMenuOpenRef.current) {
+          clearSlot(slot);
+          continue;
+        }
+
         for (const idxStr of Object.keys(GAMEPAD_BUTTON_MAP)) {
           const idx = Number(idxStr);
           const pressed = !!gp.buttons[idx]?.pressed;
@@ -410,11 +423,13 @@ function formatSaveStateDate(sqliteUtc: string): string {
   return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-// Menu de save state (Select no controle ou F11 no teclado, ver
+// Menu de save state (Select no controle ou F10 no teclado, ver
 // DesktopPlayer) — grade de slots com miniatura, salvar/carregar/apagar
-// cada um. So mouse+teclado (Escape fecha); quem abrir via controle usa
-// o cursor do mouse pra clicar, igual qualquer menu de pausa de jogo de
-// PC seria usado.
+// cada um. Mouse/toque clicam normal (Escape fecha); com o controle, o
+// D-pad/analogico navegam entre os botoes do proprio overlay (mesmo
+// algoritmo de vizinho-mais-proximo do modo controle da Library) e o
+// botao de baixo confirma — o jogo por tras NAO recebe mais o input
+// enquanto o menu esta aberto (ver useGamepadPlayer, saveMenuOpenRef).
 function SaveStateMenu({
   slug,
   nostalgistRef,
@@ -427,6 +442,8 @@ function SaveStateMenu({
   const [slots, setSlots] = useState<SaveStateSlot[]>([]);
   const [busySlot, setBusySlot] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   async function refresh() {
     try {
@@ -449,6 +466,137 @@ function SaveStateMenu({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
+
+  // Navegacao do overlay pelo controle — le o gamepad direto (independente
+  // do loop principal do jogo, que fica pausado enquanto o menu esta
+  // aberto). D-pad/analogico movem o foco pelo vizinho mais proximo entre
+  // todo [data-gp-id] dentro do card; botao de baixo confirma (clica); B,
+  // Start ou Select fecham o menu.
+  const [focusedKey, setFocusedKey] = useState<string | null>(null);
+  const focusedKeyRef = useRef(focusedKey);
+  focusedKeyRef.current = focusedKey;
+  const [gpActive, setGpActive] = useState(false);
+
+  useEffect(() => {
+    const first = document.querySelector<HTMLElement>(".savestate-card [data-gp-id]");
+    if (first?.dataset.gpId) setFocusedKey(first.dataset.gpId);
+  }, []);
+
+  function moveMenuFocus(dir: "up" | "down" | "left" | "right") {
+    const all = Array.from(document.querySelectorAll<HTMLElement>(".savestate-card [data-gp-id]"));
+    if (all.length === 0) return;
+    const currentKey = focusedKeyRef.current;
+    const currentEl = currentKey ? all.find((el) => el.dataset.gpId === currentKey) : null;
+    if (!currentEl) {
+      const first = all[0]?.dataset.gpId;
+      if (first) setFocusedKey(first);
+      return;
+    }
+    const cur = currentEl.getBoundingClientRect();
+    const curCx = cur.left + cur.width / 2;
+    const curCy = cur.top + cur.height / 2;
+    let best: HTMLElement | null = null;
+    let bestScore = Infinity;
+    for (const el of all) {
+      if (el === currentEl) continue;
+      const r = el.getBoundingClientRect();
+      const dx = r.left + r.width / 2 - curCx;
+      const dy = r.top + r.height / 2 - curCy;
+      let score: number;
+      if (dir === "right") {
+        if (dx <= 4) continue;
+        score = dx + Math.abs(dy) * 4;
+      } else if (dir === "left") {
+        if (dx >= -4) continue;
+        score = -dx + Math.abs(dy) * 4;
+      } else if (dir === "down") {
+        if (dy <= 4) continue;
+        score = dy + Math.abs(dx) * 1.2;
+      } else {
+        if (dy >= -4) continue;
+        score = -dy + Math.abs(dx) * 1.2;
+      }
+      if (score < bestScore) {
+        bestScore = score;
+        best = el;
+      }
+    }
+    if (best?.dataset.gpId) setFocusedKey(best.dataset.gpId);
+  }
+
+  function confirmMenuFocus() {
+    const key = focusedKeyRef.current;
+    if (!key) return;
+    const el = document.querySelector<HTMLElement>(`.savestate-card [data-gp-id="${CSS.escape(key)}"]`);
+    el?.click();
+  }
+
+  useEffect(() => {
+    let gpIndex: number | null = null;
+    let raf = 0;
+    const REPEAT_DELAY_MS = 320;
+    const REPEAT_RATE_MS = 140;
+    const dirState: Record<string, { held: boolean; nextAt: number }> = {
+      up: { held: false, nextAt: 0 },
+      down: { held: false, nextAt: 0 },
+      left: { held: false, nextAt: 0 },
+      right: { held: false, nextAt: 0 },
+    };
+    const btnState: Record<number, boolean> = {};
+
+    function handleDir(dir: "up" | "down" | "left" | "right", pressed: boolean, now: number) {
+      const s = dirState[dir];
+      if (!pressed) {
+        s.held = false;
+        return;
+      }
+      if (!s.held) {
+        s.held = true;
+        s.nextAt = now + REPEAT_DELAY_MS;
+        moveMenuFocus(dir);
+      } else if (now >= s.nextAt) {
+        s.nextAt = now + REPEAT_RATE_MS;
+        moveMenuFocus(dir);
+      }
+    }
+
+    function poll() {
+      const now = performance.now();
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let gp: Gamepad | null = gpIndex !== null ? pads[gpIndex] : null;
+      if (!gp) {
+        for (let i = 0; i < pads.length; i++) {
+          if (pads[i]) {
+            gp = pads[i];
+            gpIndex = i;
+            break;
+          }
+        }
+      }
+      if (gp) {
+        setGpActive(true);
+        const [ax, ay] = gp.axes;
+        const left = !!gp.buttons[14]?.pressed || (typeof ax === "number" && ax < -GAMEPAD_STICK_DEAD);
+        const right = !!gp.buttons[15]?.pressed || (typeof ax === "number" && ax > GAMEPAD_STICK_DEAD);
+        const up = !!gp.buttons[12]?.pressed || (typeof ay === "number" && ay < -GAMEPAD_STICK_DEAD);
+        const down = !!gp.buttons[13]?.pressed || (typeof ay === "number" && ay > GAMEPAD_STICK_DEAD);
+        handleDir("left", left, now);
+        handleDir("right", right, now);
+        handleDir("up", up, now);
+        handleDir("down", down, now);
+
+        if (gp.buttons[0]?.pressed && !btnState[0]) confirmMenuFocus();
+        if ((gp.buttons[1]?.pressed && !btnState[1]) || (gp.buttons[9]?.pressed && !btnState[9])) onCloseRef.current();
+        [0, 1, 9].forEach((idx) => {
+          btnState[idx] = !!gp?.buttons[idx]?.pressed;
+        });
+      }
+      raf = requestAnimationFrame(poll);
+    }
+    raf = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSave(slot: number) {
     const inst = nostalgistRef.current;
@@ -502,7 +650,13 @@ function SaveStateMenu({
       <div className="savestate-card" onClick={(e) => e.stopPropagation()}>
         <div className="savestate-header">
           <h2>Save state</h2>
-          <button type="button" className="savestate-close" onClick={onClose} aria-label="Fechar">
+          <button
+            type="button"
+            className={`savestate-close${gpActive && focusedKey === "close" ? " bp-focused" : ""}`}
+            data-gp-id="close"
+            onClick={onClose}
+            aria-label="Fechar"
+          >
             ×
           </button>
         </div>
@@ -521,15 +675,33 @@ function SaveStateMenu({
                   {data && <span className="savestate-slot-date">{formatSaveStateDate(data.updatedAt)}</span>}
                 </div>
                 <div className="savestate-slot-actions">
-                  <button type="button" disabled={busy} onClick={() => handleSave(slot)}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className={gpActive && focusedKey === `${slot}:save` ? "bp-focused" : ""}
+                    data-gp-id={`${slot}:save`}
+                    onClick={() => handleSave(slot)}
+                  >
                     Salvar
                   </button>
                   {data && (
                     <>
-                      <button type="button" disabled={busy} onClick={() => handleLoad(slot)}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={gpActive && focusedKey === `${slot}:load` ? "bp-focused" : ""}
+                        data-gp-id={`${slot}:load`}
+                        onClick={() => handleLoad(slot)}
+                      >
                         Carregar
                       </button>
-                      <button type="button" disabled={busy} onClick={() => handleDelete(slot)}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={gpActive && focusedKey === `${slot}:delete` ? "bp-focused" : ""}
+                        data-gp-id={`${slot}:delete`}
+                        onClick={() => handleDelete(slot)}
+                      >
                         Apagar
                       </button>
                     </>
@@ -581,93 +753,28 @@ function DesktopPlayer({ slug }: { slug: string }) {
   const [loadProgress, setLoadProgress] = useState(0);
   const loadingIconImage = game ? systemMeta(game.system).iconImage : undefined;
 
-  // Save state — currentSlot e' por sessao de jogo (reseta pra 1 quando
-  // troca de jogo), nao fica salvo em lugar nenhum: e' so "qual slot os
-  // atalhos rapidos (F2/F4) usam agora". Toast da feedback visual das
-  // acoes rapidas (o menu completo, ver SaveStateMenu, ja mostra tudo
-  // sozinho).
+  // Save state: unica forma de abrir o menu e' Select no controle ou F10
+  // no teclado (ambos alternam aberto/fechado) — o menu em si (ver
+  // SaveStateMenu) cuida de salvar/carregar/apagar cada slot.
   const [saveMenuOpen, setSaveMenuOpen] = useState(false);
-  const [currentSlot, setCurrentSlot] = useState(1);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  function showToast(message: string) {
-    setToast(message);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 2200);
+  function toggleSaveMenu() {
+    setSaveMenuOpen((v) => !v);
   }
 
-  function openSaveMenu() {
-    setSaveMenuOpen(true);
-  }
+  const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef, toggleFullscreen, toggleSaveMenu, saveMenuOpen);
 
-  async function quickSaveState() {
-    const inst = nostalgistRef.current;
-    if (!inst || !game) return;
-    try {
-      const { state, thumbnail } = await inst.saveState();
-      await api.putSaveState(game.slug, currentSlot, state, thumbnail);
-      showToast(`Salvo no slot ${currentSlot}`);
-    } catch {
-      showToast("Erro ao salvar");
-    }
-  }
-
-  async function quickLoadState() {
-    const inst = nostalgistRef.current;
-    if (!inst || !game) return;
-    try {
-      const blob = await api.getSaveStateBlob(game.slug, currentSlot);
-      await inst.loadState(blob);
-      showToast(`Carregado do slot ${currentSlot}`);
-    } catch {
-      showToast(`Slot ${currentSlot} vazio`);
-    }
-  }
-
-  const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef, toggleFullscreen, openSaveMenu);
-
-  // Atalhos de teclado tipo RetroArch: F2 salva/F4 carrega o slot atual,
-  // F6/F7 trocam o slot atual, F11 abre/fecha o menu completo (com
-  // miniaturas). Ignorado se o foco estiver num campo de texto.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
-      switch (e.key) {
-        case "F2":
-          e.preventDefault();
-          quickSaveState();
-          break;
-        case "F4":
-          e.preventDefault();
-          quickLoadState();
-          break;
-        case "F6":
-          e.preventDefault();
-          setCurrentSlot((s) => {
-            const next = s <= 1 ? SAVE_STATE_SLOTS : s - 1;
-            showToast(`Slot ${next}`);
-            return next;
-          });
-          break;
-        case "F7":
-          e.preventDefault();
-          setCurrentSlot((s) => {
-            const next = s >= SAVE_STATE_SLOTS ? 1 : s + 1;
-            showToast(`Slot ${next}`);
-            return next;
-          });
-          break;
-        case "F11":
-          e.preventDefault();
-          setSaveMenuOpen((v) => !v);
-          break;
+      if (e.key === "F10") {
+        e.preventDefault();
+        setSaveMenuOpen((v) => !v);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game, currentSlot]);
+  }, []);
 
   // Esconde o cursor do mouse depois de parado uns segundos em cima da
   // tela do jogo (padrao de player de video/jogo) — reaparece assim que
@@ -694,7 +801,6 @@ function DesktopPlayer({ slug }: { slug: string }) {
     setError(null);
     setLoading(true);
     setLoadProgress(0);
-    setCurrentSlot(1);
     setSaveMenuOpen(false);
 
     let cancelled = false;
@@ -801,7 +907,6 @@ function DesktopPlayer({ slug }: { slug: string }) {
             </svg>
           )}
         </button>
-        {toast && <div className="player-toast">{toast}</div>}
         {saveMenuOpen && game && (
           <SaveStateMenu slug={game.slug} nostalgistRef={nostalgistRef} onClose={() => setSaveMenuOpen(false)} />
         )}

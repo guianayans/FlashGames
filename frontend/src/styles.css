@@ -1274,26 +1274,7 @@ a {
   cursor: none;
 }
 
-/* Toast de feedback dos atalhos rapidos de save state (F2/F4/F6/F7, ver
-   DesktopPlayer/showToast) — "Salvo no slot 2", "Slot 3", etc. */
-.player-toast {
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 15;
-  padding: 7px 16px;
-  border-radius: 999px;
-  background: rgba(10, 7, 20, 0.92);
-  border: 1px solid rgba(0, 229, 255, 0.4);
-  color: #fff;
-  font-family: var(--font-display);
-  font-size: 0.75rem;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-/* Menu de save state (Select no controle ou F11 no teclado, ver
+/* Menu de save state (Select no controle ou F10 no teclado, ver
    SaveStateMenu em Player.tsx) — mesmo padrao visual do overlay/card
    A-Z da biblioteca (.alpha-overlay/.alpha-card), so que restrito ao
    palco do jogo (position:absolute, nao fixed — nao cobre a topbar). */
