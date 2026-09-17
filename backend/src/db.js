@@ -85,6 +85,19 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, game_slug, slot)
   );
+
+  -- Historico de jogadas, por USUARIO (conta) — pra alimentar o filtro
+  -- "Recentes" da Library (ver routes/plays.js): "Mais recentes" ordena
+  -- por last_played_at, "Mais jogados" por play_count. Uma linha por
+  -- jogo (nao uma por sessao) — cada abertura so incrementa o contador e
+  -- atualiza o timestamp da MESMA linha, ver upsertStmt em plays.js.
+  CREATE TABLE IF NOT EXISTS user_play_history (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    game_slug TEXT NOT NULL,
+    play_count INTEGER NOT NULL DEFAULT 1,
+    last_played_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, game_slug)
+  );
 `);
 
 export default db;

@@ -584,6 +584,18 @@ function SaveStateMenu({
   const confirmActionRef = useRef(confirmAction);
   confirmActionRef.current = confirmAction;
 
+  // Pausa o jogo de verdade (nao so' filtra o input do controle) enquanto
+  // o menu esta aberto — sem isso, qualquer fonte de input que a gente
+  // nao filtra na mao (ex.: um controle que o navegador enxerga como
+  // teclado, nao como gamepad — comum em controle bluetooth barato de
+  // celular) continuava mexendo no jogo por tras do menu. saveState/
+  // loadState funcionam normalmente com o core pausado.
+  useEffect(() => {
+    nostalgistRef.current?.pause();
+    return () => nostalgistRef.current?.resume();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function refresh() {
     try {
       const res = await api.listSaveStates(slug);
@@ -1004,6 +1016,10 @@ function DesktopPlayer({ slug }: { slug: string }) {
         const { game: detail } = await api.getGame(slug);
         if (cancelled) return;
         setGame(detail);
+        // Registra a jogada pro filtro "Recentes" da Library (ver
+        // routes/plays.js) — dispara e esquece, uma jogada nao pode
+        // travar o carregamento do jogo se a API falhar por algum motivo.
+        api.recordPlay(slug).catch(() => {});
         if (!stageRef.current) return;
 
         stageRef.current.innerHTML = "";

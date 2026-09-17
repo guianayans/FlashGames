@@ -200,6 +200,20 @@ window.addEventListener("message", (e: MessageEvent) => {
     press(d.type, d.key, d.player || 1);
     return;
   }
+  // Pausa/retoma de verdade o jogo (ver GameScreen.html, openSaveMenu/
+  // closeSaveMenu) — nao so' filtrar o input que a GENTE manda: um
+  // controle bluetooth que o navegador enxerga como TECLADO (comum em
+  // controle barato de celular) mandaria tecla direto pro Nostalgist sem
+  // passar pelo nosso postMessage nenhum, entao so' filtrar nosso proprio
+  // pressDown/pressUp nao bastava — pausar o core de verdade sim.
+  if (d.type === "pauseGame") {
+    nostalgist?.pause();
+    return;
+  }
+  if (d.type === "resumeGame") {
+    nostalgist?.resume();
+    return;
+  }
   if (d.type === "saveState:list") {
     replySlotList();
     return;
@@ -309,6 +323,10 @@ async function main() {
   try {
     const { game } = await api.getGame(slug);
     startWalkingIcon(game.system);
+    // Registra a jogada pro filtro "Recentes" da Library (ver
+    // routes/plays.js) — dispara e esquece, mesmo criterio do desktop
+    // (Player.tsx).
+    api.recordPlay(slug).catch(() => {});
 
     const canvas = document.createElement("canvas");
     // object-fit:contain preserva a proporcao original do jogo sem cortar

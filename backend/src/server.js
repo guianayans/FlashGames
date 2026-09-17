@@ -9,6 +9,7 @@ import savesRoutes from "./routes/saves.js";
 import savestatesRoutes from "./routes/savestates.js";
 import controlsRoutes from "./routes/controls.js";
 import favoritesRoutes from "./routes/favorites.js";
+import playsRoutes from "./routes/plays.js";
 import preferencesRoutes from "./routes/preferences.js";
 import { ROMS_DIR } from "./gamesLibrary.js";
 import { readAuth } from "./auth.js";
@@ -43,6 +44,7 @@ app.use("/api/games", gamesRoutes);
 app.use("/api/saves", savesRoutes);
 app.use("/api/controls", controlsRoutes);
 app.use("/api/favorites", favoritesRoutes);
+app.use("/api/plays", playsRoutes);
 app.use("/api/preferences", preferencesRoutes);
 
 // As ROMs (e capas) de cada sistema, servidas diretamente das pastas

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
+import type { PlayHistoryEntry } from "../api";
 import type { GameSummary } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { systemMeta } from "../categories";
@@ -46,6 +47,7 @@ export default function Library() {
   const navigate = useNavigate();
   const [games, setGames] = useState<GameSummary[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [plays, setPlays] = useState<PlayHistoryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   // Toggle "capas em tamanho original" — por usuario, salvo no banco (ver
   // routes/preferences.js), pra continuar valendo em qualquer aparelho
@@ -62,6 +64,7 @@ export default function Library() {
   const activeSystem = searchParams.get("system") ?? "todos";
   const favoritesOnly = searchParams.get("fav") === "1";
   const topOnly = searchParams.get("top") === "1";
+  const recentOnly = searchParams.get("recent") === "1";
   const letter = searchParams.get("letter") ?? "";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const [alphaOpen, setAlphaOpen] = useState(false);
@@ -204,6 +207,13 @@ export default function Library() {
       // sem preferencia carregada, fica no padrao (capas cortadas) — nao
       // impede o resto da biblioteca de funcionar.
     }
+    try {
+      const res = await api.listPlays();
+      setPlays(res.plays);
+    } catch {
+      // sem historico carregado, o filtro Recentes so fica vazio — nao
+      // impede o resto da biblioteca de funcionar.
+    }
   }
 
   useEffect(() => {
@@ -324,6 +334,10 @@ export default function Library() {
     }
     return Array.from(seen.entries()).sort((a, b) => b[1] - a[1]);
   }, [games]);
+  const systemsRef = useRef(systems);
+  systemsRef.current = systems;
+
+  const playsBySlug = useMemo(() => new Map(plays.map((p) => [p.slug, p])), [plays]);
 
   const filtered = useMemo(() => {
     const q = normalize(query.trim());
@@ -335,13 +349,14 @@ export default function Library() {
       // de recarregar a pagina. favorites.has aqui deixa isso dinamico na
       // hora, sem precisar buscar a lista de novo.
       if (topOnly && !g.top && !favorites.has(g.slug)) return false;
+      if (recentOnly && !playsBySlug.has(g.slug)) return false;
       if (activeSystem !== "todos" && g.system !== activeSystem) return false;
       if (letter && titleBucket(g.title) !== letter) return false;
       if (!q) return true;
       const haystack = normalize([g.title, g.description, g.category, ...(g.tags || [])].join(" "));
       return haystack.includes(q);
     });
-  }, [games, query, activeSystem, favoritesOnly, favorites, topOnly, letter]);
+  }, [games, query, activeSystem, favoritesOnly, favorites, topOnly, recentOnly, playsBySlug, letter]);
 
   // Favoritos/Top Games (sem filtro de sistema aplicado) separam por
   // console em cards expansiveis, em vez da grade paginada normal — sao
@@ -368,6 +383,42 @@ export default function Library() {
     return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
   }, [filtered]);
 
+  // Recentes (sem filtro de sistema aplicado) tambem sai do grid/paginacao
+  // normal, mas com um eixo de agrupamento diferente do Favoritos/Top: em
+  // vez de por console, sao so 2 cards fixos — "Mais recentes" (ordenado
+  // pela ultima vez jogado) e "Mais jogados" (pela quantidade de vezes) —
+  // cada um limitado a RECENT_CARD_LIMIT pra nao virar uma lista enorme
+  // com o tempo.
+  const showRecentCards = recentOnly && activeSystem === "todos";
+  const RECENT_CARD_LIMIT = 30;
+  const recentCards = useMemo(() => {
+    if (!showRecentCards) return [];
+    const withPlay = filtered
+      .map((g) => ({ game: g, play: playsBySlug.get(g.slug) }))
+      .filter((x): x is { game: GameSummary; play: PlayHistoryEntry } => !!x.play);
+    const mostRecent = [...withPlay]
+      .sort((a, b) => b.play.lastPlayedAt.localeCompare(a.play.lastPlayedAt))
+      .slice(0, RECENT_CARD_LIMIT)
+      .map((x) => x.game);
+    const mostPlayed = [...withPlay]
+      .sort((a, b) => b.play.playCount - a.play.playCount)
+      .slice(0, RECENT_CARD_LIMIT)
+      .map((x) => x.game);
+    return [
+      { key: "recent", label: "Mais recentes", games: mostRecent },
+      { key: "played", label: "Mais jogados", games: mostPlayed },
+    ];
+  }, [filtered, playsBySlug, showRecentCards]);
+  const [collapsedRecentCards, setCollapsedRecentCards] = useState<Set<string>>(new Set());
+  function toggleRecentCardCollapsed(key: string) {
+    setCollapsedRecentCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   // Pra desabilitar no overlay as letras sem nenhum jogo correspondente.
   const availableLetters = useMemo(() => {
     const set = new Set<string>();
@@ -375,12 +426,20 @@ export default function Library() {
     return set;
   }, [games]);
 
-  const pageCount = groupedByConsole ? 1 : Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageCount = groupedByConsole || showRecentCards ? 1 : Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, pageCount);
   const paged = useMemo(() => {
     if (groupedByConsole) return filtered.filter((g) => !collapsedSystems.has(g.system));
+    if (showRecentCards) {
+      const shown = new Set<string>();
+      for (const card of recentCards) {
+        if (collapsedRecentCards.has(card.key)) continue;
+        for (const g of card.games) shown.add(g.slug);
+      }
+      return filtered.filter((g) => shown.has(g.slug));
+    }
     return filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
-  }, [filtered, pageSafe, groupedByConsole, collapsedSystems]);
+  }, [filtered, pageSafe, groupedByConsole, collapsedSystems, showRecentCards, recentCards, collapsedRecentCards]);
 
   // Refs "espelho" pros valores que o loop de poll do gamepad precisa —
   // assim o efeito abaixo roda so UMA vez (nao precisa reconectar os
@@ -416,10 +475,11 @@ export default function Library() {
 
   function focusId(id: string) {
     setFocusedId(id);
-    // Chegar no chip "Todos" (topo dos filtros) sobe a tela inteira, nao
-    // so o minimo pra revelar o chip — ele fica logo abaixo da busca/
-    // topbar, entao "nearest" deixava a top bar cortada as vezes.
-    if (id === "chip:todos") {
+    // Chegar em QUALQUER chip de filtro (Todos, Favoritos, Top Games,
+    // Recentes, sistema...) sobe a tela inteira, nao so o minimo pra
+    // revelar o chip — eles ficam logo abaixo da busca/topbar, entao
+    // "nearest" deixava a top bar cortada as vezes.
+    if (id.startsWith("chip:")) {
       window.scrollTo({ top: 0, behavior: "auto" });
       return;
     }
@@ -505,20 +565,59 @@ export default function Library() {
     // so um).
     const sp = searchParamsRef.current;
     if (id === "chip:todos") {
-      updateFilters({ system: null, fav: null, top: null });
+      updateFilters({ system: null, fav: null, top: null, recent: null });
     } else if (id === "chip:fav") {
-      updateFilters({ system: null, top: null, fav: sp.get("fav") === "1" ? null : "1" });
+      updateFilters({ system: null, top: null, recent: null, fav: sp.get("fav") === "1" ? null : "1" });
     } else if (id === "chip:top") {
-      updateFilters({ system: null, fav: null, top: sp.get("top") === "1" ? null : "1" });
+      updateFilters({ system: null, fav: null, recent: null, top: sp.get("top") === "1" ? null : "1" });
+    } else if (id === "chip:recent") {
+      updateFilters({ system: null, fav: null, top: null, recent: sp.get("recent") === "1" ? null : "1" });
     } else if (id.startsWith("chip:system:")) {
       const slug = id.slice(12);
       const curSystem = sp.get("system") ?? "todos";
-      updateFilters({ fav: null, top: null, system: curSystem === slug ? null : slug });
+      updateFilters({ fav: null, top: null, recent: null, system: curSystem === slug ? null : slug });
     } else if (id === "page:prev") {
       goToPage(pageSafeRef.current - 1);
     } else if (id === "page:next") {
       goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
     }
+  }
+
+  // L2/R2 alternam entre os filtros (Todos/Favoritos/Top Games/Recentes/
+  // cada sistema), na mesma ordem em que os chips aparecem na tela — ao
+  // contrario do X num chip focado (que so alterna liga/desliga O MESMO
+  // filtro), aqui sempre anda pra frente/tras na lista inteira, dando a
+  // volta nas pontas.
+  function chipOrder(): string[] {
+    return ["chip:todos", "chip:fav", "chip:top", "chip:recent", ...systemsRef.current.map(([slug]) => `chip:system:${slug}`)];
+  }
+  function currentChipKey(): string {
+    const sp = searchParamsRef.current;
+    if (sp.get("fav") === "1") return "chip:fav";
+    if (sp.get("top") === "1") return "chip:top";
+    if (sp.get("recent") === "1") return "chip:recent";
+    const sys = sp.get("system");
+    if (sys) return `chip:system:${sys}`;
+    return "chip:todos";
+  }
+  function applyChipFilter(id: string) {
+    if (id === "chip:todos") {
+      updateFilters({ system: null, fav: null, top: null, recent: null });
+    } else if (id === "chip:fav") {
+      updateFilters({ system: null, top: null, recent: null, fav: "1" });
+    } else if (id === "chip:top") {
+      updateFilters({ system: null, fav: null, recent: null, top: "1" });
+    } else if (id === "chip:recent") {
+      updateFilters({ system: null, fav: null, top: null, recent: "1" });
+    } else if (id.startsWith("chip:system:")) {
+      updateFilters({ fav: null, top: null, recent: null, system: id.slice(12) });
+    }
+  }
+  function cycleChip(dir: 1 | -1) {
+    const order = chipOrder();
+    const idx = order.indexOf(currentChipKey());
+    const nextIdx = ((idx === -1 ? 0 : idx) + dir + order.length) % order.length;
+    applyChipFilter(order[nextIdx]);
   }
 
   // Mesma detecção/mapeamento por posição do controle usada em Player.tsx
@@ -675,8 +774,13 @@ export default function Library() {
         }
         if (pressedNow(4) && !btnState[4]) goToPage(pageSafeRef.current - 1);
         if (pressedNow(5) && !btnState[5]) goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
+        // L2/R2: alternam entre os filtros (Todos/Favoritos/Top Games/
+        // Recentes/cada sistema), na ordem em que os chips aparecem —
+        // ver cycleChip.
+        if (pressedNow(6) && !btnState[6]) cycleChip(-1);
+        if (pressedNow(7) && !btnState[7]) cycleChip(1);
         if (pressedNow(9) && !btnState[9]) setAlphaOpen(true);
-        [0, 1, 4, 5, 9].forEach((idx) => {
+        [0, 1, 4, 5, 6, 7, 9].forEach((idx) => {
           btnState[idx] = pressedNow(idx);
         });
       }
@@ -820,16 +924,26 @@ export default function Library() {
     if (best) setOverlayFocusedKey(best.dataset.letter ?? "");
   }
 
+  // "__ALL__" (chip Todos/Apagar tudo) e "__SPACE__" (barra de espaco) sao
+  // sentinelas usadas so' no data-letter (pra navegacao espacial achar o
+  // chip) — aqui viram o valor de verdade que pickLetter/selectLetterFilter
+  // esperam.
+  function resolveOverlayKey(key: string): string | null {
+    if (key === "__ALL__") return null;
+    if (key === "__SPACE__") return " ";
+    return key;
+  }
+
   function confirmOverlayFocus() {
     const key = overlayFocusedKeyRef.current;
     if (!key) return;
-    pickLetter(key === "__ALL__" ? null : key);
+    pickLetter(resolveOverlayKey(key));
   }
 
   function confirmOverlaySelectFilter() {
     const key = overlayFocusedKeyRef.current;
     if (!key) return;
-    selectLetterFilter(key === "__ALL__" ? null : key);
+    selectLetterFilter(resolveOverlayKey(key));
   }
 
   function saveScroll() {
@@ -1013,6 +1127,16 @@ export default function Library() {
                     ))}
                   </div>
                 ))}
+                <div className="keyboard-row">
+                  <button
+                    type="button"
+                    data-letter="__SPACE__"
+                    className={`alpha-chip alpha-chip-space${overlayFocusedKey === "__SPACE__" ? " gamepad-focused" : ""}`}
+                    onClick={() => pickLetter(" ")}
+                  >
+                    Espaço
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="alpha-grid">
@@ -1047,15 +1171,25 @@ export default function Library() {
           data-bp-id="chip:todos"
           className={`category-chip${activeSystem === "todos" ? " active" : ""}${gamepadActive && focusedId === "chip:todos" ? " bp-focused" : ""}`}
           style={{ ["--chip-color" as string]: "#00e5ff" }}
-          onClick={() => updateFilters({ system: null, fav: null, top: null })}
+          onClick={() => updateFilters({ system: null, fav: null, top: null, recent: null })}
         >
           Todos
+        </button>
+        <button
+          data-bp-id="chip:recent"
+          className={`category-chip${recentOnly ? " active" : ""}${gamepadActive && focusedId === "chip:recent" ? " bp-focused" : ""}`}
+          style={{ ["--chip-color" as string]: "#39ff8f" }}
+          onClick={() => updateFilters({ system: null, fav: null, top: null, recent: recentOnly ? null : "1" })}
+          aria-pressed={recentOnly}
+        >
+          <span className="chip-dot">⏱</span>
+          Recentes
         </button>
         <button
           data-bp-id="chip:fav"
           className={`category-chip${favoritesOnly ? " active" : ""}${gamepadActive && focusedId === "chip:fav" ? " bp-focused" : ""}`}
           style={{ ["--chip-color" as string]: "#ffb020" }}
-          onClick={() => updateFilters({ system: null, top: null, fav: favoritesOnly ? null : "1" })}
+          onClick={() => updateFilters({ system: null, top: null, recent: null, fav: favoritesOnly ? null : "1" })}
           aria-pressed={favoritesOnly}
         >
           <span className="chip-dot">★</span>
@@ -1065,7 +1199,7 @@ export default function Library() {
           data-bp-id="chip:top"
           className={`category-chip${topOnly ? " active" : ""}${gamepadActive && focusedId === "chip:top" ? " bp-focused" : ""}`}
           style={{ ["--chip-color" as string]: "#ff2e9a" }}
-          onClick={() => updateFilters({ system: null, fav: null, top: topOnly ? null : "1" })}
+          onClick={() => updateFilters({ system: null, fav: null, recent: null, top: topOnly ? null : "1" })}
           aria-pressed={topOnly}
         >
           Top Games
@@ -1079,7 +1213,7 @@ export default function Library() {
               data-bp-id={bpId}
               className={`category-chip${activeSystem === slug ? " active" : ""}${gamepadActive && focusedId === bpId ? " bp-focused" : ""}`}
               style={{ ["--chip-color" as string]: meta.color }}
-              onClick={() => updateFilters({ fav: null, top: null, system: activeSystem === slug ? null : slug })}
+              onClick={() => updateFilters({ fav: null, top: null, recent: null, system: activeSystem === slug ? null : slug })}
             >
               {meta.iconImage ? (
                 <img src={meta.iconImage} alt="" className="chip-dot-img" />
@@ -1104,11 +1238,46 @@ export default function Library() {
       {!error && games.length === 0 && <p className="library-empty">Nenhuma ROM encontrada ainda.</p>}
       {!error && games.length > 0 && filtered.length === 0 && (
         <p className="library-empty">
-          {favoritesOnly ? "Voce ainda nao favoritou nenhum jogo." : "Nada por aqui. Tenta outro termo ou sistema."}
+          {favoritesOnly
+            ? "Voce ainda nao favoritou nenhum jogo."
+            : recentOnly
+              ? "Voce ainda nao jogou nada por aqui."
+              : "Nada por aqui. Tenta outro termo ou sistema."}
         </p>
       )}
 
-      {groupedByConsole ? (
+      {showRecentCards ? (
+        <div className="console-groups">
+          {recentCards.map((card) => {
+            const collapsed = collapsedRecentCards.has(card.key);
+            return (
+              <div key={card.key} className="console-group">
+                <button
+                  type="button"
+                  className="console-group-header"
+                  onClick={() => toggleRecentCardCollapsed(card.key)}
+                  aria-expanded={!collapsed}
+                  style={{ ["--accent" as string]: card.key === "recent" ? "#39ff8f" : "#ffb020" }}
+                >
+                  <span className="console-group-icon-glyph">{card.key === "recent" ? "⏱" : "★"}</span>
+                  <span className="console-group-label">{card.label}</span>
+                  <span className="console-group-count">({card.games.length})</span>
+                  <span className={`console-group-chevron${collapsed ? "" : " open"}`}>▾</span>
+                </button>
+                {!collapsed && (
+                  <div className={`game-grid${originalCovers ? " original-covers" : ""}`}>
+                    {card.games.length === 0 ? (
+                      <p className="library-empty">Nada aqui ainda.</p>
+                    ) : (
+                      card.games.map((g) => renderGameCard(g))
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : groupedByConsole ? (
         <div className="console-groups">
           {gamesBySystem.map(([system, systemGames]) => {
             const meta = systemMeta(system);

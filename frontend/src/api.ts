@@ -38,6 +38,12 @@ export interface SaveStateSlot {
   thumbnail: string | null;
 }
 
+export interface PlayHistoryEntry {
+  slug: string;
+  playCount: number;
+  lastPlayedAt: string;
+}
+
 // Bate com MAX_SLOTS em backend/src/routes/savestates.js.
 export const SAVE_STATE_SLOTS = 4;
 
@@ -68,6 +74,12 @@ export const api = {
   },
   removeFavorite(slug: string) {
     return request<{ ok: true }>(`/api/favorites/${slug}`, { method: "DELETE" });
+  },
+  listPlays() {
+    return request<{ plays: PlayHistoryEntry[] }>("/api/plays");
+  },
+  recordPlay(slug: string) {
+    return request<{ ok: true }>(`/api/plays/${slug}`, { method: "POST" });
   },
   getPreferences() {
     return request<{ originalCovers: boolean }>("/api/preferences");

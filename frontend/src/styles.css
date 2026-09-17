@@ -614,13 +614,19 @@ a {
   justify-content: center;
 }
 
+/* Toda tecla do teclado tem o MESMO tamanho, em qualquer linha — calculado
+   como 1/10 da largura da linha (a linha de numeros, a maior, tem 10
+   teclas + 9 gaps), nao um flex-grow que deixava teclas de linhas curtas
+   (tipo ZXCVBNM, so 7) maiores que as de cima. Linhas mais curtas so'
+   ficam com menos largura total, centralizadas pelo justify-content. */
 .keyboard-row .alpha-chip {
-  flex: 1 1 0;
+  flex: 0 0 calc((100% - 9 * 6px) / 10);
   aspect-ratio: 1;
   min-width: 0;
 }
 
-.keyboard-row .alpha-chip-all {
+.keyboard-row .alpha-chip-all,
+.keyboard-row .alpha-chip-space {
   flex: 1 1 auto;
   aspect-ratio: auto;
 }

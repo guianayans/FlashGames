@@ -45,6 +45,15 @@ export default function ConfirmDialog({
     let gpIndex: number | null = null;
     let dirHeld: "left" | "right" | null = null;
     const btnState: Record<number, boolean> = {};
+    // O botao que abriu esse dialogo (ex.: Bola pra desfavoritar, X pra
+    // confirmar um slot de save) quase sempre AINDA esta fisicamente
+    // pressionado no primeiro frame daqui — sem isso, btnState comecando
+    // vazio faria esse mesmo botao (que aqui pode significar "Cancelar"
+    // ou "Confirmar") disparar IMEDIATAMENTE de novo, fechando o dialogo
+    // sozinho meio segundo depois de abrir. Primeiro frame so' registra o
+    // que ja esta pressionado, sem agir; a deteccao de borda (like antes)
+    // comeca so' a partir do segundo frame.
+    let armed = false;
 
     function poll() {
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -60,6 +69,16 @@ export default function ConfirmDialog({
       }
       if (gp) {
         setGpActive(true);
+
+        if (!armed) {
+          armed = true;
+          [0, 1, 9].forEach((idx) => {
+            btnState[idx] = !!gp?.buttons[idx]?.pressed;
+          });
+          raf = requestAnimationFrame(poll);
+          return;
+        }
+
         const [ax] = gp.axes;
         const left = !!gp.buttons[14]?.pressed || (typeof ax === "number" && ax < -GAMEPAD_STICK_DEAD);
         const right = !!gp.buttons[15]?.pressed || (typeof ax === "number" && ax > GAMEPAD_STICK_DEAD);

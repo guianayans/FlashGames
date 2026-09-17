@@ -1250,10 +1250,17 @@ document.querySelectorAll('.dp').forEach(el => {
     saveMenuOpen = true;
     saveMenuEl.classList.remove('hidden');
     requestSlotList();
+    // Pausa o jogo de verdade (ver game-wrapper.ts) — sem isso, um
+    // controle bluetooth que o navegador enxerga como TECLADO (comum em
+    // controle barato de celular, nao aparece no Gamepad API) continuava
+    // mexendo no jogo por tras do menu, ja que a gente so filtrava o
+    // proprio input que MANDAVA, nao o que chegava direto no core.
+    sendToGame({ type: 'pauseGame' });
   }
   function closeSaveMenu() {
     saveMenuOpen = false;
     saveMenuEl.classList.add('hidden');
+    sendToGame({ type: 'resumeGame' });
   }
   saveMenuCloseBtn.addEventListener('click', closeSaveMenu);
   saveMenuEl.addEventListener('click', function (e) {
