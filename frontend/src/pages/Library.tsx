@@ -13,17 +13,22 @@ function normalize(s: string): string {
     .toLowerCase();
 }
 
-// Cada pagina e' UMA LETRA inteira (A-Z/#), nao um bloco de tamanho fixo
-// cortando o alfabeto no meio — comeca uma letra nova, pagina nova; letra
-// grande demais (mais de LETTER_PAGE_SIZE jogos) so' ai' quebra em mais de
-// uma pagina pra nao pesar o DOM (~2500 cards de uma vez deixava a pagina
-// pesada pra montar, principalmente no celular). Testando 100 por pagina
-// (antes era 48 fixo, sem alinhar com letra nenhuma).
-const LETTER_PAGE_SIZE = 100;
+// Renderizar os ~2500 cards de uma vez deixava a pagina pesada pra montar,
+// principalmente no celular — pagina em blocos de PAGE_SIZE em vez de
+// jogar tudo no DOM de uma vez. (Ja testamos paginar por letra inteira —
+// desfeito: isso exigia reordenar a lista so' alfabeticamente, perdendo o
+// "capa primeiro" que o backend ja manda, ver listGames() em
+// gamesLibrary.js.)
+const PAGE_SIZE = 48;
 
 // "#" agrupa titulos que comecam com numero (bem comuns nessa colecao, ex.
 // "3 Ninjas Kick Back") — sem isso ficariam de fora do filtro por letra.
 const ALPHABET = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+
+// Layout QWERTY do "teclado" do modo controle (ver keyboardMode) — so'
+// usado quando o overlay A-Z vira teclado de digitar; o filtro por letra
+// normal (mouse/toque) continua com o ALPHABET de cima, sem mudar.
+const QWERTY_ROWS = ["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
 
 function titleBucket(title: string): string {
   const first = normalize(title).trim()[0] ?? "";
@@ -370,43 +375,12 @@ export default function Library() {
     return set;
   }, [games]);
 
-  // Pagina = 1 letra inteira (ver LETTER_PAGE_SIZE la em cima). Pra isso
-  // fazer sentido a lista precisa estar em ordem alfabetica de verdade —
-  // o backend devolve capa-primeiro-depois-sem-capa (cada bloco alfabetico
-  // por dentro, ver gamesLibrary.js), entao reordena aqui so' pra decidir
-  // as paginas (a ordem visual dentro de cada pagina tambem sai daqui).
-  // Letras fora do A-Z/# (raro, titulo comecando com simbolo) entram no
-  // fim, ordenadas entre si, pra nenhum jogo sumir sem pagina nenhuma.
-  const letterPages = useMemo(() => {
-    if (groupedByConsole) return [];
-    const sorted = [...filtered].sort((a, b) => a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" }));
-    const buckets = new Map<string, GameSummary[]>();
-    for (const g of sorted) {
-      const key = titleBucket(g.title);
-      const list = buckets.get(key);
-      if (list) list.push(g);
-      else buckets.set(key, [g]);
-    }
-    const extraKeys = Array.from(buckets.keys())
-      .filter((k) => !ALPHABET.includes(k))
-      .sort();
-    const pages: GameSummary[][] = [];
-    for (const letter of [...ALPHABET, ...extraKeys]) {
-      const letterGames = buckets.get(letter);
-      if (!letterGames || letterGames.length === 0) continue;
-      for (let i = 0; i < letterGames.length; i += LETTER_PAGE_SIZE) {
-        pages.push(letterGames.slice(i, i + LETTER_PAGE_SIZE));
-      }
-    }
-    return pages;
-  }, [filtered, groupedByConsole]);
-
-  const pageCount = groupedByConsole ? 1 : Math.max(1, letterPages.length);
+  const pageCount = groupedByConsole ? 1 : Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, pageCount);
   const paged = useMemo(() => {
     if (groupedByConsole) return filtered.filter((g) => !collapsedSystems.has(g.system));
-    return letterPages[pageSafe - 1] ?? [];
-  }, [filtered, letterPages, pageSafe, groupedByConsole, collapsedSystems]);
+    return filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
+  }, [filtered, pageSafe, groupedByConsole, collapsedSystems]);
 
   // Refs "espelho" pros valores que o loop de poll do gamepad precisa —
   // assim o efeito abaixo roda so UMA vez (nao precisa reconectar os
@@ -764,9 +738,9 @@ export default function Library() {
       setOverlayFocusedKey("");
       return;
     }
-    // Em modo teclado comeca focado na primeira letra de verdade ("A"),
-    // nao no bucket "#" — fluxo de digitacao mais natural.
-    if (keyboardMode) setOverlayFocusedKey("A");
+    // Em modo teclado comeca focado no "Q" (canto superior esquerdo do
+    // layout QWERTY), nao no bucket "#" — fluxo de digitacao mais natural.
+    if (keyboardMode) setOverlayFocusedKey("Q");
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setAlphaOpen(false);
     };
@@ -793,7 +767,12 @@ export default function Library() {
     // digitado, uma letra ACRESCENTA na busca (fica aberto, pra continuar
     // digitando). Sem controle, continua sendo o filtro por letra
     // inicial de sempre, e fecha o overlay.
-    if (keyboardMode) {
+    // keyboardModeRef (nao "keyboardMode" direto): confirmOverlayFocus e'
+    // chamado de dentro do poll() do gamepad, que so monta UMA vez — lendo
+    // "keyboardMode" direto ficava preso no valor da primeira renderizacao
+    // (sempre false, gamepad nem tinha ligado ainda), entao o X sempre
+    // caia no "senao" (selecionar e fechar) em vez de digitar.
+    if (keyboardModeRef.current) {
       updateFilters({ q: l === null ? null : (queryRef.current || "") + l });
       return;
     }
@@ -1007,28 +986,58 @@ export default function Library() {
             {keyboardMode && (
               <p className="alpha-hint">✕ digita · ▢ so' seleciona · ○ fecha · △ apaga tudo</p>
             )}
-            <div className="alpha-grid">
-              <button
-                type="button"
-                data-letter="__ALL__"
-                className={`alpha-chip alpha-chip-all${!keyboardMode && !letter ? " active" : ""}${overlayFocusedKey === "__ALL__" ? " gamepad-focused" : ""}`}
-                onClick={() => pickLetter(null)}
-              >
-                {keyboardMode ? "Apagar tudo" : "Todos"}
-              </button>
-              {ALPHABET.map((l) => (
+            {keyboardMode ? (
+              <div className="alpha-grid keyboard-rows">
+                <div className="keyboard-row">
+                  <button
+                    type="button"
+                    data-letter="__ALL__"
+                    className={`alpha-chip alpha-chip-all${overlayFocusedKey === "__ALL__" ? " gamepad-focused" : ""}`}
+                    onClick={() => pickLetter(null)}
+                  >
+                    Apagar tudo
+                  </button>
+                </div>
+                {QWERTY_ROWS.map((row, i) => (
+                  <div className="keyboard-row" key={i}>
+                    {row.split("").map((l) => (
+                      <button
+                        key={l}
+                        type="button"
+                        data-letter={l}
+                        className={`alpha-chip${overlayFocusedKey === l ? " gamepad-focused" : ""}`}
+                        onClick={() => pickLetter(l)}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="alpha-grid">
                 <button
-                  key={l}
                   type="button"
-                  data-letter={l}
-                  className={`alpha-chip${!keyboardMode && letter === l ? " active" : ""}${overlayFocusedKey === l ? " gamepad-focused" : ""}`}
-                  disabled={!keyboardMode && !availableLetters.has(l)}
-                  onClick={() => pickLetter(l)}
+                  data-letter="__ALL__"
+                  className={`alpha-chip alpha-chip-all${!letter ? " active" : ""}${overlayFocusedKey === "__ALL__" ? " gamepad-focused" : ""}`}
+                  onClick={() => pickLetter(null)}
                 >
-                  {l}
+                  Todos
                 </button>
-              ))}
-            </div>
+                {ALPHABET.map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    data-letter={l}
+                    className={`alpha-chip${letter === l ? " active" : ""}${overlayFocusedKey === l ? " gamepad-focused" : ""}`}
+                    disabled={!availableLetters.has(l)}
+                    onClick={() => pickLetter(l)}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

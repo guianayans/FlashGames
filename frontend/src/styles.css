@@ -595,6 +595,36 @@ a {
   padding: 10px;
 }
 
+/* Layout QWERTY do "teclado" do modo controle (ver Library.tsx,
+   QWERTY_ROWS) — linhas de verdade (flex), nao grid auto-fill, pra "Q"
+   ficar visualmente acima de "A" que fica acima de "Z" (a navegacao
+   espacial do controle, ver moveOverlayFocus, depende da posicao real
+   na tela pra cima/baixo/esquerda/direita fazerem sentido). */
+.keyboard-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.keyboard-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.keyboard-row .alpha-chip {
+  flex: 1 1 0;
+  aspect-ratio: 1;
+  min-width: 0;
+}
+
+.keyboard-row .alpha-chip-all {
+  flex: 1 1 auto;
+  aspect-ratio: auto;
+}
+
 .library-search {
   flex: 1 1 220px;
   min-width: 0;
