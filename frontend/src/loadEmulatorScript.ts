@@ -91,6 +91,13 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
         // ser exatamente esse caminho. Setando explicito aqui garante
         // que o core vai procurar a BIOS exatamente onde ela foi escrita.
         retroarchConfig: { system_directory: "/home/web_user/retroarch/userdata/system" },
+        // Por padrao o core pula direto pro jogo — essa opcao liga a
+        // animacao/logo de boot de verdade da BIOS (a mesma tela que
+        // aparece ligando um PS1 de verdade). A doc do core avisa que
+        // ISSO QUEBRA ALGUNS JOGOS especificos (nem todo jogo lida bem
+        // com o boot completo da BIOS) — se algum jogo comecar a dar
+        // problema depois disso, essa e' a primeira coisa a suspeitar.
+        retroarchCoreConfig: { pcsx_rearmed_show_bios_bootlogo: "enabled" },
       });
     }
   }
