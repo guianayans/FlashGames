@@ -179,7 +179,9 @@ function useGamepadPlayer(
   nostalgistRef: React.RefObject<Nostalgist | null>,
   onToggleFullscreen: () => void,
   onToggleSaveMenu: () => void,
-  saveMenuOpen: boolean
+  saveMenuOpen: boolean,
+  onToggleExitConfirm: () => void,
+  exitConfirmOpen: boolean
 ): (string | null)[] {
   const [names, setNames] = useState<(string | null)[]>([null, null]);
   // Ref pra sempre chamar a versao mais atual sem precisar recriar o
@@ -190,6 +192,10 @@ function useGamepadPlayer(
   onToggleSaveMenuRef.current = onToggleSaveMenu;
   const saveMenuOpenRef = useRef(saveMenuOpen);
   saveMenuOpenRef.current = saveMenuOpen;
+  const onToggleExitConfirmRef = useRef(onToggleExitConfirm);
+  onToggleExitConfirmRef.current = onToggleExitConfirm;
+  const exitConfirmOpenRef = useRef(exitConfirmOpen);
+  exitConfirmOpenRef.current = exitConfirmOpen;
 
   useEffect(() => {
     const slots: GamepadSlot[] = [
@@ -256,6 +262,21 @@ function useGamepadPlayer(
     const R2_HOLD_MS = 700;
     let r2HoldStart: number | null = null;
     let r2HoldFired = false;
+
+    // Segurar L2 (botao 6 — gatilho esquerdo) por L2_HOLD_MS abre/fecha o
+    // dialogo "Sair do jogo?" (ExitConfirmDialog) — mesmo criterio e mesmo
+    // tempo do L2 no GameScreen.html mobile. L2 tambem nao entra no
+    // GAMEPAD_BUTTON_MAP, fica livre sem conflitar com o jogo.
+    const L2_HOLD_MS = 700;
+    let l2HoldStart: number | null = null;
+    let l2HoldFired = false;
+
+    // Select abre o menu de save state SEGURANDO um pouco (evita abrir sem
+    // querer com um toque de leve); com o menu ja aberto, um toque rapido
+    // (sem precisar segurar) fecha na hora.
+    const SELECT_HOLD_MS = 350;
+    let selectHoldStart: number | null = null;
+    let selectHoldFired = false;
     let selectWasPressed = false;
 
     function poll() {
@@ -284,19 +305,52 @@ function useGamepadPlayer(
             r2HoldFired = false;
           }
 
-          // Select (8) abre/fecha o menu de save state — um toque simples
-          // (sem segurar, diferente do R2 de cima), ja que ele nao faz
-          // mais nada em jogo (tirado do GAMEPAD_BUTTON_MAP).
-          const selectPressed = !!gp.buttons[8]?.pressed;
-          if (selectPressed && !selectWasPressed) onToggleSaveMenuRef.current();
-          selectWasPressed = selectPressed;
+          // L2 e Select sao mutuamente exclusivos — nao processa um
+          // enquanto o dialogo/menu do outro ja esta aberto (mesmo
+          // criterio do GameScreen.html mobile).
+          if (!saveMenuOpenRef.current) {
+            const l2 = gp.buttons[6];
+            const l2Pressed = !!(l2 && (l2.pressed || l2.value > 0.5));
+            if (l2Pressed) {
+              if (l2HoldStart === null) l2HoldStart = now;
+              else if (!l2HoldFired && now - l2HoldStart >= L2_HOLD_MS) {
+                l2HoldFired = true;
+                onToggleExitConfirmRef.current();
+              }
+            } else {
+              l2HoldStart = null;
+              l2HoldFired = false;
+            }
+          }
+
+          if (!exitConfirmOpenRef.current) {
+            const selectPressed = !!gp.buttons[8]?.pressed;
+            if (saveMenuOpenRef.current) {
+              // Menu ja aberto: um toque rapido fecha na hora, sem
+              // precisar segurar.
+              if (selectPressed && !selectWasPressed) onToggleSaveMenuRef.current();
+              selectHoldStart = null;
+              selectHoldFired = false;
+            } else if (selectPressed) {
+              if (selectHoldStart === null) selectHoldStart = now;
+              else if (!selectHoldFired && now - selectHoldStart >= SELECT_HOLD_MS) {
+                selectHoldFired = true;
+                onToggleSaveMenuRef.current();
+              }
+            } else {
+              selectHoldStart = null;
+              selectHoldFired = false;
+            }
+            selectWasPressed = selectPressed;
+          }
         }
 
-        // Menu de save state aberto: o controle vira do jogo pro overlay
-        // (ver SaveStateMenu, que le o gamepad direto pra navegar nele) —
-        // solta qualquer botao/direcao que tivesse ficado preso e para de
-        // mandar input pro jogo ate o menu fechar.
-        if (saveMenuOpenRef.current) {
+        // Menu de save state ou dialogo de sair aberto: o controle vira
+        // deles pro overlay (cada um le o gamepad direto pra navegar em
+        // si, ver SaveStateMenu/ExitConfirmDialog) — solta qualquer botao/
+        // direcao que tivesse ficado preso e para de mandar input pro
+        // jogo ate fechar.
+        if (saveMenuOpenRef.current || exitConfirmOpenRef.current) {
           clearSlot(slot);
           continue;
         }
@@ -716,6 +770,89 @@ function SaveStateMenu({
   );
 }
 
+// Dialogo "Sair do jogo?" (segurar L2 no controle, ver useGamepadPlayer) —
+// espelha o do GameScreen.html mobile: comeca focado em "Nao" de proposito
+// (sair e' a excecao, nao o padrao), D-pad/analogico esquerdo trocam o
+// foco entre Sim/Nao, botao de baixo confirma a escolha atual, B ou Start
+// cancelam. Le o gamepad direto (independente do loop do jogo, que fica
+// pausado enquanto o dialogo esta aberto).
+function ExitConfirmDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  const [focus, setFocus] = useState<"yes" | "no">("no");
+  const focusRef = useRef(focus);
+  focusRef.current = focus;
+  const [gpActive, setGpActive] = useState(false);
+  const onConfirmRef = useRef(onConfirm);
+  onConfirmRef.current = onConfirm;
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancelRef.current();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    let raf = 0;
+    let gpIndex: number | null = null;
+    let dirHeld: "left" | "right" | null = null;
+    const btnState: Record<number, boolean> = {};
+
+    function poll() {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let gp: Gamepad | null = gpIndex !== null ? pads[gpIndex] : null;
+      if (!gp) {
+        for (let i = 0; i < pads.length; i++) {
+          if (pads[i]) {
+            gp = pads[i];
+            gpIndex = i;
+            break;
+          }
+        }
+      }
+      if (gp) {
+        setGpActive(true);
+        const [ax] = gp.axes;
+        const left = !!gp.buttons[14]?.pressed || (typeof ax === "number" && ax < -GAMEPAD_STICK_DEAD);
+        const right = !!gp.buttons[15]?.pressed || (typeof ax === "number" && ax > GAMEPAD_STICK_DEAD);
+        const dirNow = left ? "left" : right ? "right" : null;
+        if (dirNow && dirNow !== dirHeld) setFocus((f) => (f === "yes" ? "no" : "yes"));
+        dirHeld = dirNow;
+
+        if (gp.buttons[0]?.pressed && !btnState[0]) {
+          if (focusRef.current === "yes") onConfirmRef.current();
+          else onCancelRef.current();
+        }
+        if ((gp.buttons[1]?.pressed && !btnState[1]) || (gp.buttons[9]?.pressed && !btnState[9])) onCancelRef.current();
+        [0, 1, 9].forEach((idx) => {
+          btnState[idx] = !!gp?.buttons[idx]?.pressed;
+        });
+      }
+      raf = requestAnimationFrame(poll);
+    }
+    raf = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div className="exit-confirm-overlay" onClick={onCancel}>
+      <div className="exit-confirm-card" onClick={(e) => e.stopPropagation()}>
+        <p className="exit-confirm-text">Sair do jogo e voltar pra biblioteca?</p>
+        <div className="exit-confirm-actions">
+          <button type="button" className={`exit-confirm-btn${gpActive && focus === "no" ? " bp-focused" : ""}`} onClick={onCancel}>
+            Não
+          </button>
+          <button type="button" className={`exit-confirm-btn${gpActive && focus === "yes" ? " bp-focused" : ""}`} onClick={onConfirm}>
+            Sim
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DesktopPlayer({ slug }: { slug: string }) {
   const [game, setGame] = useState<GameDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -753,21 +890,39 @@ function DesktopPlayer({ slug }: { slug: string }) {
   const [loadProgress, setLoadProgress] = useState(0);
   const loadingIconImage = game ? systemMeta(game.system).iconImage : undefined;
 
-  // Save state: unica forma de abrir o menu e' Select no controle ou F10
-  // no teclado (ambos alternam aberto/fechado) — o menu em si (ver
-  // SaveStateMenu) cuida de salvar/carregar/apagar cada slot.
+  // Save state: unica forma de abrir o menu e' Select no controle
+  // (segurar um pouco abre, um toque rapido fecha) ou F10 no teclado
+  // (alterna) — o menu em si (ver SaveStateMenu) cuida de salvar/
+  // carregar/apagar cada slot.
   const [saveMenuOpen, setSaveMenuOpen] = useState(false);
   function toggleSaveMenu() {
     setSaveMenuOpen((v) => !v);
   }
 
-  const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef, toggleFullscreen, toggleSaveMenu, saveMenuOpen);
+  // Dialogo "Sair do jogo?" — segurar L2 no controle (ver
+  // useGamepadPlayer/ExitConfirmDialog), sem atalho de teclado (o botao
+  // "← Biblioteca" ja cobre isso pra quem usa mouse/teclado).
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const exitConfirmOpenRef = useRef(exitConfirmOpen);
+  exitConfirmOpenRef.current = exitConfirmOpen;
+  function toggleExitConfirm() {
+    setExitConfirmOpen((v) => !v);
+  }
+
+  const [gamepad1Name, gamepad2Name] = useGamepadPlayer(
+    nostalgistRef,
+    toggleFullscreen,
+    toggleSaveMenu,
+    saveMenuOpen,
+    toggleExitConfirm,
+    exitConfirmOpen
+  );
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
-      if (e.key === "F10") {
+      if (e.key === "F10" && !exitConfirmOpenRef.current) {
         e.preventDefault();
         setSaveMenuOpen((v) => !v);
       }
@@ -802,6 +957,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
     setLoading(true);
     setLoadProgress(0);
     setSaveMenuOpen(false);
+    setExitConfirmOpen(false);
 
     let cancelled = false;
 
@@ -909,6 +1065,15 @@ function DesktopPlayer({ slug }: { slug: string }) {
         </button>
         {saveMenuOpen && game && (
           <SaveStateMenu slug={game.slug} nostalgistRef={nostalgistRef} onClose={() => setSaveMenuOpen(false)} />
+        )}
+        {exitConfirmOpen && (
+          <ExitConfirmDialog
+            onConfirm={() => {
+              setExitConfirmOpen(false);
+              goBack();
+            }}
+            onCancel={() => setExitConfirmOpen(false)}
+          />
         )}
       </div>
 

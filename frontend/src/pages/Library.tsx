@@ -336,6 +336,13 @@ export default function Library() {
 
   function focusId(id: string) {
     setFocusedId(id);
+    // Chegar no chip "Todos" (topo dos filtros) sobe a tela inteira, nao
+    // so o minimo pra revelar o chip — ele fica logo abaixo da busca/
+    // topbar, entao "nearest" deixava a top bar cortada as vezes.
+    if (id === "chip:todos") {
+      window.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
     const el = document.querySelector<HTMLElement>(`[data-bp-id="${CSS.escape(id)}"]`);
     // behavior "auto" (instantaneo) de proposito — com "smooth", segurar
     // uma direcao pra repetir o movimento chamava moveFocus() de novo NO
