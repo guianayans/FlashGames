@@ -783,6 +783,7 @@ document.getElementById('screen').style.borderRadius = '28px 28px 8px 8px';
 //  feito depois pelo usuario — ver secao REMAPEAR BOTOES mais abaixo.
 // ═══════════════════════════════════════════
 document.querySelectorAll('.btn, .cbtn').forEach(el => {
+  if (el.id === 'btn-select') return; // segurar abre o menu de save state — wiring proprio logo abaixo
   // Rastreia o pointerId manualmente e solta pelo WINDOW (nao so pelo
   // elemento) — mesmo motivo do analogico/d-pad: se setPointerCapture
   // falhar silenciosamente, pointerup/pointercancel nem chegam a disparar
@@ -809,6 +810,46 @@ document.querySelectorAll('.btn, .cbtn').forEach(el => {
   el.addEventListener('pointerleave', release);
   el.addEventListener('lostpointercapture', release);
 });
+
+// ═══════════════════════════════════════════
+//  BOTÃO SELECT (toque) — segurar abre/fecha o menu de save state
+//  Igual o L2 segurado abre "Sair do jogo?" (ver pollGamepad/L2_HOLD_MS
+//  mais abaixo): um toque rapido nao faz nada, so' segurando abre, pra nao
+//  disparar sem querer no meio do jogo. Nao manda tecla pro jogo (Select
+//  ja nao vai mais pro core de jeito nenhum, ver GP_BUTTON_KEY).
+// ═══════════════════════════════════════════
+(function () {
+  const el = document.getElementById('btn-select');
+  let pid = null;
+  let holdTimer = null;
+  function clearHold() {
+    if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null; }
+  }
+  function release() {
+    if (pid === null) return;
+    pid = null;
+    clearHold();
+    el.classList.remove('pressed');
+  }
+  activeReleasers.push(release);
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (remapMode) { startListening(el); return; }
+    pid = e.pointerId;
+    el.setPointerCapture(pid);
+    el.classList.add('pressed');
+    clearHold();
+    holdTimer = setTimeout(() => {
+      holdTimer = null;
+      if (saveMenuOpen) closeSaveMenu(); else openSaveMenu();
+    }, L2_HOLD_MS);
+  });
+  ['pointerup', 'pointercancel'].forEach(ev =>
+    window.addEventListener(ev, e => { if (e.pointerId === pid) release(); })
+  );
+  el.addEventListener('pointerleave', release);
+  el.addEventListener('lostpointercapture', release);
+})();
 
 // ═══════════════════════════════════════════
 //  D-PAD — tap + arrasto

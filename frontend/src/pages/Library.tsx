@@ -128,6 +128,14 @@ export default function Library() {
   const [gamepadActive, setGamepadActive] = useState(false);
   const [gamepadName, setGamepadName] = useState<string | null>(null);
   const [bigPictureOn, setBigPictureOn] = useState(false);
+  // Setas do teclado navegam a mesma grade espacial do controle (ver
+  // moveFocus/confirmFocused/toggleFocusedCardGroup) — precisa de um
+  // flag PROPRIO (nao reaproveita gamepadActive, que e' so' sobre
+  // hardware de controle de verdade conectado) so' pra decidir quando
+  // mostrar o aneal de foco (.bp-focused) puxado pelo teclado. Desliga
+  // sozinho ao usar o mouse, igual o bigPictureOn do controle faz.
+  const [keyboardNavActive, setKeyboardNavActive] = useState(false);
+  const focusVisible = gamepadActive || keyboardNavActive;
   // Id unificado de foco — cobre a pagina inteira, nao so os cards:
   // "search", "alpha-trigger", "chip:todos"/"chip:fav"/"chip:top"/
   // "chip:system:<slug>", "card:<slug>", "page:prev"/"page:next".
@@ -193,13 +201,69 @@ export default function Library() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Setas do teclado navegam a MESMA grade espacial que o controle usa
+  // (moveFocus/confirmFocused/toggleFocusedCardGroup — os mesmos que o
+  // poll do gamepad chama mais abaixo). Enter confirma/abre o foco atual
+  // (equivalente ao botao de baixo do controle), Espaco abre/fecha o
+  // card expansivel focado (equivalente ao Quadrado). Mesmas guardas do
+  // efeito de "digitar ja pesquisa" acima (nao rouba de campo de texto,
+  // nao mexe com Ctrl/Alt/Cmd, ignora com o overlay A-Z aberto) mais o
+  // dialogo de confirmar desfavoritar (que tem o proprio controle via
+  // ConfirmDialog, ver confirmUnfavoriteRef).
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (alphaOpenRef.current) return;
+      if (confirmUnfavoriteRef.current) return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (target?.isContentEditable) return;
+      switch (e.key) {
+        case "ArrowUp":
+          e.preventDefault();
+          setKeyboardNavActive(true);
+          moveFocus("up");
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          setKeyboardNavActive(true);
+          moveFocus("down");
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          setKeyboardNavActive(true);
+          moveFocus("left");
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          setKeyboardNavActive(true);
+          moveFocus("right");
+          break;
+        case "Enter":
+          e.preventDefault();
+          setKeyboardNavActive(true);
+          confirmFocused();
+          break;
+        case " ":
+        case "Spacebar":
+          e.preventDefault();
+          setKeyboardNavActive(true);
+          toggleFocusedCardGroup();
+          break;
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Puxar a tela pra baixo (no topo) atualiza a lista — Safari/PWA no iOS
   // nao tem pull-to-refresh nativo (diferente do Chrome/Android), entao
   // esse gesto e essa UI sao 100% nossos.
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
-  const pullState = useRef<{ startY: number; active: boolean } | null>(null);
+  const pullState = useRef<{ startX: number; startY: number; active: boolean } | null>(null);
 
   // Forma funcional do setSearchParams (le o PREV mais atual sempre, na
   // hora em que roda de verdade) — necessario porque o loop de poll do
@@ -298,20 +362,34 @@ export default function Library() {
         pullState.current = null;
         return;
       }
-      pullState.current = { startY: e.touches[0].clientY, active: true };
+      pullState.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, active: true };
     }
 
     function onTouchMove(e: TouchEvent) {
       const state = pullState.current;
       if (!state?.active) return;
-      const delta = e.touches[0].clientY - state.startY;
-      if (delta <= 0 || window.scrollY > 0) {
+      const deltaX = e.touches[0].clientX - state.startX;
+      const deltaY = e.touches[0].clientY - state.startY;
+      // Gesto mais horizontal que vertical (ex.: arrastando os chips de
+      // filtro pros lados, ver .category-row) NAO e' puxar-pra-atualizar
+      // — solta o rastreio SEM preventDefault, deixando o scroll
+      // horizontal nativo do navegador acontecer. Sem isso, qualquer
+      // arrastada horizontal com o MINIMO desvio vertical (quase toda —
+      // poucas pessoas arrastam perfeitamente reto) fazia o
+      // preventDefault() do pull-to-refresh bloquear o scroll dos
+      // filtros, travando a pagina no topo.
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        state.active = false;
+        setPullDistance(0);
+        return;
+      }
+      if (deltaY <= 0 || window.scrollY > 0) {
         state.active = false;
         setPullDistance(0);
         return;
       }
       e.preventDefault();
-      setPullDistance(Math.min(PULL_MAX, delta * 0.5));
+      setPullDistance(Math.min(PULL_MAX, deltaY * 0.5));
     }
 
     async function onTouchEnd() {
@@ -493,7 +571,7 @@ export default function Library() {
   // ninguem ter pedido). Foco em outra coisa (busca, chips, paginacao)
   // fica igual — esses ids nao desaparecem com filtro/pagina.
   useEffect(() => {
-    if (!gamepadActive) return;
+    if (!focusVisible) return;
     // Le o primeiro card de verdade do DOM (nao monta "card:"+slug na
     // mao) — em Recentes o id de cada card e' "card:escopo:slug" (ver
     // renderGameCard), entao construir so' com o slug apontaria pra um
@@ -514,7 +592,7 @@ export default function Library() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gamepadActive, paged]);
+  }, [focusVisible, paged]);
 
   function focusId(id: string) {
     setFocusedId(id);
@@ -946,6 +1024,21 @@ export default function Library() {
     };
   }, []);
 
+  // Mesma ideia, so' que pro aneal de foco do TECLADO (ver
+  // keyboardNavActive) — mexer o mouse desliga, voltar a apertar uma
+  // seta/Enter/Espaco religa sozinho (ver efeito das setas la em cima).
+  useEffect(() => {
+    function onMouseInput() {
+      setKeyboardNavActive(false);
+    }
+    window.addEventListener("mousemove", onMouseInput);
+    window.addEventListener("mousedown", onMouseInput);
+    return () => {
+      window.removeEventListener("mousemove", onMouseInput);
+      window.removeEventListener("mousedown", onMouseInput);
+    };
+  }, []);
+
   // Restaura o scroll de onde o usuario parou ao voltar de um jogo (ver
   // saveScroll, chamado ao clicar num card). So tenta depois que a lista
   // carregou e a pagina certa ja esta renderizada, senao a altura do
@@ -1100,7 +1193,7 @@ export default function Library() {
       <Link
         key={scope ? `${scope}:${g.slug}` : g.slug}
         to={`/play/${g.slug}`}
-        className={`game-card${gamepadActive && focusedId === bpId ? " gamepad-focused" : ""}`}
+        className={`game-card${focusVisible && focusedId === bpId ? " gamepad-focused" : ""}`}
         data-bp-id={bpId}
         style={{ ["--accent" as string]: meta.color }}
         onClick={saveScroll}
@@ -1160,14 +1253,14 @@ export default function Library() {
         <button
           type="button"
           data-bp-id="alpha-trigger"
-          className={`library-alpha-trigger${letter ? " active" : ""}${gamepadActive && focusedId === "alpha-trigger" ? " bp-focused" : ""}`}
+          className={`library-alpha-trigger${letter ? " active" : ""}${focusVisible && focusedId === "alpha-trigger" ? " bp-focused" : ""}`}
           onClick={() => setAlphaOpen(true)}
           aria-label="Filtrar por letra"
         >
           {letter || "A–Z"}
         </button>
 
-        <div className={`library-search${gamepadActive && focusedId === "search" ? " bp-focused" : ""}`} data-bp-id="search">
+        <div className={`library-search${focusVisible && focusedId === "search" ? " bp-focused" : ""}`} data-bp-id="search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="7" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -1305,7 +1398,7 @@ export default function Library() {
       <div className="category-row">
         <button
           data-bp-id="chip:todos"
-          className={`category-chip${activeSystem === "todos" ? " active" : ""}${gamepadActive && focusedId === "chip:todos" ? " bp-focused" : ""}`}
+          className={`category-chip${activeSystem === "todos" ? " active" : ""}${focusVisible && focusedId === "chip:todos" ? " bp-focused" : ""}`}
           style={{ ["--chip-color" as string]: "#00e5ff" }}
           onClick={() => updateFilters({ system: null, fav: null, top: null, recent: null })}
         >
@@ -1313,7 +1406,7 @@ export default function Library() {
         </button>
         <button
           data-bp-id="chip:recent"
-          className={`category-chip${recentOnly ? " active" : ""}${gamepadActive && focusedId === "chip:recent" ? " bp-focused" : ""}`}
+          className={`category-chip${recentOnly ? " active" : ""}${focusVisible && focusedId === "chip:recent" ? " bp-focused" : ""}`}
           style={{ ["--chip-color" as string]: "#39ff8f" }}
           onClick={() => updateFilters({ system: null, fav: null, top: null, recent: recentOnly ? null : "1" })}
           aria-pressed={recentOnly}
@@ -1323,7 +1416,7 @@ export default function Library() {
         </button>
         <button
           data-bp-id="chip:fav"
-          className={`category-chip${favoritesOnly ? " active" : ""}${gamepadActive && focusedId === "chip:fav" ? " bp-focused" : ""}`}
+          className={`category-chip${favoritesOnly ? " active" : ""}${focusVisible && focusedId === "chip:fav" ? " bp-focused" : ""}`}
           style={{ ["--chip-color" as string]: "#ffb020" }}
           onClick={() => updateFilters({ system: null, top: null, recent: null, fav: favoritesOnly ? null : "1" })}
           aria-pressed={favoritesOnly}
@@ -1333,7 +1426,7 @@ export default function Library() {
         </button>
         <button
           data-bp-id="chip:top"
-          className={`category-chip${topOnly ? " active" : ""}${gamepadActive && focusedId === "chip:top" ? " bp-focused" : ""}`}
+          className={`category-chip${topOnly ? " active" : ""}${focusVisible && focusedId === "chip:top" ? " bp-focused" : ""}`}
           style={{ ["--chip-color" as string]: "#ff2e9a" }}
           onClick={() => updateFilters({ system: null, fav: null, recent: null, top: topOnly ? null : "1" })}
           aria-pressed={topOnly}
@@ -1347,7 +1440,7 @@ export default function Library() {
             <button
               key={slug}
               data-bp-id={bpId}
-              className={`category-chip${activeSystem === slug ? " active" : ""}${gamepadActive && focusedId === bpId ? " bp-focused" : ""}`}
+              className={`category-chip${activeSystem === slug ? " active" : ""}${focusVisible && focusedId === bpId ? " bp-focused" : ""}`}
               style={{ ["--chip-color" as string]: meta.color }}
               onClick={() => updateFilters({ fav: null, top: null, recent: null, system: activeSystem === slug ? null : slug })}
             >
@@ -1392,7 +1485,7 @@ export default function Library() {
                 <button
                   type="button"
                   data-bp-id={bpId}
-                  className={`console-group-header${gamepadActive && focusedId === bpId ? " bp-focused" : ""}`}
+                  className={`console-group-header${focusVisible && focusedId === bpId ? " bp-focused" : ""}`}
                   onClick={() => recentGroups.toggle(card.key)}
                   aria-expanded={!collapsed}
                   style={{ ["--accent" as string]: card.key === "recent" ? "#39ff8f" : "#ffb020" }}
@@ -1426,7 +1519,7 @@ export default function Library() {
                 <button
                   type="button"
                   data-bp-id={bpId}
-                  className={`console-group-header${gamepadActive && focusedId === bpId ? " bp-focused" : ""}`}
+                  className={`console-group-header${focusVisible && focusedId === bpId ? " bp-focused" : ""}`}
                   onClick={() => systemGroups.toggle(system)}
                   aria-expanded={!collapsed}
                   style={{ ["--accent" as string]: meta.color }}
@@ -1460,7 +1553,7 @@ export default function Library() {
           <button
             type="button"
             data-bp-id="page:prev"
-            className={gamepadActive && focusedId === "page:prev" ? "bp-focused" : ""}
+            className={focusVisible && focusedId === "page:prev" ? "bp-focused" : ""}
             disabled={pageSafe <= 1}
             onClick={() => goToPage(pageSafe - 1)}
           >
@@ -1472,7 +1565,7 @@ export default function Library() {
           <button
             type="button"
             data-bp-id="page:next"
-            className={gamepadActive && focusedId === "page:next" ? "bp-focused" : ""}
+            className={focusVisible && focusedId === "page:next" ? "bp-focused" : ""}
             disabled={pageSafe >= pageCount}
             onClick={() => goToPage(pageSafe + 1)}
           >
