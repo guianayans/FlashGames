@@ -1129,32 +1129,6 @@ a {
   overflow: hidden;
 }
 
-/* Fallback sem icone cadastrado pro sistema (nao deveria acontecer hoje,
-   mas evita ficar sem nenhum feedback visual se acontecer) — sozinho,
-   centralizado (nao anda, so o icone de verdade anda). */
-.player-loading-icon-stage {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.player-loading-spinner {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 3px solid rgba(0, 229, 255, 0.15);
-  border-top-color: var(--cyan);
-  animation: player-loading-spin 0.9s linear infinite;
-}
-
-@keyframes player-loading-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* Area onde o icone anda (ver WalkingLoadingIcon em Player.tsx) — cobre o
    overlay inteiro, a posicao de verdade (x/y, ricochete nas bordas) e'
    calculada em JS a cada frame porque precisa medir o tamanho real do

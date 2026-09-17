@@ -525,13 +525,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
         <div className="player-stage" ref={stageRef} />
         {loading && !error && (
           <div className="player-loading-overlay">
-            {loadingIconImage ? (
-              <WalkingLoadingIcon src={loadingIconImage} />
-            ) : (
-              <div className="player-loading-icon-stage">
-                <div className="player-loading-spinner" />
-              </div>
-            )}
+            {loadingIconImage && <WalkingLoadingIcon src={loadingIconImage} />}
             <div className="player-loading-bottom">
               <div className="player-loading-bar">
                 <div className="player-loading-bar-fill" style={{ width: `${Math.round(loadProgress * 100)}%` }} />

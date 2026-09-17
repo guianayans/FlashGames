@@ -177,9 +177,10 @@ function hideLoadingOverlay() {
 // criterio do player desktop (Player.tsx, WalkingLoadingIcon), so em
 // DOM/CSS puro aqui (essa pagina nao usa React). O "andar local" (passo
 // balancando, sombra espremendo) e' so CSS (#loading-icon-img/-shadow);
-// aqui so translada o #loading-walk-sprite pai. Sem icone cadastrado pro
-// sistema, o spinner original continua visivel (fica escondido por
-// padrao no HTML, ver game-wrapper.html).
+// aqui so translada o #loading-walk-sprite pai. Todo sistema suportado
+// hoje (SNES/NES/Genesis/GBA/PS1) tem icone cadastrado em categories.ts
+// — se um novo sistema entrar sem icone, essa tela simplesmente fica sem
+// nada no lugar (sem spinner de reserva; era confuso ter os dois).
 const WALK_ICON_SIZE = 40; // largura do sprite (bate com o width do CSS)
 const WALK_SPRITE_HEIGHT = 56; // altura total incluindo a sombra embaixo (icone 40 + gap 8 + sombra 5)
 const WALK_SPEED_PX_S = 70;
@@ -190,11 +191,8 @@ function startWalkingIcon(system: string) {
   const img = document.getElementById("loading-icon-img") as HTMLImageElement | null;
   const area = document.getElementById("loading-walk-area");
   const sprite = document.getElementById("loading-walk-sprite");
-  const spinnerStage = document.getElementById("loading-spinner-stage");
   if (!img || !area || !sprite) return;
   img.src = iconImage;
-  area.classList.remove("hidden");
-  spinnerStage?.classList.add("hidden");
 
   let last = performance.now();
   const rect0 = area.getBoundingClientRect();
