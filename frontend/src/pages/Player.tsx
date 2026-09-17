@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, SAVE_STATE_SLOTS } from "../api";
 import type { SaveStateSlot } from "../api";
 import { systemMeta } from "../categories";
+import ConfirmDialog from "../components/ConfirmDialog";
 import type { GameDetail, SystemLauncher } from "../types";
 
 // Proporcao nativa de cada console — usada pra dimensionar o palco do jogo
@@ -47,6 +48,74 @@ function useLibraryBack() {
   };
 }
 
+// Confirmacao antes de sair do jogo — usada por QUALQUER jeito de tentar
+// voltar (botao de voltar, segurar L2 no controle, ou apertar
+// voltar/gesto do proprio navegador), tanto desktop quanto mobile.
+//
+// O caso dificil e' o botao/gesto de voltar do NAVEGADOR: por padrao ele
+// ja navega embora antes de qualquer JS rodar (popstate so avisa DEPOIS
+// do fato). O truque e' empurrar uma entrada extra e "identica" no
+// historico assim que entra na pagina do jogo — a primeira vez que o
+// usuario aperta voltar, o navegador so consome essa entrada extra (URL
+// nao muda nada, a pagina nao desmonta) e a gente pega o popstate pra
+// mostrar o dialogo em vez de deixar sair. Dai:
+//  - se ele confirma DIRETO (L2/botao, sem ter apertado voltar do
+//    navegador antes): a entrada extra ainda esta la intacta por cima da
+//    entrada de verdade do jogo, entao primeiro ela e' consumida em
+//    silencio (history.back(), sem efeito visual - mesma URL) e SO
+//    DEPOIS a saida de verdade acontece (goBack).
+//  - se ele confirma DEPOIS de ja ter apertado voltar do navegador (o
+//    que disparou o popstate/dialogo): a entrada extra ja foi consumida
+//    por aquele voltar, entao um goBack() normal a partir daqui ja cai
+//    direto na pagina anterior de verdade.
+//  - se ele CANCELA depois de ter usado o voltar do navegador: reempurra
+//    a entrada extra, pra um segundo voltar tambem ser pego (senao a
+//    protecao "gastava" na primeira tentativa).
+function useExitConfirm(goBack: () => void) {
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const guardConsumedRef = useRef(false);
+  const suppressPopRef = useRef(false);
+  const goBackRef = useRef(goBack);
+  goBackRef.current = goBack;
+
+  useEffect(() => {
+    window.history.pushState({ fgExitGuard: true }, "");
+    function onPopState() {
+      if (suppressPopRef.current) {
+        suppressPopRef.current = false;
+        return;
+      }
+      guardConsumedRef.current = true;
+      setExitConfirmOpen(true);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  function requestExit() {
+    setExitConfirmOpen(true);
+  }
+  function cancelExit() {
+    setExitConfirmOpen(false);
+    if (guardConsumedRef.current) {
+      window.history.pushState({ fgExitGuard: true }, "");
+      guardConsumedRef.current = false;
+    }
+  }
+  function confirmExit() {
+    setExitConfirmOpen(false);
+    if (guardConsumedRef.current) {
+      goBackRef.current();
+    } else {
+      suppressPopRef.current = true;
+      window.history.back();
+      setTimeout(() => goBackRef.current(), 0);
+    }
+  }
+
+  return { exitConfirmOpen, requestExit, cancelExit, confirmExit };
+}
+
 export default function Player() {
   const { slug = "" } = useParams();
 
@@ -81,15 +150,19 @@ const BACK_BUTTON_AUTO_HIDE_MS = 3000;
 function MobilePlayer({ slug }: { slug: string }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const goBack = useLibraryBack();
+  const { exitConfirmOpen, requestExit, cancelExit, confirmExit } = useExitConfirm(goBack);
 
   // Escondido por padrao — so aparece quando o GameScreen.html (ou o
   // game-wrapper.ts dele, em paisagem) avisa via postMessage que detectou
   // um swipe partindo da borda esquerda (ver GameScreen.html, secao
   // "SWIPE DA BORDA"). Isso substitui o gesto nativo de "voltar" do iOS,
   // que antes tirava o jogador do jogo sem querer — agora o gesto so
-  // revela o botao, e sair exige um toque nele.
+  // revela o botao, e sair exige um toque nele (que agora tambem passa
+  // pelo dialogo de confirmacao, ver requestExit).
   const [showBack, setShowBack] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmExitRef = useRef(confirmExit);
+  confirmExitRef.current = confirmExit;
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {
@@ -102,10 +175,11 @@ function MobilePlayer({ slug }: { slug: string }) {
         return;
       }
       // Segurar L2 no controle (ver GameScreen.html, dialogo "Sair do
-      // jogo?") — o usuario ja confirmou LA dentro, sai direto, sem
-      // precisar revelar/tocar o botao de novo.
+      // jogo?") — o usuario ja confirmou LA dentro, sai direto (via
+      // confirmExit, que cuida do historico sozinho), sem mostrar
+      // NOSSO dialogo de novo por cima.
       if (type === "gc:exitToLibrary") {
-        goBack();
+        confirmExitRef.current();
       }
     }
     window.addEventListener("message", onMessage);
@@ -113,7 +187,7 @@ function MobilePlayer({ slug }: { slug: string }) {
       window.removeEventListener("message", onMessage);
       if (hideTimer.current) clearTimeout(hideTimer.current);
     };
-  }, [goBack]);
+  }, []);
 
   const handleLoad = () => {
     const win = frameRef.current?.contentWindow as GameScreenWindow | null | undefined;
@@ -124,7 +198,7 @@ function MobilePlayer({ slug }: { slug: string }) {
     <div className="mobile-player">
       <button
         type="button"
-        onClick={goBack}
+        onClick={requestExit}
         className={`mobile-player-back${showBack ? " visible" : ""}`}
         aria-label="Voltar pra biblioteca"
       >
@@ -139,6 +213,9 @@ function MobilePlayer({ slug }: { slug: string }) {
         allow="fullscreen; gamepad"
         allowFullScreen
       />
+      {exitConfirmOpen && (
+        <ConfirmDialog message="Sair do jogo e voltar pra biblioteca?" onConfirm={confirmExit} onCancel={cancelExit} />
+      )}
     </div>
   );
 }
@@ -770,89 +847,6 @@ function SaveStateMenu({
   );
 }
 
-// Dialogo "Sair do jogo?" (segurar L2 no controle, ver useGamepadPlayer) —
-// espelha o do GameScreen.html mobile: comeca focado em "Nao" de proposito
-// (sair e' a excecao, nao o padrao), D-pad/analogico esquerdo trocam o
-// foco entre Sim/Nao, botao de baixo confirma a escolha atual, B ou Start
-// cancelam. Le o gamepad direto (independente do loop do jogo, que fica
-// pausado enquanto o dialogo esta aberto).
-function ExitConfirmDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
-  const [focus, setFocus] = useState<"yes" | "no">("no");
-  const focusRef = useRef(focus);
-  focusRef.current = focus;
-  const [gpActive, setGpActive] = useState(false);
-  const onConfirmRef = useRef(onConfirm);
-  onConfirmRef.current = onConfirm;
-  const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancelRef.current();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  useEffect(() => {
-    let raf = 0;
-    let gpIndex: number | null = null;
-    let dirHeld: "left" | "right" | null = null;
-    const btnState: Record<number, boolean> = {};
-
-    function poll() {
-      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-      let gp: Gamepad | null = gpIndex !== null ? pads[gpIndex] : null;
-      if (!gp) {
-        for (let i = 0; i < pads.length; i++) {
-          if (pads[i]) {
-            gp = pads[i];
-            gpIndex = i;
-            break;
-          }
-        }
-      }
-      if (gp) {
-        setGpActive(true);
-        const [ax] = gp.axes;
-        const left = !!gp.buttons[14]?.pressed || (typeof ax === "number" && ax < -GAMEPAD_STICK_DEAD);
-        const right = !!gp.buttons[15]?.pressed || (typeof ax === "number" && ax > GAMEPAD_STICK_DEAD);
-        const dirNow = left ? "left" : right ? "right" : null;
-        if (dirNow && dirNow !== dirHeld) setFocus((f) => (f === "yes" ? "no" : "yes"));
-        dirHeld = dirNow;
-
-        if (gp.buttons[0]?.pressed && !btnState[0]) {
-          if (focusRef.current === "yes") onConfirmRef.current();
-          else onCancelRef.current();
-        }
-        if ((gp.buttons[1]?.pressed && !btnState[1]) || (gp.buttons[9]?.pressed && !btnState[9])) onCancelRef.current();
-        [0, 1, 9].forEach((idx) => {
-          btnState[idx] = !!gp?.buttons[idx]?.pressed;
-        });
-      }
-      raf = requestAnimationFrame(poll);
-    }
-    raf = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  return (
-    <div className="exit-confirm-overlay" onClick={onCancel}>
-      <div className="exit-confirm-card" onClick={(e) => e.stopPropagation()}>
-        <p className="exit-confirm-text">Sair do jogo e voltar pra biblioteca?</p>
-        <div className="exit-confirm-actions">
-          <button type="button" className={`exit-confirm-btn${gpActive && focus === "no" ? " bp-focused" : ""}`} onClick={onCancel}>
-            Não
-          </button>
-          <button type="button" className={`exit-confirm-btn${gpActive && focus === "yes" ? " bp-focused" : ""}`} onClick={onConfirm}>
-            Sim
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function DesktopPlayer({ slug }: { slug: string }) {
   const [game, setGame] = useState<GameDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -899,14 +893,17 @@ function DesktopPlayer({ slug }: { slug: string }) {
     setSaveMenuOpen((v) => !v);
   }
 
-  // Dialogo "Sair do jogo?" — segurar L2 no controle (ver
-  // useGamepadPlayer/ExitConfirmDialog), sem atalho de teclado (o botao
-  // "← Biblioteca" ja cobre isso pra quem usa mouse/teclado).
-  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  // Dialogo "Sair do jogo?" — segurar L2 no controle, clicar em "←
+  // Biblioteca", ou apertar voltar do proprio navegador (ver
+  // useExitConfirm, compartilhado com o MobilePlayer). L2 mantem o
+  // comportamento de alternar (segura nele de novo fecha sem confirmar),
+  // os outros dois so abrem.
+  const { exitConfirmOpen, requestExit, cancelExit, confirmExit } = useExitConfirm(goBack);
   const exitConfirmOpenRef = useRef(exitConfirmOpen);
   exitConfirmOpenRef.current = exitConfirmOpen;
-  function toggleExitConfirm() {
-    setExitConfirmOpen((v) => !v);
+  function toggleExitConfirmViaL2() {
+    if (exitConfirmOpenRef.current) cancelExit();
+    else requestExit();
   }
 
   const [gamepad1Name, gamepad2Name] = useGamepadPlayer(
@@ -914,7 +911,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
     toggleFullscreen,
     toggleSaveMenu,
     saveMenuOpen,
-    toggleExitConfirm,
+    toggleExitConfirmViaL2,
     exitConfirmOpen
   );
 
@@ -957,7 +954,6 @@ function DesktopPlayer({ slug }: { slug: string }) {
     setLoading(true);
     setLoadProgress(0);
     setSaveMenuOpen(false);
-    setExitConfirmOpen(false);
 
     let cancelled = false;
 
@@ -1009,7 +1005,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
   return (
     <div className="player-page">
       <div className="player-topbar glass">
-        <button type="button" onClick={goBack} className="back-link">
+        <button type="button" onClick={requestExit} className="back-link">
           ← Biblioteca
         </button>
         <h1>{game?.title ?? "Carregando..."}</h1>
@@ -1067,13 +1063,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
           <SaveStateMenu slug={game.slug} nostalgistRef={nostalgistRef} onClose={() => setSaveMenuOpen(false)} />
         )}
         {exitConfirmOpen && (
-          <ExitConfirmDialog
-            onConfirm={() => {
-              setExitConfirmOpen(false);
-              goBack();
-            }}
-            onCancel={() => setExitConfirmOpen(false)}
-          />
+          <ConfirmDialog message="Sair do jogo e voltar pra biblioteca?" onConfirm={confirmExit} onCancel={cancelExit} />
         )}
       </div>
 

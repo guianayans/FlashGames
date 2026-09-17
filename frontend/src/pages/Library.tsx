@@ -4,6 +4,7 @@ import { api } from "../api";
 import type { GameSummary } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { systemMeta } from "../categories";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 function normalize(s: string): string {
   return s
@@ -83,6 +84,14 @@ export default function Library() {
   favoritesRef.current = favorites;
   const searchParamsRef = useRef(searchParams);
   searchParamsRef.current = searchParams;
+
+  // Desfavoritar pede confirmacao (favoritar de novo e' facil, mas alguns
+  // usuarios organizam a lista com cuidado — um toque sem querer no
+  // controle ou no card nao pode desfazer isso sem avisar). So' o slug
+  // pendente de confirmacao (null = nenhum dialogo aberto).
+  const [confirmUnfavoriteSlug, setConfirmUnfavoriteSlug] = useState<string | null>(null);
+  const confirmUnfavoriteRef = useRef(confirmUnfavoriteSlug);
+  confirmUnfavoriteRef.current = confirmUnfavoriteSlug;
 
   // No modo controle, o overlay A-Z vira teclado (letra focada = digitar
   // na busca, em vez de pular pro filtro por letra inicial) — "" = nada
@@ -266,6 +275,14 @@ export default function Library() {
     };
   }, [refreshing]);
 
+  // Favoritar e' direto; desfavoritar pede confirmacao antes (ver
+  // confirmUnfavoriteSlug) — so' abre o dialogo quando o jogo JA esta
+  // favoritado, senao chama toggleFavorite direto como sempre.
+  function requestToggleFavorite(slug: string) {
+    if (favoritesRef.current.has(slug)) setConfirmUnfavoriteSlug(slug);
+    else toggleFavorite(slug);
+  }
+
   async function toggleFavorite(slug: string) {
     // favoritesRef (nao o "favorites" direto): o loop de poll do gamepad
     // chama esta funcao de dentro de um efeito que so monta uma vez, entao
@@ -304,7 +321,12 @@ export default function Library() {
     const q = normalize(query.trim());
     return games.filter((g) => {
       if (favoritesOnly && !favorites.has(g.slug)) return false;
-      if (topOnly && !g.top) return false;
+      // g.top ja vem do backend somando a lista curada + favoritos do
+      // usuario (ver routes/games.js), mas so no momento do fetch inicial
+      // — sem isso, favoritar um jogo so o levaria pra Top Games depois
+      // de recarregar a pagina. favorites.has aqui deixa isso dinamico na
+      // hora, sem precisar buscar a lista de novo.
+      if (topOnly && !g.top && !favorites.has(g.slug)) return false;
       if (activeSystem !== "todos" && g.system !== activeSystem) return false;
       if (letter && titleBucket(g.title) !== letter) return false;
       if (!q) return true;
@@ -574,6 +596,14 @@ export default function Library() {
           return;
         }
 
+        // Dialogo de confirmar desfavoritar aberto: o controle vira dele
+        // (ConfirmDialog le o gamepad sozinho) — a grade de fundo nao
+        // pode continuar respondendo ao mesmo tempo.
+        if (confirmUnfavoriteRef.current) {
+          raf = requestAnimationFrame(poll);
+          return;
+        }
+
         const [ax, ay, , ry] = gp.axes;
         const dead = 0.5;
         const left = !!gp.buttons[14]?.pressed || (typeof ax === "number" && ax < -dead);
@@ -624,7 +654,7 @@ export default function Library() {
         if (pressedNow(0) && !btnState[0]) confirmFocused();
         if (pressedNow(1) && !btnState[1]) {
           const id = focusedIdRef.current;
-          if (id?.startsWith("card:")) toggleFavorite(id.slice(5));
+          if (id?.startsWith("card:")) requestToggleFavorite(id.slice(5));
         }
         if (pressedNow(4) && !btnState[4]) goToPage(pageSafeRef.current - 1);
         if (pressedNow(5) && !btnState[5]) goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
@@ -809,7 +839,7 @@ export default function Library() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              toggleFavorite(g.slug);
+              requestToggleFavorite(g.slug);
             }}
           >
             {isFavorite ? "★" : "☆"}
@@ -1072,6 +1102,19 @@ export default function Library() {
             Proxima →
           </button>
         </div>
+      )}
+
+      {confirmUnfavoriteSlug && (
+        <ConfirmDialog
+          message={`Remover "${games.find((g) => g.slug === confirmUnfavoriteSlug)?.title ?? "este jogo"}" dos favoritos?`}
+          confirmLabel="Remover"
+          cancelLabel="Cancelar"
+          onConfirm={() => {
+            toggleFavorite(confirmUnfavoriteSlug);
+            setConfirmUnfavoriteSlug(null);
+          }}
+          onCancel={() => setConfirmUnfavoriteSlug(null)}
+        />
       )}
     </div>
   );

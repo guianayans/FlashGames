@@ -1,9 +1,12 @@
 import { Router } from "express";
 import path from "node:path";
+import db from "../db.js";
 import { listGames, getGame, listBiosFiles, ROMS_DIR } from "../gamesLibrary.js";
 import { TOP_GAME_SLUGS } from "../topGames.js";
 
 const router = Router();
+
+const favoriteSlugsStmt = db.prepare("SELECT game_slug FROM user_favorites WHERE user_id = ?");
 
 function toPublicUrl(prefix, absolutePath) {
   if (!absolutePath) return null;
@@ -11,7 +14,12 @@ function toPublicUrl(prefix, absolutePath) {
   return `/${prefix}/${rel.split("/").map(encodeURIComponent).join("/")}`;
 }
 
-function toSummary(g) {
+// "top" e' a lista curada (TOP_GAME_SLUGS) UNIDA com os favoritos do
+// proprio usuario logado — favoritar um jogo automaticamente o torna
+// "top" pra ESSE usuario tambem (dinamico, por pessoa: o que e' top pra
+// um nao muda o que e' top pro outro). Sem sessao (readAuth nao achou
+// cookie valido), so a lista curada conta.
+function toSummary(g, userTopSlugs) {
   return {
     slug: g.slug,
     title: g.title,
@@ -20,12 +28,15 @@ function toSummary(g) {
     tags: Array.isArray(g.tags) ? g.tags : [],
     system: g.system,
     cover: toPublicUrl("roms", g.cover),
-    top: TOP_GAME_SLUGS.has(g.slug),
+    top: userTopSlugs.has(g.slug),
   };
 }
 
-router.get("/", (_req, res) => {
-  res.json({ games: listGames().map(toSummary) });
+router.get("/", (req, res) => {
+  const userTopSlugs = req.user
+    ? new Set([...TOP_GAME_SLUGS, ...favoriteSlugsStmt.all(req.user.id).map((r) => r.game_slug)])
+    : TOP_GAME_SLUGS;
+  res.json({ games: listGames().map((g) => toSummary(g, userTopSlugs)) });
 });
 
 // Lista os arquivos de BIOS disponiveis (ver listBiosFiles) como URLs
@@ -38,9 +49,12 @@ router.get("/system/bios", (_req, res) => {
 router.get("/:slug", (req, res) => {
   const game = getGame(req.params.slug);
   if (!game) return res.status(404).json({ error: "not_found" });
+  const userTopSlugs = req.user
+    ? new Set([...TOP_GAME_SLUGS, ...favoriteSlugsStmt.all(req.user.id).map((r) => r.game_slug)])
+    : TOP_GAME_SLUGS;
   res.json({
     game: {
-      ...toSummary(game),
+      ...toSummary(game, userTopSlugs),
       launcher: game.launcher,
       rom: toPublicUrl("roms", game.rom),
       // So PS1 tem isso preenchido: faixas/arquivos que o .cue (ou .m3u/

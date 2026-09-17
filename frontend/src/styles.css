@@ -1514,13 +1514,17 @@ a {
   cursor: default;
 }
 
-/* Dialogo "Sair do jogo?" (segurar L2 no controle, ver ExitConfirmDialog
-   em Player.tsx) — mesmo padrao visual do menu de save state, so que
-   mais simples (texto + Sim/Nao). */
-.exit-confirm-overlay {
-  position: absolute;
+/* Overlay generico de confirmacao (Sim/Nao) — ver components/
+   ConfirmDialog.tsx. Usado pro dialogo "Sair do jogo?" (segurar L2 no
+   controle, clicar em voltar, ou apertar voltar do navegador — ver
+   Player.tsx) e pra confirmar desfavoritar (ver Library.tsx). Mesmo
+   padrao visual do menu de save state, so que mais simples (texto +
+   Sim/Nao). position:fixed cobre a tela inteira em qualquer pagina que
+   use isso, nao so dentro do palco do jogo. */
+.confirm-overlay {
+  position: fixed;
   inset: 0;
-  z-index: 21;
+  z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1528,7 +1532,7 @@ a {
   background: rgba(4, 3, 10, 0.75);
 }
 
-.exit-confirm-card {
+.confirm-card {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1543,19 +1547,19 @@ a {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-.exit-confirm-text {
+.confirm-text {
   margin: 0;
   text-align: center;
   color: var(--text);
   font-size: 0.9rem;
 }
 
-.exit-confirm-actions {
+.confirm-actions {
   display: flex;
   gap: 10px;
 }
 
-.exit-confirm-btn {
+.confirm-btn {
   min-width: 96px;
   padding: 9px 18px;
   border-radius: var(--radius-sm);
@@ -1568,7 +1572,7 @@ a {
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.exit-confirm-btn:hover {
+.confirm-btn:hover {
   border-color: var(--magenta);
   color: var(--text);
 }
