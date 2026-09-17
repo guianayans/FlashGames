@@ -1071,6 +1071,12 @@ a {
   color: #fff;
 }
 
+/* Cursor parado uns segundos em cima da tela do jogo (ver DesktopPlayer,
+   resetCursorIdleTimer) — some ate mexer o mouse de novo. */
+.player-stage-wrapper.cursor-idle {
+  cursor: none;
+}
+
 .player-description {
   color: var(--text-dim);
   font-size: 0.85rem;

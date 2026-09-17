@@ -345,6 +345,26 @@ function DesktopPlayer({ slug }: { slug: string }) {
 
   const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef, toggleFullscreen);
 
+  // Esconde o cursor do mouse depois de parado uns segundos em cima da
+  // tela do jogo (padrao de player de video/jogo) — reaparece assim que
+  // mexe de novo. So dentro do palco (fora dele, ex. na topbar, o cursor
+  // continua normal — sempre tem algo clicavel ali).
+  const CURSOR_IDLE_MS = 2500;
+  const [cursorIdle, setCursorIdle] = useState(false);
+  const cursorIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function resetCursorIdleTimer() {
+    setCursorIdle(false);
+    if (cursorIdleTimer.current) clearTimeout(cursorIdleTimer.current);
+    cursorIdleTimer.current = setTimeout(() => setCursorIdle(true), CURSOR_IDLE_MS);
+  }
+  useEffect(() => {
+    resetCursorIdleTimer();
+    return () => {
+      if (cursorIdleTimer.current) clearTimeout(cursorIdleTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     setGame(null);
     setError(null);
@@ -405,8 +425,9 @@ function DesktopPlayer({ slug }: { slug: string }) {
       {error && <p className="error-text">{error}</p>}
 
       <div
-        className="player-stage-wrapper"
+        className={`player-stage-wrapper${cursorIdle ? " cursor-idle" : ""}`}
         ref={stageWrapperRef}
+        onMouseMove={resetCursorIdleTimer}
         style={{
           position: "relative",
           ["--stage-ratio" as string]: game ? SYSTEM_ASPECT_RATIO[game.launcher] : 4 / 3,
