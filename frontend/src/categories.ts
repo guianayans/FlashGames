@@ -32,7 +32,6 @@ export const SYSTEM_META: Record<string, SystemMeta> = {
   GENESIS: { label: "Mega Drive", color: "#00d4ff", icon: "▲", iconImage: "/images/consoles/GENESIS.png" },
   GBA: { label: "Game Boy Advance", color: "#39ff8f", icon: "■", iconImage: "/images/consoles/GBA.png" },
   PS1: { label: "PlayStation", color: "#b453ff", icon: "●", iconImage: "/images/consoles/PS1.png" },
-  PS2: { label: "PlayStation 2", color: "#5b6bff", icon: "◆", iconImage: "/images/consoles/PS2.png" },
 };
 
 export function systemMeta(slug: string): SystemMeta {

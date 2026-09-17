@@ -18,7 +18,6 @@ services:
       - /pendriver/FlashGames/GENESIS:/app/roms/GENESIS
       - /pendriver/FlashGames/GBA:/app/roms/GBA
       - /pendriver/FlashGames/PS1:/app/roms/PS1
-      - /pendriver/FlashGames/PS2:/app/roms/PS2
       - /pendriver/FlashGames/BIOS:/app/roms/BIOS
       - flashgames_data:/app/data
     environment:

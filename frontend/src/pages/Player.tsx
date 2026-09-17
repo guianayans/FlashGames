@@ -13,7 +13,6 @@ const SYSTEM_ASPECT_RATIO: Record<SystemLauncher, number> = {
   megadrive: 4 / 3,
   gba: 3 / 2,
   psx: 4 / 3,
-  ps2: 4 / 3,
 };
 import { loadEmulator } from "../loadEmulatorScript";
 import type { Nostalgist } from "nostalgist";
@@ -346,7 +345,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
 
   const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef, toggleFullscreen);
 
-  // Progresso de carregamento (0..1) — so PS1/PS2 reportam de verdade (ver
+  // Progresso de carregamento (0..1) — so PS1 reporta de verdade (ver
   // loadEmulatorScript.ts, prefetchWithProgress); os outros sistemas nunca
   // chamam onProgress, entao a barra so fica visivel enquanto "loading"
   // ainda e' true, sem se preocupar com o numero exato nesses casos (jogo
