@@ -172,8 +172,15 @@ type GamepadSlot = {
 // comando na mao, igual o GameScreen.html faz pro player mobile. O
 // PRIMEIRO controle detectado vira P1, o segundo vira P2 — com 1 controle
 // so, nunca se manda input de P2 (nao tem slot 2 ocupado pra isso).
-function useGamepadPlayer(nostalgistRef: React.RefObject<Nostalgist | null>): (string | null)[] {
+function useGamepadPlayer(
+  nostalgistRef: React.RefObject<Nostalgist | null>,
+  onToggleFullscreen: () => void
+): (string | null)[] {
   const [names, setNames] = useState<(string | null)[]>([null, null]);
+  // Ref pra sempre chamar a versao mais atual sem precisar recriar o
+  // efeito (que reconectaria os listeners de gamepad) toda renderizacao.
+  const onToggleFullscreenRef = useRef(onToggleFullscreen);
+  onToggleFullscreenRef.current = onToggleFullscreen;
 
   useEffect(() => {
     const slots: GamepadSlot[] = [
@@ -232,7 +239,17 @@ function useGamepadPlayer(nostalgistRef: React.RefObject<Nostalgist | null>): (s
     window.addEventListener("gamepadconnected", onConnected);
     window.addEventListener("gamepaddisconnected", onDisconnected);
 
+    // Segurar R2 (botao 7 — gatilho direito) por R2_HOLD_MS liga/desliga
+    // tela cheia, so no controle do P1. Botao 7 nao entra no
+    // GAMEPAD_BUTTON_MAP (nenhum console suportado usa gatilho analogico
+    // separado), entao fica livre pra isso sem mandar nada indevido pro
+    // jogo — mesmo criterio do L2 no GameScreen.html (ver "Sair do jogo?").
+    const R2_HOLD_MS = 700;
+    let r2HoldStart: number | null = null;
+    let r2HoldFired = false;
+
     function poll() {
+      const now = performance.now();
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       // Alguns navegadores nao disparam 'gamepadconnected' se o controle
       // ja estava pareado antes da pagina carregar.
@@ -243,6 +260,20 @@ function useGamepadPlayer(nostalgistRef: React.RefObject<Nostalgist | null>): (s
         if (slot.gpIndex === null) continue;
         const gp = pads[slot.gpIndex];
         if (!gp) continue;
+        if (slot.player === 1) {
+          const r2 = gp.buttons[7];
+          const r2Pressed = !!(r2 && (r2.pressed || r2.value > 0.5));
+          if (r2Pressed) {
+            if (r2HoldStart === null) r2HoldStart = now;
+            else if (!r2HoldFired && now - r2HoldStart >= R2_HOLD_MS) {
+              r2HoldFired = true;
+              onToggleFullscreenRef.current();
+            }
+          } else {
+            r2HoldStart = null;
+            r2HoldFired = false;
+          }
+        }
         for (const idxStr of Object.keys(GAMEPAD_BUTTON_MAP)) {
           const idx = Number(idxStr);
           const pressed = !!gp.buttons[idx]?.pressed;
@@ -288,9 +319,31 @@ function DesktopPlayer({ slug }: { slug: string }) {
   const [game, setGame] = useState<GameDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const stageWrapperRef = useRef<HTMLDivElement>(null);
   const nostalgistRef = useRef<Nostalgist | null>(null);
   const goBack = useLibraryBack();
-  const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef);
+
+  // Tela cheia mantendo a proporcao do jogo (ver CSS .player-stage-
+  // wrapper:fullscreen) — o elemento que entra em fullscreen e' o
+  // WRAPPER (nao o canvas), que ja tem aspect-ratio/object-fit cuidando
+  // de nao esticar a imagem, sobrando barra preta dos dois lados quando a
+  // proporcao da tela nao bate com a do console.
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  function toggleFullscreen() {
+    const el = stageWrapperRef.current;
+    if (!el) return;
+    if (document.fullscreenElement === el) document.exitFullscreen();
+    else el.requestFullscreen();
+  }
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(document.fullscreenElement === stageWrapperRef.current);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef, toggleFullscreen);
 
   useEffect(() => {
     setGame(null);
@@ -353,12 +406,36 @@ function DesktopPlayer({ slug }: { slug: string }) {
 
       <div
         className="player-stage-wrapper"
+        ref={stageWrapperRef}
         style={{
           position: "relative",
           ["--stage-ratio" as string]: game ? SYSTEM_ASPECT_RATIO[game.launcher] : 4 / 3,
         }}
       >
         <div className="player-stage" ref={stageRef} />
+        <button
+          type="button"
+          className="player-fullscreen-btn"
+          onClick={toggleFullscreen}
+          aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+          title={isFullscreen ? "Sair da tela cheia (segure R2)" : "Tela cheia (segure R2)"}
+        >
+          {isFullscreen ? (
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+              <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+              <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+              <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+              <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+              <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+              <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+            </svg>
+          )}
+        </button>
       </div>
 
       {game?.description && <p className="player-description">{game.description}</p>}

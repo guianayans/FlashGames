@@ -1027,6 +1027,50 @@ a {
   height: 100%;
 }
 
+/* Em tela cheia, o WRAPPER inteiro (nao so o canvas) e' o elemento que
+   entra em fullscreen — refaz o mesmo calculo de "cresce sem distorcer"
+   de cima, so que contra o viewport inteiro (sem o desconto do topbar),
+   com margin:auto + inset:0 centralizando (sobra como barra preta dos
+   dois lados quando a proporcao da tela nao bate com a do console). */
+.player-stage-wrapper:fullscreen,
+.player-stage-wrapper:-webkit-full-screen {
+  position: fixed;
+  inset: 0;
+  width: min(100vw, 100vh * var(--stage-ratio, 1.3333));
+  aspect-ratio: var(--stage-ratio, 1.3333);
+  max-height: 100vh;
+  margin: auto;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.player-fullscreen-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 5;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.player-fullscreen-btn:hover,
+.player-fullscreen-btn:focus-visible {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+}
+
 .player-description {
   color: var(--text-dim);
   font-size: 0.85rem;
