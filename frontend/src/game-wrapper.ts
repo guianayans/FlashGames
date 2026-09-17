@@ -175,6 +175,7 @@ async function main() {
     nostalgist = await loadEmulator({
       launcher: game.launcher,
       romUrl: game.rom,
+      romExtras: game.romExtras,
       canvas,
     });
   } catch (err) {

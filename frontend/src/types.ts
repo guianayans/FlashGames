@@ -16,6 +16,10 @@ export type SystemLauncher = "snes" | "nes" | "megadrive" | "gba" | "psx";
 export interface GameDetail extends GameSummary {
   launcher: SystemLauncher;
   rom: string;
+  // So PS1 preenche isso — faixas/arquivos extras que o .cue/.m3u/.ccd do
+  // jogo referencia (ver getPs1RomExtras no backend). Vazio nos outros
+  // sistemas (arquivo unico).
+  romExtras: string[];
 }
 
 export interface User {

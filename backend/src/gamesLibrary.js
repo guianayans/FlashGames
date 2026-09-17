@@ -171,6 +171,111 @@ function pickPs1MasterFile(folder) {
   return null;
 }
 
+// So tem 1 arquivo de midia candidato na pasta (.bin/.iso/.img, fora o
+// proprio .cue/.m3u) -> nao ha ambiguidade possivel, so pode ser esse.
+// Usado quando o nome que o .cue referencia nao bate com nada (ripagem
+// com .cue desatualizado/generico, ver GTA.2 no comentario de baixo).
+function findSingleDiscMediaFile(dir, excludePath) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  const candidates = entries
+    .filter((e) => e.isFile())
+    .map((e) => path.join(dir, e.name))
+    .filter((p) => p !== excludePath && PS1_FALLBACK_EXTENSIONS.includes(path.extname(p).toLowerCase()));
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+// Resolve um nome de arquivo que o .cue referencia pro caminho de
+// verdade na pasta. Ripagens de PS1 tem duas manhas comuns aqui: (1) o
+// .cue referencia ".BIN" maiusculo mas o arquivo real e' ".bin" minusculo
+// (ou vice-versa) — sistema de arquivos e' case-sensitive, entao um
+// fs.existsSync direto falha; (2) o .cue as vezes referencia um nome
+// generico/desatualizado que nao bate com NADA na pasta (ex: GTA.2 tem
+// `FILE "gta2.bin"` mas o arquivo real e' "GTA 2 (PAL) - RIP.bin"). Pra
+// isso, tenta exato, depois case-insensitive, e por ultimo cai no
+// fallback de "unico arquivo de midia da pasta" (so faz sentido pra
+// disco de faixa unica, que e' exatamente o caso desses dois jogos).
+function resolveCueFileRef(dir, refName, cuePath) {
+  const direct = path.join(dir, refName);
+  if (fs.existsSync(direct)) return direct;
+  let entries;
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    entries = [];
+  }
+  const lowerRef = refName.toLowerCase();
+  const ciMatch = entries.find((e) => e.toLowerCase() === lowerRef);
+  if (ciMatch) return path.join(dir, ciMatch);
+  return findSingleDiscMediaFile(dir, cuePath);
+}
+
+// Um .cue nao e' o jogo em si — e' so um indice de texto que aponta pros
+// arquivos de verdade (uma ou mais faixas .bin/.img) pelo nome. Sem
+// mandar essas faixas junto pro emulador (alem do proprio .cue), o core
+// abre o indice, tenta achar os arquivos que ele referencia no sistema de
+// arquivos virtual, nao encontra nenhum, e falha ("Failed to load
+// content"). Aqui a gente le o .cue e devolve os caminhos de tudo que
+// ele referencia, pra mandar tudo junto (ver romExtras).
+function parseCueFileRefs(cuePath) {
+  let content;
+  try {
+    content = fs.readFileSync(cuePath, "utf-8");
+  } catch {
+    return [];
+  }
+  const dir = path.dirname(cuePath);
+  const refs = [];
+  const re = /^\s*FILE\s+"([^"]+)"/gim;
+  let m;
+  while ((m = re.exec(content))) {
+    const resolved = resolveCueFileRef(dir, m[1], cuePath);
+    if (resolved) refs.push(resolved);
+  }
+  return refs;
+}
+
+// Mesma ideia pro arquivo-mestre escolhido (ver PS1_MASTER_EXTENSIONS):
+// .cue -> le e resolve as faixas que ele aponta; .m3u -> lista de .cue
+// (um por disco), resolvendo as faixas de cada um deles tambem; .ccd ->
+// nao tem indice de texto, os companheiros sao so os arquivos de mesmo
+// nome com .img/.sub. .chd/.pbp e o fallback solto (.bin/.iso/.img sem
+// cue) sao arquivo unico, sem nada extra pra mandar.
+function getPs1RomExtras(masterPath) {
+  const ext = path.extname(masterPath).toLowerCase();
+  const dir = path.dirname(masterPath);
+  const base = path.basename(masterPath, ext);
+
+  if (ext === ".cue") {
+    return parseCueFileRefs(masterPath).filter((p) => fs.existsSync(p));
+  }
+  if (ext === ".m3u") {
+    let content;
+    try {
+      content = fs.readFileSync(masterPath, "utf-8");
+    } catch {
+      return [];
+    }
+    const cuePaths = content
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"))
+      .map((line) => path.join(dir, line))
+      .filter((p) => fs.existsSync(p));
+    const extras = [];
+    for (const cuePath of cuePaths) extras.push(cuePath, ...parseCueFileRefs(cuePath));
+    return extras.filter((p) => fs.existsSync(p));
+  }
+  if (ext === ".ccd") {
+    return [".img", ".sub"].map((e) => path.join(dir, base + e)).filter((p) => fs.existsSync(p));
+  }
+  return [];
+}
+
 function scanPs1(systemDir, games) {
   const folders = [];
   findPs1GameFolders(systemDir, folders);
@@ -190,6 +295,7 @@ function scanPs1(systemDir, games) {
       system: "PS1",
       launcher: SYSTEMS.PS1.launcher,
       rom: master,
+      romExtras: getPs1RomExtras(master),
       cover: coverPath,
     };
     if (!games.has(game.slug)) games.set(game.slug, game);

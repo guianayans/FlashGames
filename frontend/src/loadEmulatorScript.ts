@@ -5,6 +5,11 @@ import type { SystemLauncher } from "./types";
 export interface EmulatorConfig {
   launcher: SystemLauncher;
   romUrl: string;
+  // Faixas/arquivos extras que o "rom" principal referencia (hoje so PS1
+  // preenche isso — ver GameDetail.romExtras) — precisam ir TODOS juntos
+  // pro emulador, senao um .cue com faixa em .bin separado nao acha o
+  // que precisa e falha ao carregar o conteudo.
+  romExtras?: string[];
   canvas: HTMLCanvasElement;
 }
 
@@ -16,7 +21,9 @@ export interface EmulatorConfig {
 // nao guardados numa tabela de funcoes soltas) pra preservar o `this`
 // interno da classe.
 export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> {
-  const opts = { rom: config.romUrl, element: config.canvas };
+  const rom =
+    config.romExtras && config.romExtras.length > 0 ? [config.romUrl, ...config.romExtras] : config.romUrl;
+  const opts = { rom, element: config.canvas };
   switch (config.launcher) {
     case "snes":
       return Nostalgist.snes(opts);

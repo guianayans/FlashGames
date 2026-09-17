@@ -43,6 +43,10 @@ router.get("/:slug", (req, res) => {
       ...toSummary(game),
       launcher: game.launcher,
       rom: toPublicUrl("roms", game.rom),
+      // So PS1 tem isso preenchido: faixas/arquivos que o .cue (ou .m3u/
+      // .ccd) do jogo referencia e que tambem precisam ir pro emulador
+      // junto com o "rom" principal (ver getPs1RomExtras).
+      romExtras: (game.romExtras || []).map((p) => toPublicUrl("roms", p)),
     },
   });
 });

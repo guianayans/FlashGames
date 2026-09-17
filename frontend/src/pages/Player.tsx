@@ -315,6 +315,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
         const instance = await loadEmulator({
           launcher: detail.launcher,
           romUrl: detail.rom,
+          romExtras: detail.romExtras,
           canvas,
         });
         if (cancelled) {
