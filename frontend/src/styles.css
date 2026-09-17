@@ -682,7 +682,7 @@ a {
    pra ficar discreto e continuar clicavel, so isso. O icone em si (26px,
    um pouco menor que os 32px do botao antigo) e' que precisa aparecer
    bem, nao a moldura em volta dele. */
-.library-covers-toggle {
+.library-user .library-covers-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -696,17 +696,17 @@ a {
   transition: color 0.15s ease, transform 0.15s ease;
 }
 
-.library-covers-toggle svg {
+.library-user .library-covers-toggle svg {
   width: 22px;
   height: 22px;
 }
 
-.library-covers-toggle:hover {
+.library-user .library-covers-toggle:hover {
   color: var(--text);
   transform: scale(1.15);
 }
 
-.library-covers-toggle.active {
+.library-user .library-covers-toggle.active {
   color: var(--cyan);
   animation: library-covers-toggle-pop 0.35s ease;
 }

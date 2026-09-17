@@ -464,7 +464,12 @@ export default function Library() {
     window.addEventListener("gamepadconnected", onConnected);
     window.addEventListener("gamepaddisconnected", onDisconnected);
 
-    function handleDir(dir: "up" | "down" | "left" | "right", pressed: boolean, now: number) {
+    function handleDir(
+      dir: "up" | "down" | "left" | "right",
+      pressed: boolean,
+      now: number,
+      mover: (dir: "up" | "down" | "left" | "right") => void
+    ) {
       const s = dirState[dir];
       if (!pressed) {
         s.held = false;
@@ -473,10 +478,10 @@ export default function Library() {
       if (!s.held) {
         s.held = true;
         s.nextAt = now + REPEAT_DELAY_MS;
-        moveFocus(dir);
+        mover(dir);
       } else if (now >= s.nextAt) {
         s.nextAt = now + REPEAT_RATE_MS;
-        moveFocus(dir);
+        mover(dir);
       }
     }
 
@@ -534,10 +539,10 @@ export default function Library() {
         // Overlay A-Z aberto E em modo teclado: D-pad/confirma navegam e
         // "digitam" nele em vez de mexer na grade de jogos por tras.
         if (alphaOpenRef.current && keyboardModeRef.current) {
-          handleDir("left", left, now);
-          handleDir("right", right, now);
-          handleDir("up", up, now);
-          handleDir("down", down, now);
+          handleDir("left", left, now, moveOverlayFocus);
+          handleDir("right", right, now, moveOverlayFocus);
+          handleDir("up", up, now, moveOverlayFocus);
+          handleDir("down", down, now, moveOverlayFocus);
           if (pressedNow(0) && !btnState[0]) confirmOverlayFocus();
           // B (1) ou Start (9) de novo: fecha o teclado (termina de digitar).
           if ((pressedNow(1) && !btnState[1]) || (pressedNow(9) && !btnState[9])) setAlphaOpen(false);
@@ -550,10 +555,10 @@ export default function Library() {
 
         // Sem overlay (ou overlay aberto so por mouse/toque, sem modo
         // teclado): navegacao normal da grade de jogos.
-        handleDir("left", left, now);
-        handleDir("right", right, now);
-        handleDir("up", up, now);
-        handleDir("down", down, now);
+        handleDir("left", left, now, moveFocus);
+        handleDir("right", right, now, moveFocus);
+        handleDir("up", up, now, moveFocus);
+        handleDir("down", down, now, moveFocus);
 
         // Confirma (baixo da carcaça — A no Xbox, Cross no PS): abre o
         // jogo focado. Direita (B/Circle): favorita o jogo focado. L1/R1:
