@@ -783,7 +783,7 @@ document.getElementById('screen').style.borderRadius = '28px 28px 8px 8px';
 //  feito depois pelo usuario — ver secao REMAPEAR BOTOES mais abaixo.
 // ═══════════════════════════════════════════
 document.querySelectorAll('.btn, .cbtn').forEach(el => {
-  if (el.id === 'btn-select') return; // segurar abre o menu de save state — wiring proprio logo abaixo
+  if (el.id === 'btn-select') return; // segurar abre o menu de save state — wiring proprio na secao SAVE STATE (precisa do escopo de la, ver closeSaveMenu)
   // Rastreia o pointerId manualmente e solta pelo WINDOW (nao so pelo
   // elemento) — mesmo motivo do analogico/d-pad: se setPointerCapture
   // falhar silenciosamente, pointerup/pointercancel nem chegam a disparar
@@ -810,46 +810,6 @@ document.querySelectorAll('.btn, .cbtn').forEach(el => {
   el.addEventListener('pointerleave', release);
   el.addEventListener('lostpointercapture', release);
 });
-
-// ═══════════════════════════════════════════
-//  BOTÃO SELECT (toque) — segurar abre/fecha o menu de save state
-//  Igual o L2 segurado abre "Sair do jogo?" (ver pollGamepad/L2_HOLD_MS
-//  mais abaixo): um toque rapido nao faz nada, so' segurando abre, pra nao
-//  disparar sem querer no meio do jogo. Nao manda tecla pro jogo (Select
-//  ja nao vai mais pro core de jeito nenhum, ver GP_BUTTON_KEY).
-// ═══════════════════════════════════════════
-(function () {
-  const el = document.getElementById('btn-select');
-  let pid = null;
-  let holdTimer = null;
-  function clearHold() {
-    if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null; }
-  }
-  function release() {
-    if (pid === null) return;
-    pid = null;
-    clearHold();
-    el.classList.remove('pressed');
-  }
-  activeReleasers.push(release);
-  el.addEventListener('pointerdown', e => {
-    e.preventDefault();
-    if (remapMode) { startListening(el); return; }
-    pid = e.pointerId;
-    el.setPointerCapture(pid);
-    el.classList.add('pressed');
-    clearHold();
-    holdTimer = setTimeout(() => {
-      holdTimer = null;
-      if (saveMenuOpen) closeSaveMenu(); else openSaveMenu();
-    }, L2_HOLD_MS);
-  });
-  ['pointerup', 'pointercancel'].forEach(ev =>
-    window.addEventListener(ev, e => { if (e.pointerId === pid) release(); })
-  );
-  el.addEventListener('pointerleave', release);
-  el.addEventListener('lostpointercapture', release);
-})();
 
 // ═══════════════════════════════════════════
 //  D-PAD — tap + arrasto
@@ -1303,6 +1263,49 @@ document.querySelectorAll('.dp').forEach(el => {
     saveMenuEl.classList.add('hidden');
     sendToGame({ type: 'resumeGame' });
   }
+
+  // Botao SEL na tela (toque) — segurar abre/fecha o menu de save state,
+  // igual o L2 segurado abre "Sair do jogo?" (ver L2_HOLD_MS acima): um
+  // toque rapido nao faz nada, so' segurando abre, pra nao disparar sem
+  // querer no meio do jogo. Precisa estar AQUI DENTRO (nao no wiring
+  // generico dos outros botoes, secao BOTOES FACE + CENTRO mais acima no
+  // arquivo) porque so' esse escopo enxerga saveMenuOpen/openSaveMenu/
+  // closeSaveMenu/L2_HOLD_MS — a 1a tentativa ficou fora dessa IIFE e
+  // todo toque no SEL dava ReferenceError bem na hora de montar o
+  // setTimeout, matando o handler antes de sequer armar o hold.
+  (function () {
+    var el = document.getElementById('btn-select');
+    var pid = null;
+    var holdTimer = null;
+    function clearHold() {
+      if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null; }
+    }
+    function release() {
+      if (pid === null) return;
+      pid = null;
+      clearHold();
+      el.classList.remove('pressed');
+    }
+    activeReleasers.push(release);
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (remapMode) { startListening(el); return; }
+      pid = e.pointerId;
+      el.setPointerCapture(pid);
+      el.classList.add('pressed');
+      clearHold();
+      holdTimer = setTimeout(function () {
+        holdTimer = null;
+        if (saveMenuOpen) closeSaveMenu(); else openSaveMenu();
+      }, L2_HOLD_MS);
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) {
+      window.addEventListener(ev, function (e) { if (e.pointerId === pid) release(); });
+    });
+    el.addEventListener('pointerleave', release);
+    el.addEventListener('lostpointercapture', release);
+  })();
+
   saveMenuCloseBtn.addEventListener('click', closeSaveMenu);
   saveMenuEl.addEventListener('click', function (e) {
     if (e.target === saveMenuEl) closeSaveMenu();
