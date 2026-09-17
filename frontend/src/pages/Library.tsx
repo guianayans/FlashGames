@@ -657,17 +657,26 @@ export default function Library() {
           window.scrollBy(0, Math.sign(ry) * magnitude * SCROLL_MAX_PX);
         }
 
-        // Overlay A-Z aberto E em modo teclado: D-pad/confirma navegam e
-        // "digitam" nele em vez de mexer na grade de jogos por tras.
+        // Overlay A-Z aberto E em modo teclado: D-pad navega, e os 4
+        // botoes da carcaça fazem cada um a sua coisa no chip focado
+        // (referencia DualShock 4): X digita a letra na busca (como
+        // sempre foi); Quadrado so' SELECIONA ela como filtro de letra
+        // inicial (sem digitar, fecha o overlay — o mesmo que clicar nela
+        // com mouse/toque faria); Bola fecha o teclado sem mexer em nada
+        // (like B/Start); Triangulo apaga tudo que foi digitado ate agora
+        // de uma vez, de qualquer chip focado (atalho pro que a chip
+        // "Apagar tudo" ja faz, sem precisar navegar ate ela).
         if (alphaOpenRef.current && keyboardModeRef.current) {
           handleDir("left", left, now, moveOverlayFocus);
           handleDir("right", right, now, moveOverlayFocus);
           handleDir("up", up, now, moveOverlayFocus);
           handleDir("down", down, now, moveOverlayFocus);
           if (pressedNow(0) && !btnState[0]) confirmOverlayFocus();
-          // B (1) ou Start (9) de novo: fecha o teclado (termina de digitar).
+          if (pressedNow(2) && !btnState[2]) confirmOverlaySelectFilter();
+          if (pressedNow(3) && !btnState[3]) updateFilters({ q: null });
+          // Bola (1) ou Start (9): fecha o teclado (termina de digitar).
           if ((pressedNow(1) && !btnState[1]) || (pressedNow(9) && !btnState[9])) setAlphaOpen(false);
-          [0, 1, 9].forEach((idx) => {
+          [0, 1, 2, 3, 9].forEach((idx) => {
             btnState[idx] = pressedNow(idx);
           });
           raf = requestAnimationFrame(poll);
@@ -771,6 +780,14 @@ export default function Library() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alphaOpen]);
 
+  // Seleciona a letra como FILTRO inicial de sempre (fecha o overlay) —
+  // e' o que acontece ao clicar num chip com mouse/toque, e tambem o que
+  // o Quadrado faz no modo controle (ver poll(), CONFIRMA sem digitar).
+  function selectLetterFilter(l: string | null) {
+    updateFilters({ letter: l });
+    setAlphaOpen(false);
+  }
+
   function pickLetter(l: string | null) {
     // Modo controle: o overlay vira teclado — "Todos" apaga tudo que foi
     // digitado, uma letra ACRESCENTA na busca (fica aberto, pra continuar
@@ -780,8 +797,7 @@ export default function Library() {
       updateFilters({ q: l === null ? null : (queryRef.current || "") + l });
       return;
     }
-    updateFilters({ letter: l });
-    setAlphaOpen(false);
+    selectLetterFilter(l);
   }
 
   // Navegacao espacial dentro do overlay A-Z (mesmo algoritmo da grade de
@@ -829,6 +845,12 @@ export default function Library() {
     const key = overlayFocusedKeyRef.current;
     if (!key) return;
     pickLetter(key === "__ALL__" ? null : key);
+  }
+
+  function confirmOverlaySelectFilter() {
+    const key = overlayFocusedKeyRef.current;
+    if (!key) return;
+    selectLetterFilter(key === "__ALL__" ? null : key);
   }
 
   function saveScroll() {
@@ -982,6 +1004,9 @@ export default function Library() {
                 ×
               </button>
             </div>
+            {keyboardMode && (
+              <p className="alpha-hint">✕ digita · ▢ so' seleciona · ○ fecha · △ apaga tudo</p>
+            )}
             <div className="alpha-grid">
               <button
                 type="button"
