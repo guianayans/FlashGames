@@ -902,7 +902,12 @@ a {
   box-shadow: 0 0 14px -2px var(--accent);
 }
 
-.game-card-badge-icon {
+/* Precisa do prefixo ".game-card-media" pra ganhar de ".game-card-media
+   img" (regra da capa, mais especifica por ter classe+elemento) — o
+   badge fica DENTRO de .game-card-media no DOM, entao sem isso o icone
+   herdava width:100%/height:100% da capa e esticava enorme por cima do
+   card inteiro. */
+.game-card-media .game-card-badge-icon {
   width: 13px;
   height: 13px;
   image-rendering: pixelated;
