@@ -1585,6 +1585,17 @@ a {
   color: var(--text);
 }
 
+/* Foco do modo controle (.bp-focused) aqui usa a mesma cor do hover
+   (magenta) em vez do ciano generico — pedido explicito pra Sim e Nao
+   dos dois puxarem a cor do proprio botao em vez do azul de todo canto
+   da Big Picture. Especificidade maior que .bp-focused sozinho pra
+   vencer sem depender de ordem no arquivo. */
+.confirm-btn.bp-focused {
+  border-color: var(--magenta) !important;
+  box-shadow: 0 0 0 2px var(--magenta), 0 0 20px -4px var(--magenta) !important;
+  color: var(--text);
+}
+
 .player-description {
   color: var(--text-dim);
   font-size: 0.85rem;
