@@ -83,6 +83,15 @@ function scrollKey(search: string): string {
   return `library-scroll:${search}`;
 }
 
+// Um data-bp-id de card e' "card:slug" (grade normal/por console) ou
+// "card:escopo:slug" (dentro de Recentes, ver renderGameCard) — slug
+// nunca tem ":" (sai de slugify()), entao o ULTIMO pedaço sempre e' o
+// slug de verdade, nos dois formatos.
+function slugFromCardId(id: string): string {
+  const parts = id.split(":");
+  return parts[parts.length - 1];
+}
+
 export default function Library() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -485,15 +494,23 @@ export default function Library() {
   // fica igual — esses ids nao desaparecem com filtro/pagina.
   useEffect(() => {
     if (!gamepadActive) return;
+    // Le o primeiro card de verdade do DOM (nao monta "card:"+slug na
+    // mao) — em Recentes o id de cada card e' "card:escopo:slug" (ver
+    // renderGameCard), entao construir so' com o slug apontaria pra um
+    // id que nao existe em lugar nenhum.
+    function firstCardId(): string | null {
+      return document.querySelector<HTMLElement>('.game-grid [data-bp-id^="card:"]')?.dataset.bpId ?? null;
+    }
     const id = focusedId;
     if (!id) {
-      if (paged.length > 0) setFocusedId(`card:${paged[0].slug}`);
+      const first = firstCardId();
+      if (first) setFocusedId(first);
       return;
     }
     if (id.startsWith("card:")) {
-      const slug = id.slice(5);
+      const slug = slugFromCardId(id);
       if (!paged.some((g) => g.slug === slug)) {
-        setFocusedId(paged.length > 0 ? `card:${paged[0].slug}` : "alpha-trigger");
+        setFocusedId(firstCardId() ?? "alpha-trigger");
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -573,7 +590,7 @@ export default function Library() {
     if (!id) return;
     if (id.startsWith("card:")) {
       saveScroll();
-      navigate(`/play/${id.slice(5)}`);
+      navigate(`/play/${slugFromCardId(id)}`);
       return;
     }
     // Busca e o trigger A-Z levam pro mesmo lugar: o overlay A-Z e' o
@@ -659,19 +676,23 @@ export default function Library() {
     applyChipFilter(order[nextIdx]);
   }
 
-  // Quadrado com o foco num CARD dentro de um card expansivel (Favoritos/
-  // Top Games por console, Recentes) recolhe/expande esse card na hora,
-  // sem precisar voltar ate o cabeçalho dele e confirmar com X — acha o
-  // ".console-group" mais proximo na tela (nao pelo id logico, pelo DOM
-  // mesmo, ja que o mesmo jogo pode aparecer em mais de um card em
-  // Recentes) e alterna. So' entra em uso na navegacao NORMAL da grade
-  // (ver poll() mais abaixo) — o overlay A-Z/teclado do modo controle e'
-  // um branch totalmente separado (early return antes de chegar aqui),
-  // entao nao conflita com o Quadrado la dentro (que so' SELECIONA a
-  // letra focada, ver confirmOverlaySelectFilter).
+  // Quadrado com o foco num CARD (ou ja no proprio cabeçalho) dentro de
+  // um card expansivel (Favoritos/Top Games por console, Recentes)
+  // recolhe/expande ele na hora, sem precisar voltar ate o cabeçalho e
+  // confirmar com X — acha o ".console-group" mais proximo na tela (nao
+  // pelo id logico, pelo DOM mesmo, ja que o mesmo jogo pode aparecer em
+  // mais de um card em Recentes) e alterna. Depois de fechar (o card em
+  // si some da grade), o foco vai pro CABEÇALHO do grupo — assim ele
+  // fica visivel e continua respondendo ao Quadrado, dando pra apertar
+  // varias vezes seguidas alternando aberto/fechado sem o foco se
+  // perder pra outro lugar. So' entra em uso na navegacao NORMAL da
+  // grade (ver poll() mais abaixo) — o overlay A-Z/teclado do modo
+  // controle e' um branch totalmente separado (early return antes de
+  // chegar aqui), entao nao conflita com o Quadrado la dentro (que so'
+  // SELECIONA a letra focada, ver confirmOverlaySelectFilter).
   function toggleFocusedCardGroup() {
     const id = focusedIdRef.current;
-    if (!id || !id.startsWith("card:")) return;
+    if (!id || !(id.startsWith("card:") || id.startsWith("group:"))) return;
     const el = document.querySelector<HTMLElement>(`[data-bp-id="${CSS.escape(id)}"]`);
     const groupEl = el?.closest<HTMLElement>(".console-group");
     const key = groupEl?.dataset.groupKey;
@@ -679,6 +700,12 @@ export default function Library() {
     if (!key || !type) return;
     if (type === "system") systemGroups.toggle(key);
     else if (type === "recent") recentGroups.toggle(key);
+    // Veio de um card (nao do proprio cabeçalho) — joga o foco pro
+    // cabeçalho, que continua existindo/visivel tanto fechado quanto
+    // aberto (diferente do card, que some ao fechar).
+    if (id.startsWith("card:")) {
+      focusId(`group:${type}:${key}`);
+    }
   }
 
   // Mesma detecção/mapeamento por posição do controle usada em Player.tsx
@@ -857,7 +884,7 @@ export default function Library() {
         if (pressedNow(0) && !btnState[0]) confirmFocused();
         if (pressedNow(1) && !btnState[1]) {
           const id = focusedIdRef.current;
-          if (id?.startsWith("card:")) requestToggleFavorite(id.slice(5));
+          if (id?.startsWith("card:")) requestToggleFavorite(slugFromCardId(id));
         }
         if (pressedNow(2) && !btnState[2]) toggleFocusedCardGroup();
         if (pressedNow(4) && !btnState[4]) cycleChip(-1);
@@ -1042,15 +1069,24 @@ export default function Library() {
   // Card de um jogo — extraido pra funcao porque agora e' usado em dois
   // lugares: a grade paginada normal, e dentro de cada console-group
   // (ver Favoritos/Top Games separados por console, mais abaixo).
-  function renderGameCard(g: GameSummary) {
+  // "scope" so' e' passado em Recentes: o MESMO jogo pode aparecer nos
+  // dois cards (Mais recentes e Mais jogados) ao mesmo tempo — sem
+  // diferenciar o data-bp-id de cada instancia, as DUAS ficavam com a
+  // classe de foco ativa juntas quando o slug batia (so' existe UM
+  // focusedId por slug), parecendo "2 jogos selecionados" quando era o
+  // mesmo jogo 2 vezes. Fora de Recentes cada jogo so' aparece uma vez,
+  // entao nao precisa de escopo (mantem o id simples "card:slug" que o
+  // resto do app ja espera).
+  function renderGameCard(g: GameSummary, scope?: string) {
     const meta = systemMeta(g.system);
     const isFavorite = favorites.has(g.slug);
+    const bpId = scope ? `card:${scope}:${g.slug}` : `card:${g.slug}`;
     return (
       <Link
-        key={g.slug}
+        key={scope ? `${scope}:${g.slug}` : g.slug}
         to={`/play/${g.slug}`}
-        className={`game-card${gamepadActive && focusedId === `card:${g.slug}` ? " gamepad-focused" : ""}`}
-        data-bp-id={`card:${g.slug}`}
+        className={`game-card${gamepadActive && focusedId === bpId ? " gamepad-focused" : ""}`}
+        data-bp-id={bpId}
         style={{ ["--accent" as string]: meta.color }}
         onClick={saveScroll}
       >
@@ -1356,7 +1392,7 @@ export default function Library() {
                     {card.games.length === 0 ? (
                       <p className="library-empty">Nada aqui ainda.</p>
                     ) : (
-                      card.games.map((g) => renderGameCard(g))
+                      card.games.map((g) => renderGameCard(g, card.key))
                     )}
                   </div>
                 )}

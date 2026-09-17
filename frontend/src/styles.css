@@ -418,9 +418,14 @@ a {
      quando rola) — assim a logo sempre aparece no topo da pagina, fixa no
      fluxo normal, nao dentro do container de pesquisa. text-align:center
      centraliza o CyberLogoGlitch (inline-flex, nao bloco — nao responde a
-     margin:auto sozinho, ver .login-wordmark, mesmo criterio). */
-  margin-top: max(14px, env(safe-area-inset-top, 0px));
-  margin-bottom: 4px;
+     margin:auto sozinho, ver .login-wordmark, mesmo criterio).
+     margin-top/bottom maiores que antes: o PNG antigo tinha vao em
+     branco (transparente) dentro do proprio arquivo em volta da
+     wordmark, dando folga sozinho — o CyberLogoGlitch tem bounding box
+     justo, sem isso ficava colado no topo da pagina e na barra de
+     busca logo abaixo. */
+  margin-top: max(24px, env(safe-area-inset-top, 0px));
+  margin-bottom: 22px;
   text-align: center;
 }
 
@@ -888,11 +893,20 @@ a {
   cursor: pointer;
   text-align: left;
   color: var(--text);
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-left-width 0.15s ease;
 }
 
 .console-group-header:hover {
   background: rgba(255, 255, 255, 0.03);
+}
+
+/* Foco do modo controle no cabeçalho — mais chamativo que o .bp-focused
+   generico sozinho (que aqui so' tingia a borda esquerda ja existente):
+   fundo tingido com a propria cor do grupo, borda esquerda mais grossa,
+   alem do anel de glow padrao (ver .bp-focused). */
+.console-group-header.bp-focused {
+  background: color-mix(in srgb, var(--accent, var(--cyan)) 14%, transparent);
+  border-left-width: 6px;
 }
 
 .console-group-icon {
