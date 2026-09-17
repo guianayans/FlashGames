@@ -561,21 +561,36 @@ export default function Library() {
     for (const el of all) {
       if (el === currentEl) continue;
       const r = el.getBoundingClientRect();
-      const dx = r.left + r.width / 2 - curCx;
-      const dy = r.top + r.height / 2 - curCy;
+      const dxCenter = r.left + r.width / 2 - curCx;
+      const dyCenter = r.top + r.height / 2 - curCy;
+      // Penalidade no eixo PERPENDICULAR usa a distancia entre as BORDAS
+      // (0 se as faixas se sobrepoem), nao centro-a-centro — sem isso, o
+      // cabeçalho do card mais proximo dos filtros (que cobre a largura
+      // inteira do grupo) media uma distancia horizontal GRANDE ate um
+      // jogo numa coluna extrema (comparado ao proprio CENTRO do
+      // cabeçalho), perdendo pra um chip de filtro estreito que por
+      // acaso calha de ficar alinhado com aquela coluna — apertar pra
+      // cima de um jogo no topo pulava pros filtros em vez de ir pro
+      // cabeçalho do proprio card (so acontecia no card mais alto, os de
+      // baixo tem o filtro longe o bastante pra nao competir).
+      const rangeGap = (aStart: number, aEnd: number, bStart: number, bEnd: number) => {
+        if (aEnd < bStart) return bStart - aEnd;
+        if (bEnd < aStart) return aStart - bEnd;
+        return 0;
+      };
       let score: number;
       if (dir === "right") {
-        if (dx <= 4) continue;
-        score = dx + Math.abs(dy) * 4;
+        if (dxCenter <= 4) continue;
+        score = dxCenter + rangeGap(cur.top, cur.bottom, r.top, r.bottom) * 4;
       } else if (dir === "left") {
-        if (dx >= -4) continue;
-        score = -dx + Math.abs(dy) * 4;
+        if (dxCenter >= -4) continue;
+        score = -dxCenter + rangeGap(cur.top, cur.bottom, r.top, r.bottom) * 4;
       } else if (dir === "down") {
-        if (dy <= 4) continue;
-        score = dy + Math.abs(dx) * 1.2;
+        if (dyCenter <= 4) continue;
+        score = dyCenter + rangeGap(cur.left, cur.right, r.left, r.right) * 1.2;
       } else {
-        if (dy >= -4) continue;
-        score = -dy + Math.abs(dx) * 1.2;
+        if (dyCenter >= -4) continue;
+        score = -dyCenter + rangeGap(cur.left, cur.right, r.left, r.right) * 1.2;
       }
       if (score < bestScore) {
         bestScore = score;
