@@ -19,6 +19,28 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// Base64 em pedacos (nao String.fromCharCode(...bytes) de uma vez so) —
+// save state de PS1 passa de alguns MB, e o spread num array grande
+// desse jeito estoura o limite de argumentos da call stack do JS.
+async function blobToBase64(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+export interface SaveStateSlot {
+  slot: number;
+  updatedAt: string;
+  thumbnail: string | null;
+}
+
+// Bate com MAX_SLOTS em backend/src/routes/savestates.js.
+export const SAVE_STATE_SLOTS = 4;
+
 export const api = {
   login(username: string, password: string) {
     return request<{ user: User }>("/api/auth/login", {
@@ -72,5 +94,24 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ data }),
     });
+  },
+  listSaveStates(slug: string) {
+    return request<{ slots: SaveStateSlot[] }>(`/api/savestates/${slug}`);
+  },
+  async putSaveState(slug: string, slot: number, state: Blob, thumbnail: Blob | null | undefined) {
+    const stateB64 = await blobToBase64(state);
+    const thumbB64 = thumbnail ? await blobToBase64(thumbnail) : null;
+    return request<{ ok: true }>(`/api/savestates/${slug}/${slot}`, {
+      method: "PUT",
+      body: JSON.stringify({ state: stateB64, thumbnail: thumbB64 }),
+    });
+  },
+  async getSaveStateBlob(slug: string, slot: number): Promise<Blob> {
+    const res = await fetch(`/api/savestates/${slug}/${slot}/state`, { credentials: "include" });
+    if (!res.ok) throw new Error(`Erro ${res.status}`);
+    return res.blob();
+  },
+  deleteSaveState(slug: string, slot: number) {
+    return request<{ ok: true }>(`/api/savestates/${slug}/${slot}`, { method: "DELETE" });
   },
 };

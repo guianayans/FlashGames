@@ -67,6 +67,24 @@ db.exec(`
     original_covers INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- Save states de verdade (snapshot completo da memoria do emulador via
+  -- nostalgist.saveState()/loadState() — bem diferente de user_game_saves
+  -- ali em cima, que e' um resto da era do Flash/Ruffle e nao e' mais
+  -- usado). Por USUARIO + JOGO + SLOT (varios slots por jogo, ver
+  -- routes/savestates.js pro numero maximo). "state" e' o blob binario
+  -- que o core gera; "thumbnail" e' o preview (PNG) que o proprio
+  -- Nostalgist devolve junto, pra mostrar na lista de slots sem precisar
+  -- carregar o state inteiro so pra ver a miniatura.
+  CREATE TABLE IF NOT EXISTS user_save_states (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    game_slug TEXT NOT NULL,
+    slot INTEGER NOT NULL,
+    state BLOB NOT NULL,
+    thumbnail BLOB,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, game_slug, slot)
+  );
 `);
 
 export default db;

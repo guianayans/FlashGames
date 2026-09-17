@@ -6,6 +6,7 @@ import path from "node:path";
 import authRoutes from "./routes/auth.js";
 import gamesRoutes from "./routes/games.js";
 import savesRoutes from "./routes/saves.js";
+import savestatesRoutes from "./routes/savestates.js";
 import controlsRoutes from "./routes/controls.js";
 import favoritesRoutes from "./routes/favorites.js";
 import preferencesRoutes from "./routes/preferences.js";
@@ -23,11 +24,19 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 app.use(readAuth);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
+
+// Save states montado ANTES do express.json() global de baixo: ele tem
+// o proprio parser com limite bem maior (state de PS1 passa de alguns MB
+// facil), e um body-parser so consegue ler o corpo da requisicao uma vez
+// — se o global (2mb) rodasse primeiro, o limite maior do router nunca
+// seria alcancado.
+app.use("/api/savestates", savestatesRoutes);
+
+app.use(express.json({ limit: "2mb" }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/games", gamesRoutes);

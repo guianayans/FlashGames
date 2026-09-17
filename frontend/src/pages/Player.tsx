@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { api } from "../api";
+import { api, SAVE_STATE_SLOTS } from "../api";
+import type { SaveStateSlot } from "../api";
 import { systemMeta } from "../categories";
 import type { GameDetail, SystemLauncher } from "../types";
 
@@ -154,8 +155,9 @@ const GAMEPAD_BUTTON_MAP: Record<number, string> = {
   3: "x", // cima (Xbox Y / PS Triangle)
   4: "l", // L1/LB
   5: "r", // R1/RB
-  8: "select", // Select/Share/Back
   9: "start", // Start/Options/Menu
+  // 8 (Select/Share/Back) de proposito NAO entra aqui — abre o menu de
+  // save state em vez de ir pro jogo, ver useGamepadPlayer mais abaixo.
 };
 const GAMEPAD_DPAD_MAP: Record<number, string> = { 12: "up", 13: "down", 14: "left", 15: "right" };
 const GAMEPAD_STICK_DEAD = 0.5;
@@ -175,13 +177,16 @@ type GamepadSlot = {
 // so, nunca se manda input de P2 (nao tem slot 2 ocupado pra isso).
 function useGamepadPlayer(
   nostalgistRef: React.RefObject<Nostalgist | null>,
-  onToggleFullscreen: () => void
+  onToggleFullscreen: () => void,
+  onOpenSaveMenu: () => void
 ): (string | null)[] {
   const [names, setNames] = useState<(string | null)[]>([null, null]);
   // Ref pra sempre chamar a versao mais atual sem precisar recriar o
   // efeito (que reconectaria os listeners de gamepad) toda renderizacao.
   const onToggleFullscreenRef = useRef(onToggleFullscreen);
   onToggleFullscreenRef.current = onToggleFullscreen;
+  const onOpenSaveMenuRef = useRef(onOpenSaveMenu);
+  onOpenSaveMenuRef.current = onOpenSaveMenu;
 
   useEffect(() => {
     const slots: GamepadSlot[] = [
@@ -248,6 +253,7 @@ function useGamepadPlayer(
     const R2_HOLD_MS = 700;
     let r2HoldStart: number | null = null;
     let r2HoldFired = false;
+    let selectWasPressed = false;
 
     function poll() {
       const now = performance.now();
@@ -274,6 +280,13 @@ function useGamepadPlayer(
             r2HoldStart = null;
             r2HoldFired = false;
           }
+
+          // Select (8) abre/fecha o menu de save state — um toque simples
+          // (sem segurar, diferente do R2 de cima), ja que ele nao faz
+          // mais nada em jogo (tirado do GAMEPAD_BUTTON_MAP).
+          const selectPressed = !!gp.buttons[8]?.pressed;
+          if (selectPressed && !selectWasPressed) onOpenSaveMenuRef.current();
+          selectWasPressed = selectPressed;
         }
         for (const idxStr of Object.keys(GAMEPAD_BUTTON_MAP)) {
           const idx = Number(idxStr);
@@ -388,6 +401,149 @@ function WalkingLoadingIcon({ src }: { src: string }) {
   );
 }
 
+// Formata "2026-09-17 14:34:01" (UTC, formato do datetime('now') do
+// SQLite) pro horario local do navegador — sem o "Z" no fim o
+// `new Date(...)` do JS interpreta como hora LOCAL em vez de UTC, dando
+// hora errada.
+function formatSaveStateDate(sqliteUtc: string): string {
+  const iso = sqliteUtc.replace(" ", "T") + "Z";
+  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+// Menu de save state (Select no controle ou F11 no teclado, ver
+// DesktopPlayer) — grade de slots com miniatura, salvar/carregar/apagar
+// cada um. So mouse+teclado (Escape fecha); quem abrir via controle usa
+// o cursor do mouse pra clicar, igual qualquer menu de pausa de jogo de
+// PC seria usado.
+function SaveStateMenu({
+  slug,
+  nostalgistRef,
+  onClose,
+}: {
+  slug: string;
+  nostalgistRef: React.RefObject<Nostalgist | null>;
+  onClose: () => void;
+}) {
+  const [slots, setSlots] = useState<SaveStateSlot[]>([]);
+  const [busySlot, setBusySlot] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refresh() {
+    try {
+      const res = await api.listSaveStates(slug);
+      setSlots(res.slots);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar slots");
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  async function handleSave(slot: number) {
+    const inst = nostalgistRef.current;
+    if (!inst) return;
+    setBusySlot(slot);
+    setError(null);
+    try {
+      const { state, thumbnail } = await inst.saveState();
+      await api.putSaveState(slug, slot, state, thumbnail);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar");
+    } finally {
+      setBusySlot(null);
+    }
+  }
+
+  async function handleLoad(slot: number) {
+    const inst = nostalgistRef.current;
+    if (!inst) return;
+    setBusySlot(slot);
+    setError(null);
+    try {
+      const blob = await api.getSaveStateBlob(slug, slot);
+      await inst.loadState(blob);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar");
+    } finally {
+      setBusySlot(null);
+    }
+  }
+
+  async function handleDelete(slot: number) {
+    setBusySlot(slot);
+    setError(null);
+    try {
+      await api.deleteSaveState(slug, slot);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao apagar");
+    } finally {
+      setBusySlot(null);
+    }
+  }
+
+  const bySlot = new Map(slots.map((s) => [s.slot, s]));
+
+  return (
+    <div className="savestate-overlay" onClick={onClose}>
+      <div className="savestate-card" onClick={(e) => e.stopPropagation()}>
+        <div className="savestate-header">
+          <h2>Save state</h2>
+          <button type="button" className="savestate-close" onClick={onClose} aria-label="Fechar">
+            ×
+          </button>
+        </div>
+        {error && <p className="savestate-error">{error}</p>}
+        <div className="savestate-grid">
+          {Array.from({ length: SAVE_STATE_SLOTS }, (_, i) => i + 1).map((slot) => {
+            const data = bySlot.get(slot);
+            const busy = busySlot === slot;
+            return (
+              <div key={slot} className={`savestate-slot${data ? " filled" : ""}`}>
+                <div className="savestate-slot-thumb">
+                  {data?.thumbnail ? <img src={data.thumbnail} alt="" /> : <span>Vazio</span>}
+                </div>
+                <div className="savestate-slot-info">
+                  <span className="savestate-slot-label">Slot {slot}</span>
+                  {data && <span className="savestate-slot-date">{formatSaveStateDate(data.updatedAt)}</span>}
+                </div>
+                <div className="savestate-slot-actions">
+                  <button type="button" disabled={busy} onClick={() => handleSave(slot)}>
+                    Salvar
+                  </button>
+                  {data && (
+                    <>
+                      <button type="button" disabled={busy} onClick={() => handleLoad(slot)}>
+                        Carregar
+                      </button>
+                      <button type="button" disabled={busy} onClick={() => handleDelete(slot)}>
+                        Apagar
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DesktopPlayer({ slug }: { slug: string }) {
   const [game, setGame] = useState<GameDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -416,8 +572,6 @@ function DesktopPlayer({ slug }: { slug: string }) {
     return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);
 
-  const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef, toggleFullscreen);
-
   // Progresso de carregamento (0..1) — so PS1 reporta de verdade (ver
   // loadEmulatorScript.ts, prefetchWithProgress); os outros sistemas nunca
   // chamam onProgress, entao a barra so fica visivel enquanto "loading"
@@ -426,6 +580,94 @@ function DesktopPlayer({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
   const loadingIconImage = game ? systemMeta(game.system).iconImage : undefined;
+
+  // Save state — currentSlot e' por sessao de jogo (reseta pra 1 quando
+  // troca de jogo), nao fica salvo em lugar nenhum: e' so "qual slot os
+  // atalhos rapidos (F2/F4) usam agora". Toast da feedback visual das
+  // acoes rapidas (o menu completo, ver SaveStateMenu, ja mostra tudo
+  // sozinho).
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const [currentSlot, setCurrentSlot] = useState(1);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function showToast(message: string) {
+    setToast(message);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2200);
+  }
+
+  function openSaveMenu() {
+    setSaveMenuOpen(true);
+  }
+
+  async function quickSaveState() {
+    const inst = nostalgistRef.current;
+    if (!inst || !game) return;
+    try {
+      const { state, thumbnail } = await inst.saveState();
+      await api.putSaveState(game.slug, currentSlot, state, thumbnail);
+      showToast(`Salvo no slot ${currentSlot}`);
+    } catch {
+      showToast("Erro ao salvar");
+    }
+  }
+
+  async function quickLoadState() {
+    const inst = nostalgistRef.current;
+    if (!inst || !game) return;
+    try {
+      const blob = await api.getSaveStateBlob(game.slug, currentSlot);
+      await inst.loadState(blob);
+      showToast(`Carregado do slot ${currentSlot}`);
+    } catch {
+      showToast(`Slot ${currentSlot} vazio`);
+    }
+  }
+
+  const [gamepad1Name, gamepad2Name] = useGamepadPlayer(nostalgistRef, toggleFullscreen, openSaveMenu);
+
+  // Atalhos de teclado tipo RetroArch: F2 salva/F4 carrega o slot atual,
+  // F6/F7 trocam o slot atual, F11 abre/fecha o menu completo (com
+  // miniaturas). Ignorado se o foco estiver num campo de texto.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
+      switch (e.key) {
+        case "F2":
+          e.preventDefault();
+          quickSaveState();
+          break;
+        case "F4":
+          e.preventDefault();
+          quickLoadState();
+          break;
+        case "F6":
+          e.preventDefault();
+          setCurrentSlot((s) => {
+            const next = s <= 1 ? SAVE_STATE_SLOTS : s - 1;
+            showToast(`Slot ${next}`);
+            return next;
+          });
+          break;
+        case "F7":
+          e.preventDefault();
+          setCurrentSlot((s) => {
+            const next = s >= SAVE_STATE_SLOTS ? 1 : s + 1;
+            showToast(`Slot ${next}`);
+            return next;
+          });
+          break;
+        case "F11":
+          e.preventDefault();
+          setSaveMenuOpen((v) => !v);
+          break;
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game, currentSlot]);
 
   // Esconde o cursor do mouse depois de parado uns segundos em cima da
   // tela do jogo (padrao de player de video/jogo) — reaparece assim que
@@ -452,6 +694,8 @@ function DesktopPlayer({ slug }: { slug: string }) {
     setError(null);
     setLoading(true);
     setLoadProgress(0);
+    setCurrentSlot(1);
+    setSaveMenuOpen(false);
 
     let cancelled = false;
 
@@ -557,6 +801,10 @@ function DesktopPlayer({ slug }: { slug: string }) {
             </svg>
           )}
         </button>
+        {toast && <div className="player-toast">{toast}</div>}
+        {saveMenuOpen && game && (
+          <SaveStateMenu slug={game.slug} nostalgistRef={nostalgistRef} onClose={() => setSaveMenuOpen(false)} />
+        )}
       </div>
 
       {game?.description && <p className="player-description">{game.description}</p>}

@@ -1274,6 +1274,191 @@ a {
   cursor: none;
 }
 
+/* Toast de feedback dos atalhos rapidos de save state (F2/F4/F6/F7, ver
+   DesktopPlayer/showToast) — "Salvo no slot 2", "Slot 3", etc. */
+.player-toast {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: rgba(10, 7, 20, 0.92);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Menu de save state (Select no controle ou F11 no teclado, ver
+   SaveStateMenu em Player.tsx) — mesmo padrao visual do overlay/card
+   A-Z da biblioteca (.alpha-overlay/.alpha-card), so que restrito ao
+   palco do jogo (position:absolute, nao fixed — nao cobre a topbar). */
+.savestate-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(4, 3, 10, 0.75);
+}
+
+.savestate-card {
+  width: 100%;
+  max-width: 560px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  overflow: hidden;
+  background: var(--surface);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.savestate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.savestate-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.savestate-close {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.savestate-close:hover {
+  border-color: var(--magenta);
+  color: var(--text);
+}
+
+.savestate-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 46, 109, 0.12);
+  border: 1px solid rgba(255, 46, 109, 0.4);
+  color: #ff8fae;
+  font-size: 0.8rem;
+}
+
+.savestate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.savestate-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.savestate-slot.filled {
+  border-color: rgba(0, 229, 255, 0.3);
+}
+
+.savestate-slot-thumb {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #0c0818;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+}
+
+.savestate-slot-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.savestate-slot-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.savestate-slot-label {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.savestate-slot-date {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+}
+
+.savestate-slot-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.savestate-slot-actions button {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.savestate-slot-actions button:hover:not(:disabled) {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+
+.savestate-slot-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .player-description {
   color: var(--text-dim);
   font-size: 0.85rem;
