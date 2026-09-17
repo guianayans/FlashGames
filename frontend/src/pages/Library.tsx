@@ -645,12 +645,39 @@ export default function Library() {
     } else if (id.startsWith("chip:system:")) {
       updateFilters({ fav: null, top: null, recent: null, system: id.slice(12) });
     }
+    // Trocar de filtro pelo atalho do controle (L1/R1) sobe a tela
+    // inteira, igual ja acontece ao trocar de pagina (ver goToPage) —
+    // senao o usuario troca de filtro no meio da lista rolada e a grade
+    // nova comeca fora da vista.
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function cycleChip(dir: 1 | -1) {
     const order = chipOrder();
     const idx = order.indexOf(currentChipKey());
     const nextIdx = ((idx === -1 ? 0 : idx) + dir + order.length) % order.length;
     applyChipFilter(order[nextIdx]);
+  }
+
+  // Quadrado com o foco num CARD dentro de um card expansivel (Favoritos/
+  // Top Games por console, Recentes) recolhe/expande esse card na hora,
+  // sem precisar voltar ate o cabeçalho dele e confirmar com X — acha o
+  // ".console-group" mais proximo na tela (nao pelo id logico, pelo DOM
+  // mesmo, ja que o mesmo jogo pode aparecer em mais de um card em
+  // Recentes) e alterna. So' entra em uso na navegacao NORMAL da grade
+  // (ver poll() mais abaixo) — o overlay A-Z/teclado do modo controle e'
+  // um branch totalmente separado (early return antes de chegar aqui),
+  // entao nao conflita com o Quadrado la dentro (que so' SELECIONA a
+  // letra focada, ver confirmOverlaySelectFilter).
+  function toggleFocusedCardGroup() {
+    const id = focusedIdRef.current;
+    if (!id || !id.startsWith("card:")) return;
+    const el = document.querySelector<HTMLElement>(`[data-bp-id="${CSS.escape(id)}"]`);
+    const groupEl = el?.closest<HTMLElement>(".console-group");
+    const key = groupEl?.dataset.groupKey;
+    const type = groupEl?.dataset.groupType;
+    if (!key || !type) return;
+    if (type === "system") systemGroups.toggle(key);
+    else if (type === "recent") recentGroups.toggle(key);
   }
 
   // Mesma detecção/mapeamento por posição do controle usada em Player.tsx
@@ -818,9 +845,12 @@ export default function Library() {
         handleDir("down", down, now, moveFocus);
 
         // Confirma (baixo da carcaça — A no Xbox, Cross no PS): abre o
-        // jogo focado. Direita (B/Circle): favorita o jogo focado. L1/R1:
-        // alternam entre os filtros (Todos/Recentes/Favoritos/Top Games/
-        // cada sistema), na ordem em que os chips aparecem — ver
+        // jogo focado. Direita (B/Circle): favorita o jogo focado.
+        // Quadrado com foco num card: recolhe/expande o card expansivel
+        // que ele esta dentro (Favoritos/Top Games/Recentes), sem
+        // precisar voltar ate o cabeçalho — ver toggleFocusedCardGroup.
+        // L1/R1: alternam entre os filtros (Todos/Recentes/Favoritos/Top
+        // Games/cada sistema), na ordem em que os chips aparecem — ver
         // cycleChip. L2/R2: pagina anterior/proxima. Start: abre o
         // filtro por letra (vira teclado sozinho, ver keyboardMode).
         if (pressedNow(0) && !btnState[0]) confirmFocused();
@@ -828,12 +858,13 @@ export default function Library() {
           const id = focusedIdRef.current;
           if (id?.startsWith("card:")) requestToggleFavorite(id.slice(5));
         }
+        if (pressedNow(2) && !btnState[2]) toggleFocusedCardGroup();
         if (pressedNow(4) && !btnState[4]) cycleChip(-1);
         if (pressedNow(5) && !btnState[5]) cycleChip(1);
         if (pressedNow(6) && !btnState[6]) goToPage(pageSafeRef.current - 1);
         if (pressedNow(7) && !btnState[7]) goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
         if (pressedNow(9) && !btnState[9]) setAlphaOpen(true);
-        [0, 1, 4, 5, 6, 7, 9].forEach((idx) => {
+        [0, 1, 2, 4, 5, 6, 7, 9].forEach((idx) => {
           btnState[idx] = pressedNow(idx);
         });
       }
@@ -1305,7 +1336,7 @@ export default function Library() {
             const collapsed = recentGroups.isCollapsed(card.key);
             const bpId = `group:recent:${card.key}`;
             return (
-              <div key={card.key} className="console-group">
+              <div key={card.key} className="console-group" data-group-type="recent" data-group-key={card.key}>
                 <button
                   type="button"
                   data-bp-id={bpId}
@@ -1339,7 +1370,7 @@ export default function Library() {
             const collapsed = systemGroups.isCollapsed(system);
             const bpId = `group:system:${system}`;
             return (
-              <div key={system} className="console-group">
+              <div key={system} className="console-group" data-group-type="system" data-group-key={system}>
                 <button
                   type="button"
                   data-bp-id={bpId}
