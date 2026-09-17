@@ -14,8 +14,12 @@
 // As fontes (self-hosted, /fonts/) tambem sao cacheadas: nunca mudam de
 // conteudo pro mesmo caminho, entao dispensam revalidacao (cache-first).
 
-const CACHE_NAME = "flashgames-assets-v4";
-const REVALIDATE_RE = /\/roms\/.+\.(zip|sfc|smc|nes|md|gen|bin|gba|jpg|jpeg|png|webp)$/;
+const CACHE_NAME = "flashgames-assets-v5";
+// BIOS (/roms/BIOS/*.bin) fica de fora do stale-while-revalidate: e' pouco
+// pedido (uma vez por partida) e, justamente por causa disso, uma resposta
+// velha em cache (ex: de quando o arquivo ainda nao existia ou tinha nome
+// errado) pode mascarar por muito tempo uma correcao feita no servidor.
+const REVALIDATE_RE = /\/roms\/(?!BIOS\/).+\.(zip|sfc|smc|nes|md|gen|bin|gba|jpg|jpeg|png|webp)$/;
 const CACHE_FIRST_RE = /\/fonts\/.+\.woff2?$/;
 
 self.addEventListener("install", () => {
