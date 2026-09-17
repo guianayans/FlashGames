@@ -814,6 +814,80 @@ a {
   object-fit: contain;
 }
 
+/* Favoritos/Top Games separados por console (ver Library.tsx,
+   groupedByConsole) — um card expansivel por sistema, cada um com sua
+   propria grade de jogos dentro. */
+.console-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.console-group {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.console-group-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: transparent;
+  border: none;
+  border-left: 3px solid var(--accent, var(--border));
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  transition: background 0.15s ease;
+}
+
+.console-group-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.console-group-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.console-group-icon-glyph {
+  font-size: 1.1rem;
+  color: var(--accent, var(--text-dim));
+  flex-shrink: 0;
+}
+
+.console-group-label {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.console-group-count {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+.console-group-chevron {
+  margin-left: auto;
+  color: var(--text-faint);
+  transition: transform 0.2s ease;
+  transform: rotate(-90deg);
+}
+
+.console-group-chevron.open {
+  transform: rotate(0deg);
+}
+
+.console-group .game-grid {
+  padding: 4px 18px 18px;
+}
+
 .game-card {
   --accent: var(--cyan);
   position: relative;

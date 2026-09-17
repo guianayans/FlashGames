@@ -97,6 +97,31 @@ export default function Library() {
   keyboardModeRef.current = keyboardMode;
   const queryRef = useRef(query);
   queryRef.current = query;
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Digitar uma letra/numero em QUALQUER lugar da pagina (sem estar com
+  // foco em nada especifico) foca a busca e ja "digita" essa primeira
+  // tecla nela, em vez de precisar clicar no campo antes — igual o
+  // Steam/Windows Explorer fazem. So nao entra em acao se o foco ja
+  // esta num campo de texto (deixa o typing normal acontecer), se tem
+  // modificador (Ctrl/Alt/Cmd — atalho do navegador, nao digitacao) ou
+  // se o overlay A-Z esta aberto (ele tem o proprio fluxo de letras).
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (alphaOpenRef.current) return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (target?.isContentEditable) return;
+      if (!/^[a-zA-Z0-9]$/.test(e.key)) return;
+      e.preventDefault();
+      searchInputRef.current?.focus();
+      updateFilters({ q: (queryRef.current || "") + e.key });
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Puxar a tela pra baixo (no topo) atualiza a lista — Safari/PWA no iOS
   // nao tem pull-to-refresh nativo (diferente do Chrome/Android), entao
@@ -288,6 +313,31 @@ export default function Library() {
     });
   }, [games, query, activeSystem, favoritesOnly, favorites, topOnly, letter]);
 
+  // Favoritos/Top Games (sem filtro de sistema aplicado) separam por
+  // console em cards expansiveis, em vez da grade paginada normal — sao
+  // listas curtas o bastante pra mostrar tudo de uma vez, e olhar "so os
+  // meus jogos de SNES favoritados" (por exemplo) fica mais facil
+  // dobrando os outros consoles pra fora do caminho.
+  const groupedByConsole = (favoritesOnly || topOnly) && activeSystem === "todos";
+  const [collapsedSystems, setCollapsedSystems] = useState<Set<string>>(new Set());
+  function toggleSystemCollapsed(system: string) {
+    setCollapsedSystems((prev) => {
+      const next = new Set(prev);
+      if (next.has(system)) next.delete(system);
+      else next.add(system);
+      return next;
+    });
+  }
+  const gamesBySystem = useMemo(() => {
+    const map = new Map<string, GameSummary[]>();
+    for (const g of filtered) {
+      const list = map.get(g.system);
+      if (list) list.push(g);
+      else map.set(g.system, [g]);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
+  }, [filtered]);
+
   // Pra desabilitar no overlay as letras sem nenhum jogo correspondente.
   const availableLetters = useMemo(() => {
     const set = new Set<string>();
@@ -295,12 +345,12 @@ export default function Library() {
     return set;
   }, [games]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageCount = groupedByConsole ? 1 : Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, pageCount);
-  const paged = useMemo(
-    () => filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE),
-    [filtered, pageSafe]
-  );
+  const paged = useMemo(() => {
+    if (groupedByConsole) return filtered.filter((g) => !collapsedSystems.has(g.system));
+    return filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
+  }, [filtered, pageSafe, groupedByConsole, collapsedSystems]);
 
   // Refs "espelho" pros valores que o loop de poll do gamepad precisa —
   // assim o efeito abaixo roda so UMA vez (nao precisa reconectar os
@@ -725,6 +775,54 @@ export default function Library() {
     }
   }
 
+  // Card de um jogo — extraido pra funcao porque agora e' usado em dois
+  // lugares: a grade paginada normal, e dentro de cada console-group
+  // (ver Favoritos/Top Games separados por console, mais abaixo).
+  function renderGameCard(g: GameSummary) {
+    const meta = systemMeta(g.system);
+    const isFavorite = favorites.has(g.slug);
+    return (
+      <Link
+        key={g.slug}
+        to={`/play/${g.slug}`}
+        className={`game-card${gamepadActive && focusedId === `card:${g.slug}` ? " gamepad-focused" : ""}`}
+        data-bp-id={`card:${g.slug}`}
+        style={{ ["--accent" as string]: meta.color }}
+        onClick={saveScroll}
+      >
+        <div className="game-card-media">
+          {g.cover ? (
+            <img src={g.cover} alt="" loading="lazy" />
+          ) : (
+            <div className="game-card-media-fallback">{g.title.slice(0, 1)}</div>
+          )}
+          <div className="game-card-scan" />
+          <span className="game-card-badge">
+            {meta.iconImage ? <img src={meta.iconImage} alt="" className="game-card-badge-icon" /> : meta.icon}{" "}
+            {meta.label}
+          </span>
+          <button
+            type="button"
+            className={`game-card-favorite${isFavorite ? " active" : ""}`}
+            aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            aria-pressed={isFavorite}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleFavorite(g.slug);
+            }}
+          >
+            {isFavorite ? "★" : "☆"}
+          </button>
+        </div>
+        <div className="game-card-body">
+          <h2>{g.title}</h2>
+          {g.description && <p>{g.description}</p>}
+        </div>
+      </Link>
+    );
+  }
+
   const pullActive = pullDistance > 0 || refreshing;
   const pullProgress = Math.min(1, pullDistance / PULL_THRESHOLD);
 
@@ -760,6 +858,7 @@ export default function Library() {
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
+            ref={searchInputRef}
             value={query}
             onChange={(e) => updateFilters({ q: e.target.value || null })}
             placeholder="Buscar jogos..."
@@ -911,56 +1010,43 @@ export default function Library() {
         </p>
       )}
 
-      <div className={`game-grid${originalCovers ? " original-covers" : ""}`} ref={gridRef}>
-        {paged.map((g) => {
-          const meta = systemMeta(g.system);
-          const isFavorite = favorites.has(g.slug);
-          return (
-            <Link
-              key={g.slug}
-              to={`/play/${g.slug}`}
-              className={`game-card${gamepadActive && focusedId === `card:${g.slug}` ? " gamepad-focused" : ""}`}
-              data-bp-id={`card:${g.slug}`}
-              style={{ ["--accent" as string]: meta.color }}
-              onClick={saveScroll}
-            >
-              <div className="game-card-media">
-                {g.cover ? (
-                  <img src={g.cover} alt="" loading="lazy" />
-                ) : (
-                  <div className="game-card-media-fallback">{g.title.slice(0, 1)}</div>
-                )}
-                <div className="game-card-scan" />
-                <span className="game-card-badge">
-                  {meta.iconImage ? (
-                    <img src={meta.iconImage} alt="" className="game-card-badge-icon" />
-                  ) : (
-                    meta.icon
-                  )}{" "}
-                  {meta.label}
-                </span>
+      {groupedByConsole ? (
+        <div className="console-groups">
+          {gamesBySystem.map(([system, systemGames]) => {
+            const meta = systemMeta(system);
+            const collapsed = collapsedSystems.has(system);
+            return (
+              <div key={system} className="console-group">
                 <button
                   type="button"
-                  className={`game-card-favorite${isFavorite ? " active" : ""}`}
-                  aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-                  aria-pressed={isFavorite}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleFavorite(g.slug);
-                  }}
+                  className="console-group-header"
+                  onClick={() => toggleSystemCollapsed(system)}
+                  aria-expanded={!collapsed}
+                  style={{ ["--accent" as string]: meta.color }}
                 >
-                  {isFavorite ? "★" : "☆"}
+                  {meta.iconImage ? (
+                    <img src={meta.iconImage} alt="" className="console-group-icon" />
+                  ) : (
+                    <span className="console-group-icon-glyph">{meta.icon}</span>
+                  )}
+                  <span className="console-group-label">{meta.label}</span>
+                  <span className="console-group-count">({systemGames.length})</span>
+                  <span className={`console-group-chevron${collapsed ? "" : " open"}`}>▾</span>
                 </button>
+                {!collapsed && (
+                  <div className={`game-grid${originalCovers ? " original-covers" : ""}`}>
+                    {systemGames.map((g) => renderGameCard(g))}
+                  </div>
+                )}
               </div>
-              <div className="game-card-body">
-                <h2>{g.title}</h2>
-                {g.description && <p>{g.description}</p>}
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className={`game-grid${originalCovers ? " original-covers" : ""}`} ref={gridRef}>
+          {paged.map((g) => renderGameCard(g))}
+        </div>
+      )}
 
       {!error && pageCount > 1 && (
         <div className="pagination">
