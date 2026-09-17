@@ -137,8 +137,59 @@ function stopWatchingEdgeSwipe() {
 document.addEventListener("touchend", stopWatchingEdgeSwipe, { passive: true });
 document.addEventListener("touchcancel", stopWatchingEdgeSwipe, { passive: true });
 
+// Save state — o menu de verdade (miniatura, slots, botoes) e' desenhado
+// la em GameScreen.html; aqui so entra o pedido ("salva o slot 2") e sai
+// a resposta, porque so esta pagina tem acesso direto ao `nostalgist`
+// (saveState()/loadState()) e ao backend. Devolve a lista de slots
+// atualizada depois de salvar/apagar pra GameScreen.html so precisar
+// re-desenhar, sem um round-trip extra so pra re-listar.
+async function replySlotList() {
+  try {
+    const res = await api.listSaveStates(slug);
+    window.parent.postMessage({ type: "saveState:list:result", slots: res.slots }, location.origin);
+  } catch {
+    window.parent.postMessage({ type: "saveState:list:result", slots: [] }, location.origin);
+  }
+}
+
+async function handleSaveState(slot: number) {
+  try {
+    if (!nostalgist) throw new Error("sem jogo carregado");
+    const { state, thumbnail } = await nostalgist.saveState();
+    await api.putSaveState(slug, slot, state, thumbnail);
+    const res = await api.listSaveStates(slug);
+    window.parent.postMessage({ type: "saveState:save:result", slots: res.slots }, location.origin);
+  } catch (err) {
+    console.error("[game-wrapper] falha ao salvar state", err);
+    window.parent.postMessage({ type: "saveState:save:result", slots: [] }, location.origin);
+  }
+}
+
+async function handleLoadState(slot: number) {
+  try {
+    if (!nostalgist) throw new Error("sem jogo carregado");
+    const blob = await api.getSaveStateBlob(slug, slot);
+    await nostalgist.loadState(blob);
+    window.parent.postMessage({ type: "saveState:load:result", ok: true }, location.origin);
+  } catch (err) {
+    console.error("[game-wrapper] falha ao carregar state", err);
+    window.parent.postMessage({ type: "saveState:load:result", ok: false }, location.origin);
+  }
+}
+
+async function handleDeleteState(slot: number) {
+  try {
+    await api.deleteSaveState(slug, slot);
+    const res = await api.listSaveStates(slug);
+    window.parent.postMessage({ type: "saveState:delete:result", slots: res.slots }, location.origin);
+  } catch (err) {
+    console.error("[game-wrapper] falha ao apagar state", err);
+    window.parent.postMessage({ type: "saveState:delete:result", slots: [] }, location.origin);
+  }
+}
+
 window.addEventListener("message", (e: MessageEvent) => {
-  const d = e.data as { type?: string; key?: string; player?: number } | null;
+  const d = e.data as { type?: string; key?: string; player?: number; slot?: number } | null;
   if (!d || !d.type) return;
 
   if (d.type === "releaseAll") {
@@ -147,6 +198,22 @@ window.addEventListener("message", (e: MessageEvent) => {
   }
   if ((d.type === "keydown" || d.type === "keyup") && d.key) {
     press(d.type, d.key, d.player || 1);
+    return;
+  }
+  if (d.type === "saveState:list") {
+    replySlotList();
+    return;
+  }
+  if (d.type === "saveState:save" && typeof d.slot === "number") {
+    handleSaveState(d.slot);
+    return;
+  }
+  if (d.type === "saveState:load" && typeof d.slot === "number") {
+    handleLoadState(d.slot);
+    return;
+  }
+  if (d.type === "saveState:delete" && typeof d.slot === "number") {
+    handleDeleteState(d.slot);
   }
 });
 

@@ -297,6 +297,94 @@ body {
 }
 #exit-confirm-yes { color: #ff6b81; }
 
+/* ── MENU DE SAVE STATE (toque no Select do controle) ── */
+#savestate-menu {
+  position: fixed; inset: 0; z-index: 110;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.72);
+  padding: 24px;
+  touch-action: auto;
+}
+#savestate-menu.hidden { display: none; }
+#savestate-card {
+  width: min(420px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #161616;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  touch-action: auto;
+  overflow: hidden;
+}
+#savestate-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+#savestate-header span {
+  color: rgba(255,255,255,.92);
+  font: 700 14px/1 system-ui, sans-serif;
+}
+#savestate-close {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  font: 700 16px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+#savestate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+.savestate-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.04);
+}
+.savestate-row.filled { border-color: rgba(0,229,255,.35); }
+.savestate-row-thumb {
+  width: 56px; height: 42px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0c0818;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.4);
+  font: 600 9px/1 system-ui, sans-serif;
+}
+.savestate-row-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.savestate-row-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.savestate-row-label { color: #fff; font: 700 12px/1 system-ui, sans-serif; }
+.savestate-row-date { color: rgba(255,255,255,.5); font: 500 10px/1 system-ui, sans-serif; }
+.savestate-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.savestate-row-actions button {
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  font: 600 11px/1 system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.savestate-row-actions button:disabled { opacity: .4; }
+#savestate-hint {
+  color: rgba(255,255,255,.4);
+  font: 500 10px/1.4 system-ui, sans-serif;
+  text-align: center;
+}
+
 /* ── PAINEL DE ESCOLHA DE TECLA (remapeamento) ── */
 #remap-panel {
   position: fixed; inset: 0; z-index: 100;
@@ -542,6 +630,21 @@ body.layout-edit [data-draggable] {
       <button id="exit-confirm-no" class="exit-confirm-btn" type="button">Nao</button>
       <button id="exit-confirm-yes" class="exit-confirm-btn" type="button">Sim</button>
     </div>
+  </div>
+</div>
+
+<!-- Menu de save state — abre com um toque no Select do controle (ver
+     secao SAVE STATE no <script>). Os dados (lista de slots, salvar,
+     carregar, apagar) vem do game-wrapper.ts la dentro do #game-iframe
+     via postMessage — esta pagina so desenha o menu. -->
+<div id="savestate-menu" class="hidden">
+  <div id="savestate-card">
+    <div id="savestate-header">
+      <span>Save state</span>
+      <button id="savestate-close" type="button">×</button>
+    </div>
+    <div id="savestate-list"></div>
+    <div id="savestate-hint">Toque em Salvar/Carregar/Apagar em cada slot</div>
   </div>
 </div>
 
@@ -924,8 +1027,9 @@ document.querySelectorAll('.dp').forEach(el => {
     3: 'x',     // cima (Xbox Y / PS Triangle)  -> X
     4: 'q',     // L1/LB                        -> L
     5: 'e',     // R1/RB                        -> R
-    8: 'Tab',   // Select/Share/Back            -> SELECT
     9: 'k',     // Start/Options/Menu           -> START
+    // 8 (Select/Share/Back) de proposito NAO entra aqui — abre o menu de
+    // save state em vez de ir pro jogo, ver SAVE STATE mais abaixo.
   };
   var GP_DPAD_BUTTON_DIR = { 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
   var STICK_DEAD = 0.5;
@@ -1027,6 +1131,7 @@ document.querySelectorAll('.dp').forEach(el => {
   var L2_HOLD_MS = 700;
   var l2HoldStart = null; // timestamp (performance.now()) de quando o L2 do P1 comecou a ser segurado, ou null se solto
   var l2HoldFired = false; // ja abriu/fechou o dialogo nesta segurada (evita repetir enquanto ainda ta segurando)
+  var selectWasPressed = false; // Select (menu de save state) — deteccao de toque (rising edge), nao de segurar
 
   function syncExitConfirmVisual() {
     exitConfirmYesBtn.classList.toggle('gamepad-focused', exitConfirmFocus === 'yes');
@@ -1052,6 +1157,140 @@ document.querySelectorAll('.dp').forEach(el => {
     if (e.target === exitConfirmEl) closeExitConfirm();
   });
 
+  // ═══════════════════════════════════════════
+  //  SAVE STATE — um toque no Select do controle do P1 abre um menu com
+  //  os slots (salvar/carregar/apagar cada um por TOQUE — sem navegacao
+  //  por D-pad dentro do menu, essa tela e' touch-first mesmo). O
+  //  trabalho de verdade (chamar nostalgist.saveState/loadState, falar
+  //  com o backend) acontece dentro do game-wrapper.ts (#game-iframe) —
+  //  esta pagina so desenha o menu e troca mensagens com ele.
+  // ═══════════════════════════════════════════
+  var saveMenuEl = document.getElementById('savestate-menu');
+  var saveMenuCloseBtn = document.getElementById('savestate-close');
+  var saveMenuListEl = document.getElementById('savestate-list');
+  var saveMenuOpen = false;
+  var saveMenuBusySlot = null;
+
+  function formatSaveStateDate(sqliteUtc) {
+    try {
+      var iso = sqliteUtc.replace(' ', 'T') + 'Z';
+      return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function renderSaveSlots(slotsData) {
+    var bySlot = {};
+    (slotsData || []).forEach(function (s) { bySlot[s.slot] = s; });
+    saveMenuListEl.innerHTML = '';
+    for (var slotNum = 1; slotNum <= 4; slotNum++) {
+      (function (slotNum) {
+        var data = bySlot[slotNum];
+        var busy = saveMenuBusySlot === slotNum;
+        var row = document.createElement('div');
+        row.className = 'savestate-row' + (data ? ' filled' : '');
+
+        var thumb = document.createElement('div');
+        thumb.className = 'savestate-row-thumb';
+        if (data && data.thumbnail) {
+          var img = document.createElement('img');
+          img.src = data.thumbnail;
+          thumb.appendChild(img);
+        } else {
+          thumb.textContent = 'Vazio';
+        }
+        row.appendChild(thumb);
+
+        var info = document.createElement('div');
+        info.className = 'savestate-row-info';
+        var label = document.createElement('div');
+        label.className = 'savestate-row-label';
+        label.textContent = 'Slot ' + slotNum;
+        info.appendChild(label);
+        if (data) {
+          var date = document.createElement('div');
+          date.className = 'savestate-row-date';
+          date.textContent = formatSaveStateDate(data.updatedAt);
+          info.appendChild(date);
+        }
+        row.appendChild(info);
+
+        var actions = document.createElement('div');
+        actions.className = 'savestate-row-actions';
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.textContent = 'Salvar';
+        saveBtn.disabled = busy;
+        saveBtn.addEventListener('click', function () { requestSaveState(slotNum); });
+        actions.appendChild(saveBtn);
+        if (data) {
+          var loadBtn = document.createElement('button');
+          loadBtn.type = 'button';
+          loadBtn.textContent = 'Carregar';
+          loadBtn.disabled = busy;
+          loadBtn.addEventListener('click', function () { requestLoadState(slotNum); });
+          actions.appendChild(loadBtn);
+
+          var delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.textContent = 'Apagar';
+          delBtn.disabled = busy;
+          delBtn.addEventListener('click', function () { requestDeleteState(slotNum); });
+          actions.appendChild(delBtn);
+        }
+        row.appendChild(actions);
+
+        saveMenuListEl.appendChild(row);
+      })(slotNum);
+    }
+  }
+
+  function openSaveMenu() {
+    saveMenuOpen = true;
+    saveMenuEl.classList.remove('hidden');
+    requestSlotList();
+  }
+  function closeSaveMenu() {
+    saveMenuOpen = false;
+    saveMenuEl.classList.add('hidden');
+  }
+  saveMenuCloseBtn.addEventListener('click', closeSaveMenu);
+  saveMenuEl.addEventListener('click', function (e) {
+    if (e.target === saveMenuEl) closeSaveMenu();
+  });
+
+  function sendToGame(msg) {
+    var win = getWin();
+    if (win) try { win.postMessage(msg, '*'); } catch (e) {}
+  }
+  function requestSlotList() { sendToGame({ type: 'saveState:list' }); }
+  function requestSaveState(slotNum) { saveMenuBusySlot = slotNum; renderSaveSlots(lastSaveSlotsData); sendToGame({ type: 'saveState:save', slot: slotNum }); }
+  function requestLoadState(slotNum) { saveMenuBusySlot = slotNum; renderSaveSlots(lastSaveSlotsData); sendToGame({ type: 'saveState:load', slot: slotNum }); }
+  function requestDeleteState(slotNum) { saveMenuBusySlot = slotNum; renderSaveSlots(lastSaveSlotsData); sendToGame({ type: 'saveState:delete', slot: slotNum }); }
+
+  // Guarda a ultima lista recebida so pra poder re-desenhar com o
+  // spinner de "busy" no botao certo assim que o usuario toca (sem
+  // esperar a resposta do game-wrapper.ts pra isso).
+  var lastSaveSlotsData = [];
+
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || !d.type) return;
+    if (d.type === 'saveState:list:result' || d.type === 'saveState:save:result' || d.type === 'saveState:delete:result') {
+      saveMenuBusySlot = null;
+      lastSaveSlotsData = d.slots || [];
+      renderSaveSlots(lastSaveSlotsData);
+    } else if (d.type === 'saveState:load:result') {
+      saveMenuBusySlot = null;
+      if (d.ok) closeSaveMenu();
+      else {
+        lastSaveSlotsData = d.slots || lastSaveSlotsData;
+        renderSaveSlots(lastSaveSlotsData);
+      }
+    }
+  });
+
   function pollGamepad() {
     var pads = navigator.getGamepads ? navigator.getGamepads() : [];
     // Controles ja pareados ANTES da pagina carregar as vezes nao disparam
@@ -1060,23 +1299,50 @@ document.querySelectorAll('.dp').forEach(el => {
       if (pads[i]) assignSlot(pads[i]);
     }
 
-    // So o P1 abre/fecha o dialogo de saida (evita 2 controles brigando
-    // por ele em jogo de 2 jogadores).
+    // So o P1 abre/fecha o dialogo de saida e o menu de save state (evita
+    // 2 controles brigando por eles em jogo de 2 jogadores).
     var p1 = slots[0];
     var gpP1 = p1.gpIndex !== null ? pads[p1.gpIndex] : null;
-    // Botao 6 = L2/gatilho esquerdo. Nao entra no GP_BUTTON_KEY (nenhum
-    // console suportado usa), entao nunca e' mandado pro jogo — não
-    // precisa soltar nada ao disparar, diferente de quando era o Select.
-    var l2Pressed = !!(gpP1 && gpP1.buttons[6] && (gpP1.buttons[6].pressed || gpP1.buttons[6].value > 0.5));
-    if (l2Pressed) {
-      if (l2HoldStart === null) l2HoldStart = performance.now();
-      else if (!l2HoldFired && performance.now() - l2HoldStart >= L2_HOLD_MS) {
-        l2HoldFired = true;
-        if (exitConfirmOpen) closeExitConfirm(); else openExitConfirm();
+
+    // L2 (sair) e Select (save state) sao mutuamente exclusivos — nao
+    // processa um enquanto o dialogo do outro ja esta aberto.
+    if (!saveMenuOpen) {
+      // Botao 6 = L2/gatilho esquerdo. Nao entra no GP_BUTTON_KEY (nenhum
+      // console suportado usa), entao nunca e' mandado pro jogo — não
+      // precisa soltar nada ao disparar, diferente de quando era o Select.
+      var l2Pressed = !!(gpP1 && gpP1.buttons[6] && (gpP1.buttons[6].pressed || gpP1.buttons[6].value > 0.5));
+      if (l2Pressed) {
+        if (l2HoldStart === null) l2HoldStart = performance.now();
+        else if (!l2HoldFired && performance.now() - l2HoldStart >= L2_HOLD_MS) {
+          l2HoldFired = true;
+          if (exitConfirmOpen) closeExitConfirm(); else openExitConfirm();
+        }
+      } else {
+        l2HoldStart = null;
+        l2HoldFired = false;
       }
-    } else {
-      l2HoldStart = null;
-      l2HoldFired = false;
+    }
+
+    if (!exitConfirmOpen) {
+      // Select (8) e' so um toque (nao precisa segurar, diferente do L2)
+      // — ele nao vai mais pro jogo de jeito nenhum (tirado do
+      // GP_BUTTON_KEY), entao nao tem risco de mandar um "down" preso.
+      var selectPressed = !!(gpP1 && gpP1.buttons[8] && gpP1.buttons[8].pressed);
+      if (selectPressed && !selectWasPressed) {
+        if (saveMenuOpen) closeSaveMenu(); else openSaveMenu();
+      }
+      selectWasPressed = selectPressed;
+    }
+
+    if (saveMenuOpen) {
+      // Dentro do menu e' tudo por toque (ver renderSaveSlots) — o
+      // controle fisico so serve pra fechar (botao de voltar).
+      var saveMenuBackPressed = !!(gpP1 && gpP1.buttons[1] && gpP1.buttons[1].pressed);
+      if (saveMenuBackPressed && !p1.saveMenuBackHeld) closeSaveMenu();
+      p1.saveMenuBackHeld = saveMenuBackPressed;
+
+      requestAnimationFrame(pollGamepad);
+      return;
     }
 
     if (exitConfirmOpen) {
