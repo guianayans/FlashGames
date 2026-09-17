@@ -586,8 +586,14 @@ export default function Library() {
   // Digitar no teclado ou mexer o mouse desliga o Big Picture na hora,
   // voltando pro modo normal (mouse/toque) — o poll do gamepad acima
   // religa sozinho assim que o controle for usado de novo.
+  // EXCETO enquanto o overlay A-Z esta aberto em modo teclado (digitando
+  // com o proprio controle) — sem essa excecao, um evento de mouse/
+  // teclado espurio (ou so a mao encostando perto do mouse) desligava o
+  // Big Picture bem na hora que o overlay abria, e o controle continuava
+  // mexendo na grade por TRAS do overlay em vez de digitar nele.
   useEffect(() => {
     function onUserInput() {
+      if (alphaOpenRef.current && keyboardModeRef.current) return;
       if (bigPictureOnRef.current) setBigPictureOn(false);
     }
     window.addEventListener("keydown", onUserInput);
