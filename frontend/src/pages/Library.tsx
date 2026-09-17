@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import type { PlayHistoryEntry } from "../api";
@@ -6,6 +6,46 @@ import type { GameSummary } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { systemMeta } from "../categories";
 import ConfirmDialog from "../components/ConfirmDialog";
+
+// Tela pequena (mesmo corte de 700px usado no resto do CSS pra layout
+// mobile) — cards expansiveis (Favoritos/Top Games/Recentes) comecam
+// FECHADOS por padrao nela, pra nao jogar uma lista enorme na cara logo
+// de cara num aparelho pequeno. Reage a girar o celular/redimensionar.
+function useIsSmallScreen(): boolean {
+  const [small, setSmall] = useState(() => typeof window !== "undefined" && window.innerWidth <= 700);
+  useEffect(() => {
+    function onResize() {
+      setSmall(window.innerWidth <= 700);
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return small;
+}
+
+// Estado de "aberto/fechado" de um grupo de cards expansiveis (por
+// console ou por Recentes) — cada card so' guarda uma EXCECAO ao padrao
+// (isCollapsed retorna o padrao ate o usuario clicar nele uma vez), pra
+// nao precisar saber os slugs/keys de todos os grupos com antecedencia
+// so' pra "marcar tudo fechado" quando a tela e' pequena.
+function useCollapsibleGroups(defaultCollapsed: boolean) {
+  const [overrides, setOverrides] = useState<Map<string, boolean>>(new Map());
+  // useCallback (nao funcao solta) pra "isCollapsed"/"toggle" so trocarem
+  // de referencia quando overrides/defaultCollapsed realmente mudam — sem
+  // isso, todo useMemo que depende deles (ver "paged") recalcularia em
+  // QUALQUER renderizacao da pagina, nao so quando um card e' aberto/
+  // fechado de verdade.
+  const isCollapsed = useCallback((key: string) => overrides.get(key) ?? defaultCollapsed, [overrides, defaultCollapsed]);
+  const toggle = useCallback((key: string) => {
+    setOverrides((prev) => {
+      const current = prev.get(key) ?? defaultCollapsed;
+      const next = new Map(prev);
+      next.set(key, !current);
+      return next;
+    });
+  }, [defaultCollapsed]);
+  return { isCollapsed, toggle };
+}
 
 function normalize(s: string): string {
   return s
@@ -364,15 +404,8 @@ export default function Library() {
   // meus jogos de SNES favoritados" (por exemplo) fica mais facil
   // dobrando os outros consoles pra fora do caminho.
   const groupedByConsole = (favoritesOnly || topOnly) && activeSystem === "todos";
-  const [collapsedSystems, setCollapsedSystems] = useState<Set<string>>(new Set());
-  function toggleSystemCollapsed(system: string) {
-    setCollapsedSystems((prev) => {
-      const next = new Set(prev);
-      if (next.has(system)) next.delete(system);
-      else next.add(system);
-      return next;
-    });
-  }
+  const isSmallScreen = useIsSmallScreen();
+  const systemGroups = useCollapsibleGroups(isSmallScreen);
   const gamesBySystem = useMemo(() => {
     const map = new Map<string, GameSummary[]>();
     for (const g of filtered) {
@@ -409,15 +442,7 @@ export default function Library() {
       { key: "played", label: "Mais jogados", games: mostPlayed },
     ];
   }, [filtered, playsBySlug, showRecentCards]);
-  const [collapsedRecentCards, setCollapsedRecentCards] = useState<Set<string>>(new Set());
-  function toggleRecentCardCollapsed(key: string) {
-    setCollapsedRecentCards((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
+  const recentGroups = useCollapsibleGroups(isSmallScreen);
 
   // Pra desabilitar no overlay as letras sem nenhum jogo correspondente.
   const availableLetters = useMemo(() => {
@@ -429,17 +454,17 @@ export default function Library() {
   const pageCount = groupedByConsole || showRecentCards ? 1 : Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, pageCount);
   const paged = useMemo(() => {
-    if (groupedByConsole) return filtered.filter((g) => !collapsedSystems.has(g.system));
+    if (groupedByConsole) return filtered.filter((g) => !systemGroups.isCollapsed(g.system));
     if (showRecentCards) {
       const shown = new Set<string>();
       for (const card of recentCards) {
-        if (collapsedRecentCards.has(card.key)) continue;
+        if (recentGroups.isCollapsed(card.key)) continue;
         for (const g of card.games) shown.add(g.slug);
       }
       return filtered.filter((g) => shown.has(g.slug));
     }
     return filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
-  }, [filtered, pageSafe, groupedByConsole, collapsedSystems, showRecentCards, recentCards, collapsedRecentCards]);
+  }, [filtered, pageSafe, groupedByConsole, systemGroups.isCollapsed, showRecentCards, recentCards, recentGroups.isCollapsed]);
 
   // Refs "espelho" pros valores que o loop de poll do gamepad precisa —
   // assim o efeito abaixo roda so UMA vez (nao precisa reconectar os
@@ -576,6 +601,14 @@ export default function Library() {
       const slug = id.slice(12);
       const curSystem = sp.get("system") ?? "todos";
       updateFilters({ fav: null, top: null, recent: null, system: curSystem === slug ? null : slug });
+    } else if (id.startsWith("group:system:")) {
+      // Cabecalho de um card expansivel (Favoritos/Top Games por
+      // console) — X abre/fecha, igual clicar nele com mouse/toque.
+      systemGroups.toggle(id.slice(13));
+    } else if (id.startsWith("group:recent:")) {
+      // Mesma coisa pros 2 cards fixos de Recentes (Mais recentes/Mais
+      // jogados).
+      recentGroups.toggle(id.slice(13));
     } else if (id === "page:prev") {
       goToPage(pageSafeRef.current - 1);
     } else if (id === "page:next") {
@@ -765,20 +798,19 @@ export default function Library() {
 
         // Confirma (baixo da carcaça — A no Xbox, Cross no PS): abre o
         // jogo focado. Direita (B/Circle): favorita o jogo focado. L1/R1:
-        // pagina anterior/proxima. Start: abre o filtro por letra (vira
-        // teclado sozinho, ver keyboardMode).
+        // alternam entre os filtros (Todos/Recentes/Favoritos/Top Games/
+        // cada sistema), na ordem em que os chips aparecem — ver
+        // cycleChip. L2/R2: pagina anterior/proxima. Start: abre o
+        // filtro por letra (vira teclado sozinho, ver keyboardMode).
         if (pressedNow(0) && !btnState[0]) confirmFocused();
         if (pressedNow(1) && !btnState[1]) {
           const id = focusedIdRef.current;
           if (id?.startsWith("card:")) requestToggleFavorite(id.slice(5));
         }
-        if (pressedNow(4) && !btnState[4]) goToPage(pageSafeRef.current - 1);
-        if (pressedNow(5) && !btnState[5]) goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
-        // L2/R2: alternam entre os filtros (Todos/Favoritos/Top Games/
-        // Recentes/cada sistema), na ordem em que os chips aparecem —
-        // ver cycleChip.
-        if (pressedNow(6) && !btnState[6]) cycleChip(-1);
-        if (pressedNow(7) && !btnState[7]) cycleChip(1);
+        if (pressedNow(4) && !btnState[4]) cycleChip(-1);
+        if (pressedNow(5) && !btnState[5]) cycleChip(1);
+        if (pressedNow(6) && !btnState[6]) goToPage(pageSafeRef.current - 1);
+        if (pressedNow(7) && !btnState[7]) goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
         if (pressedNow(9) && !btnState[9]) setAlphaOpen(true);
         [0, 1, 4, 5, 6, 7, 9].forEach((idx) => {
           btnState[idx] = pressedNow(idx);
@@ -1249,13 +1281,15 @@ export default function Library() {
       {showRecentCards ? (
         <div className="console-groups">
           {recentCards.map((card) => {
-            const collapsed = collapsedRecentCards.has(card.key);
+            const collapsed = recentGroups.isCollapsed(card.key);
+            const bpId = `group:recent:${card.key}`;
             return (
               <div key={card.key} className="console-group">
                 <button
                   type="button"
-                  className="console-group-header"
-                  onClick={() => toggleRecentCardCollapsed(card.key)}
+                  data-bp-id={bpId}
+                  className={`console-group-header${gamepadActive && focusedId === bpId ? " bp-focused" : ""}`}
+                  onClick={() => recentGroups.toggle(card.key)}
                   aria-expanded={!collapsed}
                   style={{ ["--accent" as string]: card.key === "recent" ? "#39ff8f" : "#ffb020" }}
                 >
@@ -1281,13 +1315,15 @@ export default function Library() {
         <div className="console-groups">
           {gamesBySystem.map(([system, systemGames]) => {
             const meta = systemMeta(system);
-            const collapsed = collapsedSystems.has(system);
+            const collapsed = systemGroups.isCollapsed(system);
+            const bpId = `group:system:${system}`;
             return (
               <div key={system} className="console-group">
                 <button
                   type="button"
-                  className="console-group-header"
-                  onClick={() => toggleSystemCollapsed(system)}
+                  data-bp-id={bpId}
+                  className={`console-group-header${gamepadActive && focusedId === bpId ? " bp-focused" : ""}`}
+                  onClick={() => systemGroups.toggle(system)}
                   aria-expanded={!collapsed}
                   style={{ ["--accent" as string]: meta.color }}
                 >
