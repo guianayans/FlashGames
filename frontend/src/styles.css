@@ -419,13 +419,19 @@ a {
      fluxo normal, nao dentro do container de pesquisa. text-align:center
      centraliza o CyberLogoGlitch (inline-flex, nao bloco — nao responde a
      margin:auto sozinho, ver .login-wordmark, mesmo criterio).
-     margin-top/bottom maiores que antes: o PNG antigo tinha vao em
-     branco (transparente) dentro do proprio arquivo em volta da
-     wordmark, dando folga sozinho — o CyberLogoGlitch tem bounding box
-     justo, sem isso ficava colado no topo da pagina e na barra de
-     busca logo abaixo. */
-  margin-top: max(24px, env(safe-area-inset-top, 0px));
-  margin-bottom: 22px;
+     PADDING (nao margin) de proposito: .library-brand e' o PRIMEIRO
+     filho de .library-page, que nao tem padding-top nenhum — um
+     margin-top aqui colapsava por CIMA do proprio .library-page (o
+     espaco ia pro topo da pagina toda, nao entre o topo e a logo), e o
+     margin-bottom podia colapsar com a margin-top de .library-header
+     logo depois (fica so o MAIOR dos dois, nao a soma). Padding nunca
+     colapsa, entao o espaco garantidamente aparece onde devia — o PNG
+     antigo tinha vao em branco (transparente) dentro do proprio arquivo
+     em volta da wordmark, dando folga sozinho; o CyberLogoGlitch tem
+     bounding box justo, sem isso ficava colado no topo da pagina e na
+     barra de busca logo abaixo. */
+  padding-top: max(24px, env(safe-area-inset-top, 0px));
+  padding-bottom: 22px;
   text-align: center;
 }
 
