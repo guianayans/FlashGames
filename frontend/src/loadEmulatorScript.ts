@@ -139,6 +139,26 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
       const allFiles = await prefetchWithProgress([...romUrls, ...biosUrls], config.onProgress);
       const psxRomFiles = allFiles.slice(0, romUrls.length);
       const psxBiosFiles = allFiles.slice(romUrls.length);
+
+      // O hardware do PS1 sempre tem 2 portas de controle fisicas, e o
+      // pcsx_rearmed nao tem opcao (nem no core nem no menu) pra "desligar"
+      // a porta 2 — ela sempre aparece conectada pro jogo, mesmo sem
+      // ninguem plugado nela de verdade e sem a gente mandar nenhum input
+      // pra ela. Jogos com raiz de arcade (Metal Slug X e outras
+      // conversoes de Neo Geo, principalmente) detectam isso e entram
+      // direto em modo 2 jogadores sozinhos — o 2P fica parado, mas o
+      // 1P "arrasta" ele pela fase (scroll/fisica compartilhada), dando a
+      // impressao de estar se movendo igual. input_libretro_device_p2 = 0
+      // (None) e' a config PADRAO do RetroArch — nao especifica do
+      // core — que avisa o core "porta 2 vazia", resolvendo isso pra quem
+      // ta jogando sozinho. So aplica quando NAO ha um segundo controle
+      // de verdade ja conectado no navegador nesse momento, pra nao
+      // quebrar co-op local com 2 controles fisicos (ver useGamepadPlayer
+      // em Player.tsx, que ja manda input de P2 quando um segundo
+      // gamepad conecta).
+      const connectedGamepads = (navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean).length;
+      const singleControllerSession = connectedGamepads < 2;
+
       return Nostalgist.launch({
         core: "pcsx_rearmed",
         bios: psxBiosFiles,
@@ -154,7 +174,10 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
         // isso — fica no default de fabrica do RetroArch, que pode nao
         // ser exatamente esse caminho. Setando explicito aqui garante
         // que o core vai procurar a BIOS exatamente onde ela foi escrita.
-        retroarchConfig: { system_directory: "/home/web_user/retroarch/userdata/system" },
+        retroarchConfig: {
+          system_directory: "/home/web_user/retroarch/userdata/system",
+          ...(singleControllerSession ? { input_libretro_device_p2: 0 } : {}),
+        },
         // Por padrao o core pula direto pro jogo — essa opcao liga a
         // animacao/logo de boot de verdade da BIOS (a mesma tela que
         // aparece ligando um PS1 de verdade). A doc do core avisa que
