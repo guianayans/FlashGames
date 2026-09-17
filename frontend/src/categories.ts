@@ -18,15 +18,23 @@ export function categoryMeta(slug: string): CategoryMeta {
   return CATEGORY_META[slug] || { label: slug, color: "#8b8ba7", icon: "○" };
 }
 
-export const SYSTEM_META: Record<string, CategoryMeta> = {
-  SNES: { label: "Super Nintendo", color: "#ff2e6d", icon: "◆" },
-  NES: { label: "NES", color: "#ffb020", icon: "✦" },
-  GENESIS: { label: "Mega Drive", color: "#00d4ff", icon: "▲" },
-  GBA: { label: "Game Boy Advance", color: "#39ff8f", icon: "■" },
-  PS1: { label: "PlayStation", color: "#b453ff", icon: "●" },
-  PS2: { label: "PlayStation 2", color: "#5b6bff", icon: "◆" },
+export interface SystemMeta extends CategoryMeta {
+  // Icone de verdade (imagem do proprio console/controle, ver
+  // /pendriver/FlashGames/imagens/Consoles) — quando presente, a UI usa
+  // essa imagem no lugar do glifo unicode de "icon" (que fica so de
+  // fallback pra sistema sem imagem cadastrada).
+  iconImage?: string;
+}
+
+export const SYSTEM_META: Record<string, SystemMeta> = {
+  SNES: { label: "Super Nintendo", color: "#ff2e6d", icon: "◆", iconImage: "/images/consoles/SNES.png" },
+  NES: { label: "NES", color: "#ffb020", icon: "✦", iconImage: "/images/consoles/NES.png" },
+  GENESIS: { label: "Mega Drive", color: "#00d4ff", icon: "▲", iconImage: "/images/consoles/GENESIS.png" },
+  GBA: { label: "Game Boy Advance", color: "#39ff8f", icon: "■", iconImage: "/images/consoles/GBA.png" },
+  PS1: { label: "PlayStation", color: "#b453ff", icon: "●", iconImage: "/images/consoles/PS1.png" },
+  PS2: { label: "PlayStation 2", color: "#5b6bff", icon: "◆", iconImage: "/images/consoles/PS2.png" },
 };
 
-export function systemMeta(slug: string): CategoryMeta {
+export function systemMeta(slug: string): SystemMeta {
   return SYSTEM_META[slug] || { label: slug, color: "#8b8ba7", icon: "○" };
 }

@@ -678,30 +678,49 @@ a {
 /* Toggle discreto de "capas em tamanho original" (ver Library.tsx,
    toggleOriginalCovers) — so o icone, mesmo criterio visual minimalista
    do botao de tela cheia do player. */
+/* So o simbolo, sem chrome de botao (sem circulo/borda/fundo) — pediu
+   pra ficar discreto e continuar clicavel, so isso. O icone em si (26px,
+   um pouco menor que os 32px do botao antigo) e' que precisa aparecer
+   bem, nao a moldura em volta dele. */
 .library-covers-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--border);
+  border: none;
   background: transparent;
   color: var(--text-faint);
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.library-covers-toggle svg {
+  width: 22px;
+  height: 22px;
 }
 
 .library-covers-toggle:hover {
-  border-color: var(--cyan);
   color: var(--text);
+  transform: scale(1.15);
 }
 
 .library-covers-toggle.active {
-  border-color: var(--cyan);
-  background: rgba(0, 229, 255, 0.12);
   color: var(--cyan);
+  animation: library-covers-toggle-pop 0.35s ease;
+}
+
+@keyframes library-covers-toggle-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .category-row {
@@ -736,6 +755,13 @@ a {
 .category-chip .chip-dot {
   color: var(--chip-color);
   font-size: 0.7rem;
+}
+
+.chip-dot-img {
+  width: 15px;
+  height: 15px;
+  image-rendering: pixelated;
+  flex-shrink: 0;
 }
 
 .category-chip:hover {
@@ -874,6 +900,13 @@ a {
   color: #05040a;
   background: var(--accent);
   box-shadow: 0 0 14px -2px var(--accent);
+}
+
+.game-card-badge-icon {
+  width: 13px;
+  height: 13px;
+  image-rendering: pixelated;
+  flex-shrink: 0;
 }
 
 .game-card-favorite {
