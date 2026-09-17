@@ -963,11 +963,19 @@ a {
   box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--accent), 0 0 28px -4px var(--accent);
 }
 
-/* Card com foco do modo "Big Picture" (controle fisico) — mesmo destaque
-   do :hover, so que sempre visivel (nao depende de mouse) e com o anel
-   um pouco mais forte, pra achar facil de longe/na TV. */
+/* Card com foco do modo "Big Picture" (controle fisico/teclado) — mesmo
+   destaque do :hover, so que sempre visivel (nao depende de mouse) e com
+   o anel um pouco mais forte, pra achar facil de longe/na TV. SEM
+   transform (diferente do :hover): moveFocus (ver Library.tsx) mede a
+   grade inteira via getBoundingClientRect(), que JA INCLUI transforms —
+   o translateY(-5px) do :hover deslocava o card focado 5px pra cima da
+   posicao real, o suficiente pra furar o limiar de "mesma linha"
+   (dyCenter <= 4) e fazer um vizinho da MESMA linha parecer um alvo
+   valido pra baixo, competindo (e as vezes ganhando) da linha de baixo
+   de verdade — travava a navegacao oscilando dentro da mesma linha em
+   vez de descer, principalmente perto da ultima linha/colunas sem par
+   exato embaixo. */
 .game-card.gamepad-focused {
-  transform: translateY(-5px);
   border-color: var(--accent);
   box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 2px var(--accent), 0 0 32px -2px var(--accent);
 }
