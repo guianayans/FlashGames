@@ -484,12 +484,24 @@ export default function Library() {
           return;
         }
 
-        const [ax, ay] = gp.axes;
+        const [ax, ay, , ry] = gp.axes;
         const dead = 0.5;
         const left = !!gp.buttons[14]?.pressed || (typeof ax === "number" && ax < -dead);
         const right = !!gp.buttons[15]?.pressed || (typeof ax === "number" && ax > dead);
         const up = !!gp.buttons[12]?.pressed || (typeof ay === "number" && ay < -dead);
         const down = !!gp.buttons[13]?.pressed || (typeof ay === "number" && ay > dead);
+
+        // Analogico direito rola a pagina livremente, independente do foco
+        // (D-pad/analogico esquerdo pulam de card em card e ja arrastam a
+        // tela pro foco ficar visivel — isso aqui e' pra passar o olho
+        // pela lista toda direto, sem trocar o que esta focado). So faz
+        // sentido fora do overlay A-Z (ele cobre a tela inteira).
+        const SCROLL_DEAD = 0.15;
+        const SCROLL_MAX_PX = 22; // por frame, na deflexao maxima do analogico
+        if (!alphaOpenRef.current && typeof ry === "number" && Math.abs(ry) > SCROLL_DEAD) {
+          const magnitude = (Math.abs(ry) - SCROLL_DEAD) / (1 - SCROLL_DEAD);
+          window.scrollBy(0, Math.sign(ry) * magnitude * SCROLL_MAX_PX);
+        }
 
         // Overlay A-Z aberto E em modo teclado: D-pad/confirma navegam e
         // "digitam" nele em vez de mexer na grade de jogos por tras.
