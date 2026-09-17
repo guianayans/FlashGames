@@ -1125,16 +1125,21 @@ a {
   position: absolute;
   inset: 0;
   z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
   background: #050308;
+  overflow: hidden;
 }
 
 /* Fallback sem icone cadastrado pro sistema (nao deveria acontecer hoje,
-   mas evita ficar sem nenhum feedback visual se acontecer). */
+   mas evita ficar sem nenhum feedback visual se acontecer) — sozinho,
+   centralizado (nao anda, so o icone de verdade anda). */
+.player-loading-icon-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .player-loading-spinner {
   width: 40px;
   height: 40px;
@@ -1150,25 +1155,39 @@ a {
   }
 }
 
-/* Icone do console do jogo (ver frontend/public/images/consoles/)
-   pulando tipo personagem esperando - PS1 mostra o controle de PS1, SNES
-   o de SNES, etc. Altura fixa (nao so o icone) pra sombra/pulo nao
-   empurrar a barra de progresso embaixo. */
-.player-loading-icon-stage {
-  height: 60px;
+/* Area onde o icone anda (ver WalkingLoadingIcon em Player.tsx) — cobre o
+   overlay inteiro, a posicao de verdade (x/y, ricochete nas bordas) e'
+   calculada em JS a cada frame porque precisa medir o tamanho real do
+   container (CSS puro nao tem como fazer colisao). */
+.player-loading-walk-area {
+  position: absolute;
+  inset: 0;
+}
+
+.player-loading-walk-sprite {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
+  will-change: transform;
 }
 
+/* Icone do console do jogo (ver frontend/public/images/consoles/) - PS1
+   mostra o controle de PS1, SNES o de SNES, etc. O "andar local" (passo
+   balancando pra cima, sombra espremendo) e' so CSS; quem move o icone
+   pela tela e faz ele ricochetear nas bordas e' o JS (ver
+   WalkingLoadingIcon), que so translada o .player-loading-walk-sprite
+   pai — os dois efeitos se somam. */
 .player-loading-icon-img {
   width: 40px;
   height: 40px;
   image-rendering: pixelated;
   filter: drop-shadow(0 0 8px var(--cyan));
-  animation: player-loading-bounce 0.7s ease-in-out infinite;
+  animation: player-loading-bounce 0.4s ease-in-out infinite;
 }
 
 .player-loading-icon-shadow {
@@ -1177,7 +1196,7 @@ a {
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.5);
   filter: blur(1px);
-  animation: player-loading-shadow 0.7s ease-in-out infinite;
+  animation: player-loading-shadow 0.4s ease-in-out infinite;
 }
 
 @keyframes player-loading-bounce {
@@ -1185,7 +1204,7 @@ a {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-16px);
+    transform: translateY(-8px);
   }
 }
 
@@ -1195,13 +1214,25 @@ a {
     opacity: 0.5;
   }
   50% {
-    transform: scaleX(0.55);
-    opacity: 0.22;
+    transform: scaleX(0.7);
+    opacity: 0.3;
   }
 }
 
+.player-loading-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
 .player-loading-bar {
-  width: min(220px, 60%);
+  width: min(220px, 60vw);
   height: 5px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);

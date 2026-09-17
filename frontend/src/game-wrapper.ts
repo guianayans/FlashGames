@@ -165,24 +165,73 @@ function setLoadProgress(fraction: number) {
   if (pct) pct.textContent = `${percent}%`;
 }
 
+let walkRafId = 0;
+
 function hideLoadingOverlay() {
   document.getElementById("loading-overlay")?.classList.add("hidden");
+  if (walkRafId) cancelAnimationFrame(walkRafId);
 }
 
-// Icone do console do jogo (ver frontend/public/images/consoles/) pulando
-// no lugar do spinner generico, mesmo criterio do player desktop
-// (Player.tsx/styles.css) — so em DOM/CSS puro aqui (essa pagina nao usa
-// React). Sem icone cadastrado pro sistema, o spinner original continua
-// visivel (fica escondido por padrao no HTML, ver game-wrapper.html).
-function setLoadingIcon(system: string) {
+// Icone do console do jogo (ver frontend/public/images/consoles/) andando
+// pela tela de carregamento inteira, ricocheteando nas bordas — mesmo
+// criterio do player desktop (Player.tsx, WalkingLoadingIcon), so em
+// DOM/CSS puro aqui (essa pagina nao usa React). O "andar local" (passo
+// balancando, sombra espremendo) e' so CSS (#loading-icon-img/-shadow);
+// aqui so translada o #loading-walk-sprite pai. Sem icone cadastrado pro
+// sistema, o spinner original continua visivel (fica escondido por
+// padrao no HTML, ver game-wrapper.html).
+const WALK_ICON_SIZE = 40; // largura do sprite (bate com o width do CSS)
+const WALK_SPRITE_HEIGHT = 56; // altura total incluindo a sombra embaixo (icone 40 + gap 8 + sombra 5)
+const WALK_SPEED_PX_S = 70;
+
+function startWalkingIcon(system: string) {
   const iconImage = systemMeta(system).iconImage;
   if (!iconImage) return;
   const img = document.getElementById("loading-icon-img") as HTMLImageElement | null;
-  const stage = document.getElementById("loading-icon-stage");
-  const spinner = document.getElementById("loading-spinner");
-  if (img) img.src = iconImage;
-  stage?.classList.remove("hidden");
-  spinner?.classList.add("hidden");
+  const area = document.getElementById("loading-walk-area");
+  const sprite = document.getElementById("loading-walk-sprite");
+  const spinnerStage = document.getElementById("loading-spinner-stage");
+  if (!img || !area || !sprite) return;
+  img.src = iconImage;
+  area.classList.remove("hidden");
+  spinnerStage?.classList.add("hidden");
+
+  let last = performance.now();
+  const rect0 = area.getBoundingClientRect();
+  let x = Math.random() * Math.max(rect0.width - WALK_ICON_SIZE, 1);
+  let y = Math.random() * Math.max(rect0.height - WALK_SPRITE_HEIGHT, 1);
+  const angle = Math.random() * Math.PI * 2;
+  let vx = Math.cos(angle) * WALK_SPEED_PX_S;
+  let vy = Math.sin(angle) * WALK_SPEED_PX_S;
+
+  function tick(now: number) {
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    const rect = area!.getBoundingClientRect();
+    const maxX = Math.max(rect.width - WALK_ICON_SIZE, 0);
+    const maxY = Math.max(rect.height - WALK_SPRITE_HEIGHT, 0);
+
+    x += vx * dt;
+    y += vy * dt;
+    if (x <= 0) {
+      x = 0;
+      vx = Math.abs(vx);
+    } else if (x >= maxX) {
+      x = maxX;
+      vx = -Math.abs(vx);
+    }
+    if (y <= 0) {
+      y = 0;
+      vy = Math.abs(vy);
+    } else if (y >= maxY) {
+      y = maxY;
+      vy = -Math.abs(vy);
+    }
+
+    sprite!.style.transform = `translate(${x}px, ${y}px) scaleX(${vx < 0 ? -1 : 1})`;
+    walkRafId = requestAnimationFrame(tick);
+  }
+  walkRafId = requestAnimationFrame(tick);
 }
 
 async function main() {
@@ -194,7 +243,7 @@ async function main() {
   // especialmente ruim no mobile, sem devtools a mao.
   try {
     const { game } = await api.getGame(slug);
-    setLoadingIcon(game.system);
+    startWalkingIcon(game.system);
 
     const canvas = document.createElement("canvas");
     // object-fit:contain preserva a proporcao original do jogo sem cortar

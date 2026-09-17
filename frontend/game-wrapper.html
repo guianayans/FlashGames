@@ -31,17 +31,21 @@
         position: absolute;
         inset: 0;
         z-index: 10;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 14px;
         background: #050308;
+        overflow: hidden;
       }
       #loading-overlay.hidden {
         display: none;
       }
-      /* Fallback sem icone cadastrado pro sistema. */
+      /* Fallback sem icone cadastrado pro sistema — sozinho, centralizado
+         (nao anda, so o icone de verdade anda). */
+      #loading-spinner-stage {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
       #loading-spinner {
         width: 40px;
         height: 40px;
@@ -50,34 +54,44 @@
         border-top-color: #00e5ff;
         animation: loading-spin 0.9s linear infinite;
       }
-      #loading-spinner.hidden {
-        display: none;
-      }
       @keyframes loading-spin {
         to {
           transform: rotate(360deg);
         }
       }
-      /* Icone do console do jogo (ver game-wrapper.ts, setLoadingIcon)
-         pulando tipo personagem esperando. Altura fixa (nao so o icone)
-         pra sombra/pulo nao empurrar a barra de progresso embaixo. */
-      #loading-icon-stage {
-        height: 60px;
+      /* Area onde o icone anda (ver game-wrapper.ts, startWalkingIcon) —
+         cobre o overlay inteiro; a posicao de verdade (x/y, ricochete nas
+         bordas) e' calculada em JS a cada frame porque precisa medir o
+         tamanho real do container (CSS puro nao tem como fazer colisao). */
+      #loading-walk-area {
+        position: absolute;
+        inset: 0;
+      }
+      #loading-walk-area.hidden {
+        display: none;
+      }
+      #loading-walk-sprite {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 40px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: flex-end;
         gap: 8px;
+        will-change: transform;
       }
-      #loading-icon-stage.hidden {
-        display: none;
-      }
+      /* Icone do console do jogo (ver game-wrapper.ts, setLoadingIcon). O
+         "andar local" (passo balancando pra cima, sombra espremendo) e'
+         so CSS; quem move o icone pela tela e faz ricochetear nas bordas
+         e' o JS, que so translada o #loading-walk-sprite pai — os dois
+         efeitos se somam. */
       #loading-icon-img {
         width: 40px;
         height: 40px;
         image-rendering: pixelated;
         filter: drop-shadow(0 0 8px #00e5ff);
-        animation: loading-icon-bounce 0.7s ease-in-out infinite;
+        animation: loading-icon-bounce 0.4s ease-in-out infinite;
       }
       #loading-icon-shadow {
         width: 24px;
@@ -85,14 +99,14 @@
         border-radius: 50%;
         background: rgba(0, 0, 0, 0.5);
         filter: blur(1px);
-        animation: loading-icon-shadow 0.7s ease-in-out infinite;
+        animation: loading-icon-shadow 0.4s ease-in-out infinite;
       }
       @keyframes loading-icon-bounce {
         0%, 100% {
           transform: translateY(0);
         }
         50% {
-          transform: translateY(-16px);
+          transform: translateY(-8px);
         }
       }
       @keyframes loading-icon-shadow {
@@ -101,12 +115,23 @@
           opacity: 0.5;
         }
         50% {
-          transform: scaleX(0.55);
-          opacity: 0.22;
+          transform: scaleX(0.7);
+          opacity: 0.3;
         }
       }
+      #loading-bottom {
+        position: absolute;
+        left: 50%;
+        bottom: 26px;
+        transform: translateX(-50%);
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
       #loading-bar {
-        width: min(220px, 60%);
+        width: min(220px, 60vw);
         height: 5px;
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.1);
@@ -128,13 +153,19 @@
   <body>
     <div id="stage">
       <div id="loading-overlay">
-        <div id="loading-icon-stage" class="hidden">
-          <img id="loading-icon-img" src="" alt="" />
-          <div id="loading-icon-shadow"></div>
+        <div id="loading-walk-area" class="hidden">
+          <div id="loading-walk-sprite">
+            <img id="loading-icon-img" src="" alt="" />
+            <div id="loading-icon-shadow"></div>
+          </div>
         </div>
-        <div id="loading-spinner"></div>
-        <div id="loading-bar"><div id="loading-bar-fill"></div></div>
-        <div id="loading-pct">0%</div>
+        <div id="loading-spinner-stage">
+          <div id="loading-spinner"></div>
+        </div>
+        <div id="loading-bottom">
+          <div id="loading-bar"><div id="loading-bar-fill"></div></div>
+          <div id="loading-pct">0%</div>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/game-wrapper.ts"></script>

@@ -316,6 +316,78 @@ function useGamepadPlayer(
   return names;
 }
 
+// Icone do console (ver frontend/public/images/consoles/) andando pela
+// tela de carregamento inteira, ricocheteando nas bordas — tamanho do
+// icone e velocidade em JS (nao da pra fazer colisao com o tamanho de
+// verdade do container so em CSS), mas o "andar local" (balanco pra
+// cima/baixo dos pes, sombra espremendo) continua sendo so CSS
+// (.player-loading-icon-img/-icon-shadow, reaproveitados do "pulando" de
+// antes). O container mede o proprio tamanho a cada frame (em vez de uma
+// vez so) pra se adaptar se a janela/tela cheia mudar de tamanho no meio
+// do carregamento.
+const WALK_ICON_SIZE = 40; // largura do sprite (bate com o width do CSS)
+const WALK_SPRITE_HEIGHT = 56; // altura total incluindo a sombra embaixo (icone 40 + gap 8 + sombra 5)
+const WALK_SPEED_PX_S = 70;
+
+function WalkingLoadingIcon({ src }: { src: string }) {
+  const areaRef = useRef<HTMLDivElement>(null);
+  const spriteRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const area = areaRef.current;
+    const sprite = spriteRef.current;
+    if (!area || !sprite) return;
+
+    let raf = 0;
+    let last = performance.now();
+    const rect0 = area.getBoundingClientRect();
+    let x = Math.random() * Math.max(rect0.width - WALK_ICON_SIZE, 1);
+    let y = Math.random() * Math.max(rect0.height - WALK_SPRITE_HEIGHT, 1);
+    const angle = Math.random() * Math.PI * 2;
+    let vx = Math.cos(angle) * WALK_SPEED_PX_S;
+    let vy = Math.sin(angle) * WALK_SPEED_PX_S;
+
+    function tick(now: number) {
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      const rect = area!.getBoundingClientRect();
+      const maxX = Math.max(rect.width - WALK_ICON_SIZE, 0);
+      const maxY = Math.max(rect.height - WALK_SPRITE_HEIGHT, 0);
+
+      x += vx * dt;
+      y += vy * dt;
+      if (x <= 0) {
+        x = 0;
+        vx = Math.abs(vx);
+      } else if (x >= maxX) {
+        x = maxX;
+        vx = -Math.abs(vx);
+      }
+      if (y <= 0) {
+        y = 0;
+        vy = Math.abs(vy);
+      } else if (y >= maxY) {
+        y = maxY;
+        vy = -Math.abs(vy);
+      }
+
+      sprite!.style.transform = `translate(${x}px, ${y}px) scaleX(${vx < 0 ? -1 : 1})`;
+      raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div className="player-loading-walk-area" ref={areaRef}>
+      <div className="player-loading-walk-sprite" ref={spriteRef}>
+        <img src={src} alt="" className="player-loading-icon-img" />
+        <div className="player-loading-icon-shadow" />
+      </div>
+    </div>
+  );
+}
+
 function DesktopPlayer({ slug }: { slug: string }) {
   const [game, setGame] = useState<GameDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -353,6 +425,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
   // pequeno, carrega rapido demais pra reparar mesmo).
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
+  const loadingIconImage = game ? systemMeta(game.system).iconImage : undefined;
 
   // Esconde o cursor do mouse depois de parado uns segundos em cima da
   // tela do jogo (padrao de player de video/jogo) — reaparece assim que
@@ -452,24 +525,19 @@ function DesktopPlayer({ slug }: { slug: string }) {
         <div className="player-stage" ref={stageRef} />
         {loading && !error && (
           <div className="player-loading-overlay">
-            <div className="player-loading-icon-stage">
-              {game && systemMeta(game.system).iconImage ? (
-                <>
-                  <img
-                    src={systemMeta(game.system).iconImage}
-                    alt=""
-                    className="player-loading-icon-img"
-                  />
-                  <div className="player-loading-icon-shadow" />
-                </>
-              ) : (
+            {loadingIconImage ? (
+              <WalkingLoadingIcon src={loadingIconImage} />
+            ) : (
+              <div className="player-loading-icon-stage">
                 <div className="player-loading-spinner" />
-              )}
+              </div>
+            )}
+            <div className="player-loading-bottom">
+              <div className="player-loading-bar">
+                <div className="player-loading-bar-fill" style={{ width: `${Math.round(loadProgress * 100)}%` }} />
+              </div>
+              <div className="player-loading-pct">{Math.round(loadProgress * 100)}%</div>
             </div>
-            <div className="player-loading-bar">
-              <div className="player-loading-bar-fill" style={{ width: `${Math.round(loadProgress * 100)}%` }} />
-            </div>
-            <div className="player-loading-pct">{Math.round(loadProgress * 100)}%</div>
           </div>
         )}
         <button
