@@ -19,12 +19,17 @@ export interface EmulatorConfig {
 // homebrew dele no GitHub (ex: qualquer ".bin" vira
 // cdn.jsdelivr.net/.../retrobrews/md-games/...) — um atalho pensado pra
 // quem passa so um nome de arquivo solto tipo "flappybird.nes" sem
-// backend proprio. Isso NUNCA e' o que a gente quer (os nossos arquivos
-// sao sempre nossos, servidos pelo nosso backend em /roms/...) e derrubou
-// silenciosamente jogos de PS1 com faixa em .bin separada (o .cue carrega,
-// mas a faixa vem de um 404 de um jogo de Genesis aleatorio do GitHub).
-// Resolvendo pra URL absoluta (com origin) ANTES de mandar pro Nostalgist
-// a gente desliga esse "adivinhador" de vez, pra qualquer sistema/extensao.
+// backend proprio. Isso derrubou silenciosamente jogo de PS1 com faixa em
+// .bin separada (o .cue carrega, mas a faixa vem de um 404 de um jogo de
+// Genesis aleatorio do GitHub). Resolvendo pra URL absoluta a gente
+// desliga esse "adivinhador".
+// Aplicado SO no PS1 (case "psx" abaixo) de proposito: os outros sistemas
+// (SNES/NES/Genesis/GBA, via Nostalgist.snes()/.nes()/etc) ja funcionavam
+// normalmente com o caminho relativo, e forcar URL absoluta neles causou
+// regressao (carregamento mais lento e tela preta) — sinal de que esses
+// metodos de conveniencia fazem algo a mais com o valor de "rom" que nao
+// se da bem com URL ja resolvida. Sem necessidade comprovada de mexer
+// neles, melhor nao arriscar.
 function toAbsoluteUrl(relativeOrAbsolute: string): string {
   return new URL(relativeOrAbsolute, window.location.origin).href;
 }
@@ -37,9 +42,8 @@ function toAbsoluteUrl(relativeOrAbsolute: string): string {
 // nao guardados numa tabela de funcoes soltas) pra preservar o `this`
 // interno da classe.
 export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> {
-  const romUrl = toAbsoluteUrl(config.romUrl);
-  const romExtras = (config.romExtras || []).map(toAbsoluteUrl);
-  const rom = romExtras.length > 0 ? [romUrl, ...romExtras] : romUrl;
+  const rom =
+    config.romExtras && config.romExtras.length > 0 ? [config.romUrl, ...config.romExtras] : config.romUrl;
   const opts = { rom, element: config.canvas };
   switch (config.launcher) {
     case "snes":
@@ -68,9 +72,14 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
         // sem bios configurada ainda - segue sem, RetroArch vai reclamar
         // sozinho na tela se o jogo realmente precisar de uma.
       }
+      const psxRomUrl = toAbsoluteUrl(config.romUrl);
+      const psxRomExtras = (config.romExtras || []).map(toAbsoluteUrl);
+      const psxRom = psxRomExtras.length > 0 ? [psxRomUrl, ...psxRomExtras] : psxRomUrl;
       return Nostalgist.launch({
         core: "pcsx_rearmed",
         bios,
+        rom: psxRom,
+        element: config.canvas,
         // O Nostalgist escreve os arquivos de "bios" em
         // /home/web_user/retroarch/userdata/system dentro do sistema de
         // arquivos virtual do RetroArch (isso e' fixo no proprio pacote,
@@ -82,7 +91,6 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
         // ser exatamente esse caminho. Setando explicito aqui garante
         // que o core vai procurar a BIOS exatamente onde ela foi escrita.
         retroarchConfig: { system_directory: "/home/web_user/retroarch/userdata/system" },
-        ...opts,
       });
     }
   }
