@@ -14,14 +14,16 @@ data/
 # manifest.json de cada jogo continua versionado normalmente.
 games/**/*.swf
 
-# ROMs de console (SNES/NES/Genesis/GBA/PS1) - mesmo motivo do .swf acima:
-# direitos autorais nao sao nossos pra redistribuir, ficam so no servidor
-# (bind mount, ver docker-compose.yml). Ver ROMS.md pra como adicionar.
+# ROMs de console (SNES/NES/Genesis/GBA/PS1/PS2) - mesmo motivo do .swf
+# acima: direitos autorais nao sao nossos pra redistribuir, ficam so no
+# servidor (bind mount, ver docker-compose.yml). Ver ROMS.md pra como
+# adicionar.
 /SNES/
 /NES/
 /GENESIS/
 /GBA/
 /PS1/
+/PS2/
 
 # Dump(s) de BIOS de console (ex: PS1) - mesmo motivo acima, e' firmware
 # do proprio aparelho, nao nosso pra redistribuir (mesmo em repo privado,

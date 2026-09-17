@@ -19,6 +19,13 @@ export const SYSTEMS = {
   // ver loadEmulatorScript.ts. Escaneado por PASTA (scanPs1), nao por
   // extensao solta como os outros — ver comentario la embaixo do porque.
   PS1: { launcher: "psx", label: "PlayStation", extensions: [] },
+  // PS2: TESTE de viabilidade (performance via WASM no navegador e' bem
+  // mais pesada que PS1 — ver conversa). Ripagem de PS2 e' praticamente
+  // sempre 1 .iso so por jogo (ao contrario do PS1, nao tem a bagunca de
+  // varios .bin de faixa) — entao escaneia igual SNES/NES/GBA, sem
+  // precisar da logica de pasta-por-jogo do PS1. Tambem sem metodo de
+  // conveniencia no Nostalgist — core "pcsx2" (codinome "LRPS2") na mao.
+  PS2: { launcher: "ps2", label: "PlayStation 2", extensions: [".iso", ".chd"] },
 };
 
 const ROMS_DIR = process.env.ROMS_DIR || "/app/roms";

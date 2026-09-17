@@ -100,6 +100,26 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
         retroarchCoreConfig: { pcsx_rearmed_show_bios_bootlogo: "enabled" },
       });
     }
+    case "ps2": {
+      // TESTE de viabilidade — ver conversa. Sem metodo de conveniencia
+      // (Nostalgist.ps2 nao existe) — core "pcsx2" (codinome "LRPS2") na
+      // mao, mesmo criterio do PS1. Tambem precisa de BIOS (dump proprio,
+      // mesma pasta BIOS/ compartilhada — o core simplesmente ignora
+      // arquivo que nao reconhece como BIOS dele).
+      let bios: string[] = [];
+      try {
+        bios = (await api.listBios()).files.map(toAbsoluteUrl);
+      } catch {
+        // sem bios configurada ainda - segue sem.
+      }
+      return Nostalgist.launch({
+        core: "pcsx2",
+        bios,
+        rom: toAbsoluteUrl(config.romUrl),
+        element: config.canvas,
+        retroarchConfig: { system_directory: "/home/web_user/retroarch/userdata/system" },
+      });
+    }
   }
 }
 
