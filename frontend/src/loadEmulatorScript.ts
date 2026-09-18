@@ -177,6 +177,14 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
         retroarchConfig: {
           system_directory: "/home/web_user/retroarch/userdata/system",
           ...(singleControllerSession ? { input_libretro_device_p2: 0 } : {}),
+          // L2/R2 nao vem com bind de teclado nenhum por padrao no
+          // RetroArch (so' A/B/X/Y/L/R/Start/Select/D-pad vem prontos) —
+          // sem isso getKeyboardCode() do Nostalgist nao acha
+          // input_player1_l2/r2 no retroarch.cfg e ignora o toque
+          // silenciosamente. "u"/"i" tem que bater com KEY_TO_BUTTON em
+          // game-wrapper.ts.
+          input_player1_l2: "u",
+          input_player1_r2: "i",
         },
         // Por padrao o core pula direto pro jogo — essa opcao liga a
         // animacao/logo de boot de verdade da BIOS (a mesma tela que

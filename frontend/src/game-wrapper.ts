@@ -21,7 +21,7 @@ const slug = params.get("slug") || "";
 
 // Traduz a tecla fixa que o GameScreen.html ja manda por botao fisico (ver
 // data-key de cada .btn/.cbtn em frontend/public/GameScreen.html) pro nome
-// de botao que o Nostalgist espera (up/down/left/right, a/b/x/y, l/r,
+// de botao que o Nostalgist espera (up/down/left/right, a/b/x/y, l/r/l2/r2,
 // select/start) — nao precisamos mudar as teclas do GameScreen.html.
 const KEY_TO_BUTTON: Record<string, string> = {
   x: "x",
@@ -32,6 +32,12 @@ const KEY_TO_BUTTON: Record<string, string> = {
   k: "start", // btn-start — evita colidir com o bind nativo de Enter no RetroArch (ver diagnostico)
   q: "l",
   e: "r",
+  // L2/R2 — so' fazem sentido pro PS1 (unico console suportado com esses
+  // gatilhos de verdade); nos outros o Nostalgist so' nao acha o bind no
+  // retroarch.cfg e ignora silenciosamente (ver getKeyboardCode). "u"/"i"
+  // sao teclas livres, nao usadas por nenhum outro botao aqui.
+  u: "l2",
+  i: "r2",
   ArrowUp: "up",
   ArrowDown: "down",
   ArrowLeft: "left",

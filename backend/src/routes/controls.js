@@ -54,7 +54,16 @@ router.put("/keymap", requireAuth, (req, res) => {
 });
 
 // Layout dos controles em tela cheia (paisagem) — por conta de usuario,
-// nao por jogo (ver comentario no schema em db.js).
+// nao por jogo (ver comentario no schema em db.js). Formato:
+// { positions: { <id>: {x,y,w,h} }, hidden: { <id>: true }, fcGap: number }
+// — positions e' centro (x,y) + tamanho (w,h) em fracao da viewport
+// (mesmo criterio de sempre); hidden marca quais controles o usuario
+// escondeu (visibilidade fica escondida na conta, nao so' no aparelho);
+// fcGap e' o espalhamento do cluster ABXY (0-100, ver applyFcLayout no
+// GameScreen.html). Formato ANTIGO (antes de existir hidden/fcGap) era
+// so' o mapa de posicoes direto — nao migrado, um layout salvo antes
+// desta mudanca simplesmente reresseta pro padrao (app pessoal, poucas
+// contas, nao vale a complexidade de migrar um formato tao antigo).
 router.get("/layout", requireAuth, (req, res) => {
   const row = getLayoutStmt.get(req.user.id);
   res.json({ layout: row ? JSON.parse(row.layout) : null });
@@ -69,13 +78,39 @@ router.put("/layout", requireAuth, (req, res) => {
   if (json.length > MAX_LAYOUT_JSON_LEN) {
     return res.status(413).json({ error: "layout_too_large" });
   }
-  for (const [id, pos] of Object.entries(layout)) {
-    if (typeof id !== "string" || id.length > MAX_KEYMAP_KEY_LEN) {
-      return res.status(400).json({ error: "invalid_control_id" });
+
+  const { positions, hidden, fcGap } = layout;
+  if (positions !== undefined) {
+    if (typeof positions !== "object" || Array.isArray(positions)) {
+      return res.status(400).json({ error: "invalid_positions" });
     }
-    if (!pos || typeof pos !== "object" || typeof pos.x !== "number" || typeof pos.y !== "number") {
-      return res.status(400).json({ error: "invalid_position" });
+    for (const [id, pos] of Object.entries(positions)) {
+      if (typeof id !== "string" || id.length > MAX_KEYMAP_KEY_LEN) {
+        return res.status(400).json({ error: "invalid_control_id" });
+      }
+      if (!pos || typeof pos !== "object" || typeof pos.x !== "number" || typeof pos.y !== "number") {
+        return res.status(400).json({ error: "invalid_position" });
+      }
+      if (pos.w !== undefined && typeof pos.w !== "number") {
+        return res.status(400).json({ error: "invalid_position" });
+      }
+      if (pos.h !== undefined && typeof pos.h !== "number") {
+        return res.status(400).json({ error: "invalid_position" });
+      }
     }
+  }
+  if (hidden !== undefined) {
+    if (typeof hidden !== "object" || Array.isArray(hidden)) {
+      return res.status(400).json({ error: "invalid_hidden" });
+    }
+    for (const [id, val] of Object.entries(hidden)) {
+      if (typeof id !== "string" || id.length > MAX_KEYMAP_KEY_LEN || typeof val !== "boolean") {
+        return res.status(400).json({ error: "invalid_hidden" });
+      }
+    }
+  }
+  if (fcGap !== undefined && typeof fcGap !== "number") {
+    return res.status(400).json({ error: "invalid_fc_gap" });
   }
 
   upsertLayoutStmt.run(req.user.id, json);

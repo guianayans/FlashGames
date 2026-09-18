@@ -251,6 +251,12 @@ body {
 .shoulder.pressed::after { color: #000; }
 #btn-l { top:93.2%; left:10%;  width:18%; height:3%; }
 #btn-r { top:93.2%; right:10%; left:auto; width:18%; height:3%; }
+/* L2/R2 sao novos, so' existem na paisagem (ver body.landscape #btn-l2/
+   #btn-r2 mais abaixo) — sem posicao no retrato de proposito, a arte do
+   shell nao foi desenhada pensando neles. display:none aqui SOBRESCREVE
+   o display:flex generico de .shoulder (mesma especificidade — ID bate
+   ID — mas essa regra vem DEPOIS no arquivo, entao ganha). */
+#btn-l2, #btn-r2 { display: none; }
 
 /* ── CONFIRMAR SAIR (segurar L2 no controle) ── */
 #exit-confirm {
@@ -450,15 +456,14 @@ body {
 }
 
 /* ── PAISAGEM: gamepad some, jogo em tela cheia na resolucao nativa,
-   controles flutuam por cima como um overlay transparente. Posicao,
-   tamanho e desenho dos botoes replicados 1:1 do prototipo que o usuario
-   desenhou em elementos/gamepad.html (calibrado visualmente por cima de
-   uma imagem de shell landscape) — la as coordenadas ja sao vw/vh
-   relativas a viewport INTEIRA, e aqui o #screen tambem ocupa 100% da
-   viewport na paisagem, entao os numeros batem sem nenhuma conversao.
-   NAO mostra a imagem do shell aqui (unico ponto em que diverge do
-   prototipo) — o jogo continua em tela cheia, so os controles (posicao,
-   tamanho, forma de redimensionar) vem de la. ── */
+   controles flutuam por cima como um overlay QUASE TRANSPARENTE — pra nao
+   atrapalhar a visao do jogo por baixo. Posicao/tamanho/estrutura (cluster
+   ABXY com espacamento ajustavel, alca de redimensionar com grupos
+   sincronizados, guias de alinhamento, esconder por conta) replicados do
+   prototipo elementos/gamepad-atualizado.html — la o design e' colorido
+   (fundo preto puro), aqui vira translucido porque o fundo de verdade e' o
+   jogo. Unico ponto que diverge do prototipo: nao mostra imagem de shell
+   nenhuma, jogo fica em tela cheia (confirmado com o usuario). ── */
 body.landscape #shell-img { display: none; }
 body.landscape #shell {
   width: 100%; height: 100%; max-height: none; aspect-ratio: unset;
@@ -466,83 +471,142 @@ body.landscape #shell {
 body.landscape #screen { top: 0; left: 0; width: 100%; height: 100%; }
 body.landscape #log-label, body.landscape #log-keys { display: none; }
 
+/* ── D-PAD ── */
 body.landscape #dpad {
-  top: 36.065vh; left: 11.941vw; width: 16.12vw; height: 12.665vh;
+  position: fixed;
+  left: 26.872vw; top: 55.6022vh; width: 34.9326vmin; height: 34.9326vmin;
   right: auto; bottom: auto; transform: none; aspect-ratio: unset;
-  background: rgba(255,255,255,.10);
+  background: rgba(255,255,255,.08);
   border-radius: 10px;
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.08);
 }
-/* Sub-areas do d-pad (%, relativas ao proprio #dpad) — iguais nos dois
-   arquivos, mantidas como ja estavam. */
-body.landscape #dp-up    { top:-4px;  left:30%; width:42%; height:42%; border-radius:3px 3px 0 0; }
-body.landscape #dp-down  { bottom:-3px; left:30%; width:42%; height:42%; border-radius:0 0 3px 3px; }
-body.landscape #dp-right { top:30%;  right:-5px; width:42%; height:42%; border-radius:0 3px 3px 0; }
-body.landscape #dp-left  { top:29%;  left:-3px;  width:42%; height:42%; border-radius:3px 0 0 3px; }
+body.landscape .dp { background: transparent; }
+body.landscape .dp.pressed { background: rgba(255,255,255,.22); }
 
+/* ── FACE CLUSTER (XYAB) — container arrasta/redimensiona como uma peca
+   so'; a posicao INTERNA de cada botao (o "diamante") e' calculada em JS
+   por applyFcLayout(), a partir do slider de espacamento no #gap-pill —
+   nao da pra fazer so' com CSS estatico porque o espacamento e' variavel
+   em tempo real. ── */
+body.landscape #face-cluster {
+  position: fixed;
+  left: 71.6682vw; top: 14.8632vh; width: 41.026vmin; height: 41.026vmin;
+  touch-action: none; aspect-ratio: 1; overflow: visible;
+}
+body.landscape .facebtn {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,.08);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
+  color: rgba(255,255,255,.55);
+  display: flex; align-items: center; justify-content: center;
+  font: 700 3vmin/1 system-ui, sans-serif;
+  transition: background 50ms;
+}
+body.landscape .facebtn.pressed { background: rgba(255,255,255,.3); }
+
+/* Painel que aparece embaixo do cluster ABXY no modo de configurar —
+   espacamento (slider), esconder/mostrar cada controle e resetar. Filho
+   do proprio #face-cluster (assim ele se move/soma automaticamente com o
+   cluster, sem precisar recalcular posicao a parte). */
+#gap-pill {
+  display: none;
+  position: absolute;
+  top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+  z-index: 95; min-width: 220px; white-space: nowrap;
+  background: rgba(8,8,14,.95);
+  border: 1px solid rgba(0,229,255,.3);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: none; flex-direction: column; gap: 8px;
+  touch-action: auto;
+  box-shadow: 0 4px 20px rgba(0,0,0,.6);
+}
+body.landscape.layout-edit #gap-pill.visible { display: flex; }
+#vis-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.vis-pill {
+  padding: 3px 9px; border-radius: 12px;
+  font: 500 10px/1 system-ui, sans-serif;
+  cursor: pointer; touch-action: manipulation;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.07); color: rgba(255,255,255,.7);
+  transition: all .15s;
+}
+.vis-pill.is-hidden {
+  background: rgba(255,70,70,.12); border-color: rgba(255,70,70,.4);
+  color: #ff6060; text-decoration: line-through;
+}
+#gap-row { display: flex; align-items: center; gap: 8px; }
+#gap-row span:first-child { color: rgba(255,255,255,.5); font: 500 10px/1 system-ui, sans-serif; flex-shrink: 0; }
+#gap-slider { width: 100px; accent-color: #00e5ff; cursor: pointer; touch-action: auto; }
+#gap-val { color: #00e5ff; font: 700 10px/1 system-ui, sans-serif; min-width: 20px; text-align: right; }
+#gap-actions { display: flex; justify-content: flex-end; }
+#cfg-reset {
+  padding: 5px 10px; border-radius: 6px;
+  border: 1px solid rgba(255,80,80,.35); background: rgba(255,80,80,.10);
+  color: #ff5050; font: 600 10px/1 system-ui, sans-serif;
+  cursor: pointer; touch-action: manipulation;
+}
+
+/* ── ANALÓGICOS ── */
 body.landscape .stick-zone {
-  width: auto; aspect-ratio: unset;
-  background: rgba(255,255,255,.10);
+  position: fixed;
+  width: 38.8044vmin; height: 38.8044vmin; aspect-ratio: unset;
+  background: rgba(255,255,255,.08);
   box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
 }
-body.landscape #stick-l { top:50.519vh; left:20.372vw; width:12.666vw; height:9.952vh; }
-body.landscape #stick-r { top:50.682vh; left:66.923vw; width:12.517vw; height:9.835vh; }
-/* Mesmo motivo do .active abaixo: precisa repetir os IDs pra ganhar de
-   #stick-l/#stick-r .stick-thumb (linha ~211, tambem com ID). */
+body.landscape #stick-l { left: 5.2203vw; top: 14.8632vh; }
+body.landscape #stick-r { left: 53.1774vw; top: 53.6676vh; }
 body.landscape #stick-l .stick-thumb,
-body.landscape #stick-r .stick-thumb { background: rgba(255,255,255,.20); }
-/* Precisa repetir os IDs (nao so' .stick-zone.active) pra especificidade
-   bater a regra do retrato (#stick-l.active/#stick-r.active, linha ~216)
-   — um seletor so' de classe perderia pra um com ID, mesmo dentro da
-   paisagem. */
+body.landscape #stick-r .stick-thumb { background: rgba(255,255,255,.18); }
 body.landscape #stick-l.active .stick-thumb,
-body.landscape #stick-r.active .stick-thumb { background: rgba(255,255,255,.38); }
+body.landscape #stick-r.active .stick-thumb { background: rgba(255,255,255,.34); }
 
-body.landscape #btn-x { top:35.335vh; left:77.025vw; width:6.596vw; height:5.182vh; aspect-ratio:unset; }
-body.landscape #btn-y { top:40.263vh; left:71.519vw; width:6.432vw; height:5.053vh; aspect-ratio:unset; }
-body.landscape #btn-a { top:40.366vh; left:83.165vw; width:6.324vw; height:4.969vh; aspect-ratio:unset; }
-body.landscape #btn-b { top:44.656vh; left:77.435vw; width:6.358vw; height:4.995vh; aspect-ratio:unset; }
+/* ── CENTRO (FN/SEL/START) ── */
+body.landscape .cbtn {
+  position: fixed;
+  border-radius: 50%;
+  background: rgba(255,255,255,.08);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
+  color: rgba(255,255,255,.55);
+  font: 700 1.6vmin/1 system-ui, sans-serif;
+}
+body.landscape .cbtn.pressed { background: rgba(255,255,255,.3); }
+body.landscape #btn-fn     { left: 46.8908vw; top: 17.5621vh; width: 10.9701vmin; height: 10.9701vmin; aspect-ratio: unset; }
+body.landscape #btn-select { left: 36.8803vw; top: 28.5335vh; width: 10.9701vmin; height: 10.9701vmin; aspect-ratio: unset; }
+body.landscape #btn-start  { left: 56.6155vw; top: 28.5335vh; width: 10.9701vmin; height: 10.9701vmin; aspect-ratio: unset; }
 
-body.landscape #btn-fn     { top:47.397vh; left:47.125vw; width:5.855vw; height:4.406vh; aspect-ratio:unset; }
-body.landscape #btn-select { top:52.32vh;  left:41.344vw; width:5.099vw; height:4.006vh; aspect-ratio:unset; }
-body.landscape #btn-start  { top:52.331vh; left:53.431vw; width:5.204vw; height:4.089vh; aspect-ratio:unset; }
-
-body.landscape #btn-l { top:62.744vh; left:9.076vw;  width:7.154vw; height:4.47vh;  bottom:auto; }
-body.landscape #btn-r { top:62.983vh; left:83.842vw; width:7.322vw; height:4.576vh; bottom:auto; right:auto; }
+/* ── GATILHOS (L/R/L2/R2) — retangulares, vw/vh (nao vmin) pra nao
+   esticar em quadrado. Mesma especificidade de .cbtn (ambas classes tem
+   1 selector cada) — como .shoulder vem DEPOIS no arquivo, ganha por
+   ordem de fonte, voltando a ficar retangular/pilula em vez de circulo. */
+body.landscape .shoulder {
+  border-radius: 6px;
+  background: rgba(255,255,255,.08);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
+  font: 700 1.4vmin/1 system-ui, sans-serif;
+}
+body.landscape .shoulder.pressed { background: rgba(255,255,255,.3); }
+body.landscape #btn-l  { left: 7.6265vw;  top: 85.3523vh; width: 8.9858vw;  height: 5.1824vh; aspect-ratio: unset; bottom: auto; }
+body.landscape #btn-r  { left: 85.6833vw; top: 85.3523vh; width: 8.9858vw;  height: 5.1824vh; aspect-ratio: unset; bottom: auto; right: auto; }
+/* display:flex explicito aqui: #btn-l2/#btn-r2 tem display:none com
+   especificidade de ID no retrato (ver acima) — precisa de outra regra
+   TAMBEM com ID pra vencer especificamente essa propriedade na
+   paisagem, a posicao sozinha (sem "display") nao disputa a cascata
+   pra essa propriedade especifica. */
+body.landscape #btn-l2 { display: flex; left: 6.813vw;   top: 92.4719vh; width: 10.6129vw; height: 6.1222vh; aspect-ratio: unset; bottom: auto; }
+body.landscape #btn-r2 { display: flex; left: 84.8697vw; top: 92.4719vh; width: 10.6129vw; height: 6.1222vh; aspect-ratio: unset; bottom: auto; right: auto; }
 
 body.landscape #remap-btn { top: 10px; bottom: auto; right: 10px; }
 
-/* No retrato os botoes ficam invisiveis de proposito (o desenho impresso
-   no shell ja mostra onde estao). Na paisagem nao tem desenho embaixo —
-   tela cheia, so os controles soltos — entao aqui eles ganham o MESMO
-   fundo/formato do prototipo gamepad.html: circulo translucido (o .cbtn
-   do retrato e' um retangulo arredondado — 20px — so' na paisagem vira
-   circulo de verdade, igual la). */
-body.landscape .btn,
-body.landscape .cbtn {
-  background: rgba(255,255,255,.10);
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.12);
-  border-radius: 50%;
-}
-/* especificidade igual a` regra acima (mesmo tanto de classes), entao
-   por vir DEPOIS no arquivo ganha — precisa disso pro gatilho voltar a
-   ser a pilula preta (nao o circulo branco) mesmo sendo tambem um .cbtn,
-   igual ja acontecia no gamepad.html (mesmo criterio de ordem la). */
-body.landscape .shoulder {
-  background: rgba(0,0,0,.55);
-  border-radius: 6px;
-}
-/* especificidade maior que as regras acima, senao o toque nao mudaria nada
-   visualmente na paisagem (o fundo sutil ganharia da cor de "pressionado") */
-body.landscape .dp.pressed,
-body.landscape .btn.pressed,
-body.landscape .cbtn.pressed {
-  background: rgba(255,255,255,.3);
-}
-
-/* Botao de "editar layout" (arrastar controles) — so existe na paisagem. */
-#layout-btn {
-  position: absolute; top: 10px; right: 44px; bottom: auto; left: auto;
+/* ── BOTÕES DE CONFIGURAR (⚙ arrastar/redimensionar/esconder-um-a-um,
+   👁 esconder/mostrar TODOS de uma vez) — so' na paisagem. Substituem o
+   antigo par arrastar-so'/ciclar-presets por um botao de config unico
+   (posicao+tamanho+esconder, tudo dentro do MESMO modo) e um toggle
+   binario simples, pedido explicito do usuario (menos botao, mais
+   direto: "apenas um toggle pra esconder todos e voltar"). */
+#config-toggle, #hide-all-toggle {
+  position: absolute; top: 10px; bottom: auto; left: auto;
   width: 24px; height: 24px; border-radius: 4px;
   background: rgba(0,0,0,.6);
   border: 1px solid rgba(255,255,255,.18);
@@ -551,34 +615,27 @@ body.landscape .cbtn.pressed {
   align-items: center; justify-content: center; z-index: 10;
   touch-action: auto;
 }
-body.landscape #layout-btn { display: flex; }
-#layout-btn.active {
+#config-toggle { right: 44px; }
+#hide-all-toggle { right: 78px; }
+body.landscape #config-toggle, body.landscape #hide-all-toggle { display: flex; }
+#config-toggle.active {
   background: rgba(0,229,255,.85); color: #000; border-color: rgba(0,229,255,.85);
 }
-
-/* Botao que alterna entre presets de quais controles ficam visiveis
-   (tudo / so d-pad+XYBA / so analogico esquerdo+XYBA / nenhum), so na
-   paisagem — ver CONTROL_PRESETS no <script>. */
-#hide-controls-btn {
-  position: absolute; top: 10px; right: 78px; bottom: auto; left: auto;
-  width: 24px; height: 24px; border-radius: 4px;
-  background: rgba(0,0,0,.6);
-  border: 1px solid rgba(255,255,255,.18);
-  color: rgba(255,255,255,.75); cursor: pointer;
-  font-size: 12px; display: none;
-  align-items: center; justify-content: center; z-index: 10;
-  touch-action: auto;
-}
-body.landscape #hide-controls-btn { display: flex; }
-#hide-controls-btn.active {
+#hide-all-toggle.active {
   background: rgba(255,46,110,.85); color: #000; border-color: rgba(255,46,110,.85);
 }
-/* Precisa da classe .landscape tambem (so vale na paisagem) — protege o
-   retrato de qualquer jeito, mesmo se algum controle ficar marcado como
-   escondido do preset por algum motivo ao girar a tela pra vertical. */
-body.landscape .controls-preset-hidden { display: none; }
+/* Esconder TODOS (toggle binario, ver hideAllToggle no <script>) — nao
+   depende de conta, e' so' uma conveniencia momentanea de tela, volta
+   sozinho ao apertar de novo. */
+body.landscape.controls-all-hidden [data-draggable] { display: none; }
 
-/* Realce visual dos controles arrastaveis enquanto o modo de layout
+/* Esconder um controle ESPECIFICO (persistido na conta, ver #vis-row) —
+   fica 0% opaco fora do modo de configurar, e semi-visivel (25%) DENTRO
+   dele pra ainda dar pra mostrar/redimensionar antes de reativar. */
+.gc-hidden { opacity: 0; pointer-events: none !important; }
+body.layout-edit .gc-hidden { opacity: .25; pointer-events: auto !important; }
+
+/* Realce visual dos controles arrastaveis enquanto o modo de configurar
    esta ativo, e feedback mais forte no que esta sendo arrastado agora. */
 body.layout-edit [data-draggable] {
   outline: 2px dashed rgba(0,229,255,.6);
@@ -588,14 +645,34 @@ body.layout-edit [data-draggable] {
   outline: 2px solid rgba(0,229,255,.95) !important;
 }
 
+/* Rotulo de cada controle, visivel so' no modo de configurar — ajuda a
+   identificar o que e' o que quando tudo fica quase transparente. */
+.ctrl-label {
+  display: none;
+  position: absolute; inset: 0;
+  align-items: center; justify-content: center;
+  color: rgba(255,255,255,.9); font: 700 9px/1 system-ui, sans-serif;
+  pointer-events: none; text-shadow: 0 1px 4px #000; z-index: 2;
+  text-align: center; padding: 2px;
+}
+body.layout-edit .ctrl-label { display: flex; }
+
+/* Guias de alinhamento (linha ciano) — aparecem so' durante um
+   arrastar/redimensionar, quando a borda/centro do controle se aproxima
+   da borda/centro de outro controle ou do centro da tela (ver
+   snapPosition no <script>). */
+.snap-guide {
+  position: fixed; pointer-events: none; z-index: 200;
+  opacity: 0; transition: opacity .08s;
+}
+.snap-guide.h { left: 0; right: 0; height: 1px; background: rgba(0,229,255,.7); box-shadow: 0 0 4px rgba(0,229,255,.9); }
+.snap-guide.v { top: 0; bottom: 0; width: 1px; background: rgba(0,229,255,.7); box-shadow: 0 0 4px rgba(0,229,255,.9); }
+.snap-guide.active { opacity: 1; }
+
 /* Alca de redimensionar (canto inferior-direito, proporcao travada — ver
-   startResize no <script>) — mesmo desenho do elementos/gamepad.html.
-   Escondida por padrao (display:none) e SO aparece em
-   body.landscape.layout-edit (nao so' .layout-edit) de proposito: o botao
-   que liga o modo de layout ja so' existe na paisagem (#layout-btn, ver
-   acima), mas blindar aqui tambem garante que o retrato nunca mostra a
-   alca mesmo num caso extremo de girar a tela no meio do modo de editar
-   layout — o retrato continua 100% intocado, layout sempre fixo do shell. */
+   startResize no <script>). Escondida por padrao e SO aparece em
+   body.landscape.layout-edit (nao so' .layout-edit) de proposito — o
+   retrato continua 100% intocado, layout sempre fixo do shell. */
 .rh {
   display: none;
   position: absolute;
@@ -629,8 +706,8 @@ body.landscape.layout-edit .rh { display: block; }
     <div id="log-keys"></div>
     <iframe id="game-iframe" allowfullscreen allow="gamepad" title="Game"></iframe>
     <button id="remap-btn" title="Remapear botoes">⚙</button>
-    <button id="layout-btn" title="Arrastar controles">✥</button>
-    <button id="hide-controls-btn" title="Alternar controles visiveis">👁</button>
+    <button id="config-toggle" title="Configurar controles (mover/redimensionar/esconder)">✥</button>
+    <button id="hide-all-toggle" title="Esconder/mostrar todos os controles">👁</button>
   </div>
 
   <!-- D-PAD -->
@@ -639,34 +716,61 @@ body.landscape.layout-edit .rh { display: block; }
     <div id="dp-right" class="dp" data-dir="right"></div>
     <div id="dp-down"  class="dp" data-dir="down"></div>
     <div id="dp-left"  class="dp" data-dir="left"></div>
-    <div class="rh" data-rh="dpad"></div>
+    <span class="ctrl-label">DPAD</span>
+    <div class="rh"></div>
   </div>
 
-  <!-- FACE -->
-  <div id="btn-x" class="btn" data-key="x"     data-label="X" data-draggable="btn-x"><div class="rh"></div></div>
-  <div id="btn-y" class="btn" data-key="y"     data-label="Y" data-draggable="btn-y"><div class="rh"></div></div>
-  <div id="btn-a" class="btn" data-key="z"     data-label="A" data-draggable="btn-a"><div class="rh"></div></div>
-  <div id="btn-b" class="btn" data-key="Shift" data-label="B" data-draggable="btn-b"><div class="rh"></div></div>
+  <!-- FACE (cluster — os 4 botoes se movem/redimensionam juntos, so' o
+       espacamento entre eles (gap) e' ajustavel a parte, ver #gap-pill) -->
+  <div id="face-cluster" data-draggable="face-cluster">
+    <span class="ctrl-label">XYAB</span>
+    <div class="rh"></div>
+    <div id="btn-x" class="facebtn btn" data-key="x" data-label="X">X</div>
+    <div id="btn-y" class="facebtn btn" data-key="y" data-label="Y">Y</div>
+    <div id="btn-a" class="facebtn btn" data-key="z" data-label="A">A</div>
+    <div id="btn-b" class="facebtn btn" data-key="Shift" data-label="B">B</div>
+    <div id="gap-pill">
+      <div id="vis-row"></div>
+      <div id="gap-row">
+        <span>Espaçamento</span>
+        <input id="gap-slider" type="range" min="0" max="100" step="1" value="50">
+        <span id="gap-val">50</span>
+      </div>
+      <div id="gap-actions">
+        <button id="cfg-reset" type="button">↺ Resetar</button>
+      </div>
+    </div>
+  </div>
 
-  <!-- GATILHOS (L/R) -->
-  <div id="btn-l" class="cbtn shoulder" data-key="q" data-label="L" data-draggable="btn-l"><div class="rh"></div></div>
-  <div id="btn-r" class="cbtn shoulder" data-key="e" data-label="R" data-draggable="btn-r"><div class="rh"></div></div>
+  <!-- GATILHOS (L/R/L2/R2) -->
+  <div id="btn-l"  class="cbtn shoulder" data-key="q" data-label="L"  data-draggable="btn-l"><span class="ctrl-label">L</span><div class="rh"></div></div>
+  <div id="btn-r"  class="cbtn shoulder" data-key="e" data-label="R"  data-draggable="btn-r"><span class="ctrl-label">R</span><div class="rh"></div></div>
+  <div id="btn-l2" class="cbtn shoulder" data-key="u" data-label="L2" data-draggable="btn-l2"><span class="ctrl-label">L2</span><div class="rh"></div></div>
+  <div id="btn-r2" class="cbtn shoulder" data-key="i" data-label="R2" data-draggable="btn-r2"><span class="ctrl-label">R2</span><div class="rh"></div></div>
 
   <!-- ANALÓGICOS -->
   <div id="stick-l" class="stick-zone" data-stick="left" data-draggable="stick-l">
+    <span class="ctrl-label">STICK L</span>
     <div class="stick-thumb"></div>
     <div class="rh"></div>
   </div>
   <div id="stick-r" class="stick-zone" data-stick="right" data-draggable="stick-r">
+    <span class="ctrl-label">STICK R</span>
     <div class="stick-thumb"></div>
     <div class="rh"></div>
   </div>
 
   <!-- CENTRO -->
-  <div id="btn-fn"     class="cbtn" data-key="Escape" data-label="FN"    data-draggable="btn-fn"><div class="rh"></div></div>
-  <div id="btn-select" class="cbtn" data-key="Tab"    data-label="SEL"   data-draggable="btn-select"><div class="rh"></div></div>
-  <div id="btn-start"  class="cbtn" data-key="k"  data-label="START" data-draggable="btn-start"><div class="rh"></div></div>
+  <div id="btn-fn"     class="cbtn" data-key="Escape" data-label="FN"    data-draggable="btn-fn"><span class="ctrl-label">FN</span><div class="rh"></div></div>
+  <div id="btn-select" class="cbtn" data-key="Tab"    data-label="SEL"   data-draggable="btn-select"><span class="ctrl-label">SEL</span><div class="rh"></div></div>
+  <div id="btn-start"  class="cbtn" data-key="k"      data-label="START" data-draggable="btn-start"><span class="ctrl-label">STA</span><div class="rh"></div></div>
 </div>
+
+<!-- Guias de alinhamento (config mode) — ver snapPosition no <script> -->
+<div id="guide-h1" class="snap-guide h"></div>
+<div id="guide-h2" class="snap-guide h"></div>
+<div id="guide-v1" class="snap-guide v"></div>
+<div id="guide-v2" class="snap-guide v"></div>
 
 <!-- Confirmar saida — abre quando L2 e segurado por ~0.7s no
      controle fisico (ver secao CONTROLE FISICO no <script>) -->
@@ -1521,7 +1625,6 @@ let remapMode = false;
 let listeningEl = null;
 
 const remapBtn = document.getElementById('remap-btn');
-const hideControlsBtn = document.getElementById('hide-controls-btn');
 const remappableEls = Array.from(document.querySelectorAll('.btn, .cbtn'));
 const remapPanel = document.getElementById('remap-panel');
 const remapInput = document.getElementById('remap-input');
@@ -1647,7 +1750,9 @@ function syncOrientation() {
   document.body.classList.toggle('landscape', isLandscape);
   screenEl.style.borderRadius = isLandscape ? '0' : '15px 15px 8px 8px';
   if (isLandscape) {
-    applyCustomLayout();
+    if (typeof applyCustomLayout === 'function') applyCustomLayout();
+    if (typeof applyControlsHidden === 'function') applyControlsHidden();
+    if (typeof applyFcLayout === 'function') requestAnimationFrame(() => applyFcLayout(fcGap));
     // Girou pra paisagem com um controle fisico ja conectado — esconde os
     // botoes de toque direto (ver hideControlsForGamepad, secao CONTROLE
     // FISICO), sem precisar esperar um evento de conexao novo.
@@ -1655,16 +1760,16 @@ function syncOrientation() {
       hideControlsForGamepad();
     }
   } else {
-    clearCustomLayoutPositions();
-    // Modo de arrastar so existe na paisagem — se o usuario girar o
+    if (typeof clearCustomLayoutPositions === 'function') clearCustomLayoutPositions();
+    // Modo de configurar so existe na paisagem — se o usuario girar o
     // aparelho com ele ainda ligado, tem que desligar aqui tambem (nao so
     // esconder o botao), senao o toque continuaria sendo interceptado como
     // arrasto e um botao do retrato poderia ganhar posicao customizada,
     // violando "botoes na vertical nunca mudam de posicao".
     if (typeof setLayoutEditMode === 'function') setLayoutEditMode(false);
-    // Preset de controles visiveis tambem so faz sentido na paisagem (o
-    // retrato tem os botoes impressos no shell — sempre visiveis, por
-    // definicao). Volta pro preset "tudo visivel" (indice 0).
+    // Esconder tudo tambem so faz sentido na paisagem (o retrato tem os
+    // botoes impressos no shell — sempre visiveis, por definicao). Volta
+    // a mostrar tudo.
     if (typeof resetControlsPreset === 'function') resetControlsPreset();
   }
 }
@@ -1678,17 +1783,40 @@ mqLandscape.addEventListener('change', syncOrientation);
 //  em qualquer jogo e qualquer aparelho que ele entrar depois. Nunca
 //  afeta o retrato — o layout la e sempre o fixo do shell.
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  CONFIGURAR CONTROLES (so na paisagem) — UM botao (✥) pra arrastar,
+//  redimensionar e esconder controle por controle; ver #hide-all-toggle
+//  logo abaixo pro toggle simples de "esconder tudo" (coisa separada,
+//  nao persistida). Posicao/tamanho, quais controles o usuario escondeu
+//  e o espacamento do cluster ABXY ficam gravados na CONTA (nao no
+//  aparelho) — funciona em qualquer jogo/aparelho que ele entrar depois.
+//  Nunca afeta o retrato — layout la e sempre o fixo do shell (ver
+//  syncOrientation acima). Desenho/posicoes replicados de
+//  elementos/gamepad-atualizado.html — so' o "esconder tudo" e o
+//  esconder-por-controle sao ideia nova pedida pelo usuario pra
+//  substituir o ciclo antigo de presets.
+// ═══════════════════════════════════════════
 let layoutEditMode = false;
-let customLayout = {};
-const layoutBtn = document.getElementById('layout-btn');
+let customLayout = {};   // { <id>: {x,y,w,h} } — x/y = centro, w/h = tamanho, fracao da viewport
+let controlsHidden = {}; // { <id>: true } — escondido POR CONTROLE, persistido na conta
+let fcGap = 50;           // espacamento do cluster ABXY (0-100), persistido na conta
+const configToggle = document.getElementById('config-toggle');
 const draggableEls = Array.from(document.querySelectorAll('[data-draggable]'));
+const faceCluster = document.getElementById('face-cluster');
 
 fetch('/api/controls/layout', { credentials: 'include' })
   .then(r => r.ok ? r.json() : { layout: null })
   .then(d => {
-    if (d && d.layout) {
-      customLayout = d.layout;
-      if (document.body.classList.contains('landscape')) applyCustomLayout();
+    const saved = d && d.layout;
+    if (saved) {
+      customLayout = saved.positions || {};
+      controlsHidden = saved.hidden || {};
+      if (typeof saved.fcGap === 'number') fcGap = saved.fcGap;
+    }
+    if (document.body.classList.contains('landscape')) {
+      applyCustomLayout();
+      applyControlsHidden();
+      requestAnimationFrame(() => applyFcLayout(fcGap));
     }
   })
   .catch(() => {});
@@ -1734,6 +1862,12 @@ function clearCustomLayoutPositions() {
   });
 }
 
+function applyControlsHidden() {
+  draggableEls.forEach(el => {
+    el.classList.toggle('gc-hidden', !!controlsHidden[el.dataset.draggable]);
+  });
+}
+
 let saveLayoutTimer = null;
 function saveLayout() {
   clearTimeout(saveLayoutTimer);
@@ -1742,81 +1876,81 @@ function saveLayout() {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ layout: customLayout }),
+      body: JSON.stringify({ layout: { positions: customLayout, hidden: controlsHidden, fcGap } }),
     }).catch(() => {});
   }, 400);
 }
 
 function setLayoutEditMode(on) {
   layoutEditMode = on;
-  layoutBtn.classList.toggle('active', layoutEditMode);
+  configToggle.classList.toggle('active', layoutEditMode);
   document.body.classList.toggle('layout-edit', layoutEditMode);
-  // Mesma logica do remapear: revela todo controle enquanto arrasta,
-  // senao nao da pra pegar um que o preset atual esconde.
+  const pill = document.getElementById('gap-pill');
+  if (on) {
+    buildVisRow();
+    const slider = document.getElementById('gap-slider');
+    slider.value = fcGap;
+    document.getElementById('gap-val').textContent = fcGap;
+    pill.classList.add('visible');
+  } else {
+    pill.classList.remove('visible');
+  }
+  // Mesma logica do remapear: revela todo controle enquanto edita, senao
+  // nao da pra pegar um que "esconder tudo" ou "esconder este" deixou
+  // fora de alcance.
   if (typeof syncControlsVisibility === 'function') syncControlsVisibility();
 }
 
-layoutBtn.addEventListener('click', () => {
+configToggle.addEventListener('click', () => {
   setLayoutEditMode(!layoutEditMode);
   if (layoutEditMode) setRemapMode(false); // modos sao mutuamente exclusivos
 }, { passive: false });
 
 // ═══════════════════════════════════════════
-//  PRESETS DE CONTROLES VISIVEIS (so na paisagem)
-//  Toca o olho pra alternar: tudo visivel -> so d-pad+XYBA -> so
-//  analogico esquerdo+XYBA -> nada visivel -> tudo de novo. A tecla
-//  configurada de cada botao (remapeamento) NAO muda entre presets — so
-//  a visibilidade. Escondido = display:none (nao recebe toque).
+//  ESCONDER TODOS — toggle binario (ver #hide-all-toggle), substitui o
+//  ciclo antigo de 4 presets por pedido explicito do usuario. So' liga/
+//  desliga display de TUDO de uma vez, sem persistir (momentaneo, volta
+//  ao apertar de novo ou trocar de orientacao) — o que FICA salvo na
+//  conta e' o esconder POR CONTROLE (controlsHidden, ver vis-row acima),
+//  coisa separada.
 // ═══════════════════════════════════════════
-const CONTROL_PRESETS = [
-  { hidden: [] },
-  { hidden: ['dpad', 'stick-l', 'stick-r', 'btn-x', 'btn-y', 'btn-a', 'btn-b', 'btn-l', 'btn-r', 'btn-fn', 'btn-select', 'btn-start'] },
-  { hidden: ['stick-l', 'stick-r'] },
-  { hidden: ['dpad', 'stick-r'] },
-];
-let presetIndex = 0;
+const hideAllToggle = document.getElementById('hide-all-toggle');
+let allHidden = false;
 
-// Chamada tambem pelo modo remapear/arrastar (ver acima) — enquanto
-// qualquer um dos dois esta ativo, mostra TUDO independente do preset
-// (senao nao da pra tocar num botao que o preset atual esconde).
 function syncControlsVisibility() {
-  const hidden = new Set((remapMode || layoutEditMode) ? [] : CONTROL_PRESETS[presetIndex].hidden);
-  draggableEls.forEach(el => {
-    el.classList.toggle('controls-preset-hidden', hidden.has(el.dataset.draggable));
-  });
-  hideControlsBtn.classList.toggle('active', presetIndex !== 0);
+  document.body.classList.toggle('controls-all-hidden', allHidden && !remapMode && !layoutEditMode);
+  hideAllToggle.classList.toggle('active', allHidden);
 }
 
 function resetControlsPreset() {
-  presetIndex = 0;
+  allHidden = false;
   syncControlsVisibility();
 }
 
 // Controle fisico conectado na paisagem: os botoes de toque ficam
-// redundantes, entao escondem sozinhos (preset 1 = tudo oculto). So
-// mexe se o preset ATUAL for o "tudo visivel" (0) — nao atropela uma
-// escolha manual do usuario pelo botao de olho (⁠hideControlsBtn). Um
+// redundantes, entao escondem sozinhos. So mexe se AINDA nao estava
+// escondido (nao atropela uma escolha manual do usuario no toggle). Um
 // toque na tela devolve pro normal, mas SO se foi este codigo que
-// escondeu (gamepadAutoHidden) — um preset escolhido a mao no botao de
-// olho continua do jeito que o usuario deixou.
+// escondeu (gamepadAutoHidden) — escondido a mao continua do jeito que
+// o usuario deixou.
 let gamepadAutoHidden = false;
 function hideControlsForGamepad() {
   if (!document.body.classList.contains('landscape')) return;
-  if (presetIndex !== 0) return;
-  presetIndex = 1;
+  if (allHidden) return;
+  allHidden = true;
   syncControlsVisibility();
   gamepadAutoHidden = true;
 }
 function revealControlsFromTouch() {
   if (!gamepadAutoHidden) return;
   gamepadAutoHidden = false;
-  presetIndex = 0;
+  allHidden = false;
   syncControlsVisibility();
 }
 document.addEventListener('touchstart', revealControlsFromTouch, { passive: true, capture: true });
 
-hideControlsBtn.addEventListener('click', () => {
-  presetIndex = (presetIndex + 1) % CONTROL_PRESETS.length;
+hideAllToggle.addEventListener('click', () => {
+  allHidden = !allHidden;
   syncControlsVisibility();
   setLayoutEditMode(false);
   setRemapMode(false);
@@ -1824,26 +1958,228 @@ hideControlsBtn.addEventListener('click', () => {
 
 syncControlsVisibility();
 
-// Intercepta o toque ANTES de qualquer handler normal de botao/d-pad/
-// analogico (capture na raiz) — assim nao precisa mexer em nenhum desses
-// handlers pra saber sobre o modo de layout. A alca de redimensionar
-// (.rh) tem prioridade sobre o proprio arrastar — senao o pointerdown
-// nela seria capturado pelo "closest('[data-draggable]')" do drag antes
-// de chegar no handler dela (mesma ordem usada no elementos/gamepad.html).
+// ═══════════════════════════════════════════
+//  ESPAÇAMENTO DO CLUSTER ABXY — mesmo calculo do prototipo
+//  elementos/gamepad-atualizado.html: slider 0-100 controla o quanto os
+//  4 botoes se afastam do centro do cluster, com limite pra nunca se
+//  sobrepor (offset minimo = diagonal de colisao) nem estourar a caixa
+//  (offset maximo = borda do cluster).
+// ═══════════════════════════════════════════
+const SQRT2 = Math.sqrt(2);
+function applyFcLayout(v) {
+  fcGap = v;
+  const r = faceCluster.getBoundingClientRect();
+  const S = r.width;
+  if (!S) return; // cluster ainda sem layout (ex.: retrato) — nada a fazer
+  const BASE = S * 0.34;
+  const MIN = S * 0.12;
+  let btnSize, offset;
+  if (v <= 50) {
+    btnSize = BASE;
+    const oMin = (BASE / SQRT2) * 1.08;
+    const oMax = S / 2 - BASE / 2;
+    offset = oMin + (v / 50) * (oMax - oMin);
+  } else {
+    const t = (v - 50) / 50;
+    btnSize = BASE - t * (BASE - MIN);
+    offset = S / 2 - btnSize / 2;
+  }
+  const half = btnSize / 2;
+  const cx = S / 2;
+  const bB = document.getElementById('btn-b');
+  const bY = document.getElementById('btn-y');
+  const bA = document.getElementById('btn-a');
+  const bX = document.getElementById('btn-x');
+  const sz = btnSize + 'px';
+  const fsz = (btnSize * 0.38) + 'px';
+  [bB, bY, bA, bX].forEach(b => {
+    b.style.width = sz;
+    b.style.height = sz;
+    b.style.fontSize = fsz;
+    b.style.position = 'absolute';
+    b.style.transform = 'none';
+    b.style.right = '';
+    b.style.bottom = '';
+  });
+  // topo (B), base (X), esquerda (Y), direita (A) — mesmo diamante do
+  // prototipo (nao e' um erro de troca: e' a disposicao la tambem).
+  bB.style.top = (cx - offset - half) + 'px'; bB.style.left = (cx - half) + 'px';
+  bX.style.top = (cx + offset - half) + 'px'; bX.style.left = (cx - half) + 'px';
+  bY.style.top = (cx - half) + 'px'; bY.style.left = (cx - offset - half) + 'px';
+  bA.style.top = (cx - half) + 'px'; bA.style.left = (cx + offset - half) + 'px';
+}
+requestAnimationFrame(() => applyFcLayout(fcGap));
+
+(function () {
+  const slider = document.getElementById('gap-slider');
+  const val = document.getElementById('gap-val');
+  slider.addEventListener('input', () => {
+    applyFcLayout(+slider.value);
+    val.textContent = slider.value;
+    saveLayout();
+  }, { passive: true });
+  slider.addEventListener('pointerdown', e => e.stopPropagation(), { capture: true });
+})();
+
+// ═══════════════════════════════════════════
+//  ESCONDER POR CONTROLE (dentro do modo de configurar) — pilulas no
+//  #vis-row, uma por controle arrastavel, alternam controlsHidden e
+//  salvam na conta.
+// ═══════════════════════════════════════════
+const LABELS = {
+  dpad: 'D-Pad', 'face-cluster': 'XYAB', 'stick-l': 'Stick L', 'stick-r': 'Stick R',
+  'btn-fn': 'FN', 'btn-select': 'SEL', 'btn-start': 'START',
+  'btn-l': 'L', 'btn-r': 'R', 'btn-l2': 'L2', 'btn-r2': 'R2',
+};
+function buildVisRow() {
+  const row = document.getElementById('vis-row');
+  if (!row) return;
+  row.innerHTML = '';
+  draggableEls.forEach(el => {
+    const id = el.dataset.draggable;
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'vis-pill' + (controlsHidden[id] ? ' is-hidden' : '');
+    pill.textContent = LABELS[id] || id;
+    pill.addEventListener('click', () => {
+      controlsHidden[id] = !controlsHidden[id];
+      pill.classList.toggle('is-hidden', !!controlsHidden[id]);
+      el.classList.toggle('gc-hidden', !!controlsHidden[id]);
+      saveLayout();
+    }, { passive: false });
+    row.appendChild(pill);
+  });
+}
+
+document.getElementById('cfg-reset').addEventListener('click', () => {
+  customLayout = {};
+  controlsHidden = {};
+  fcGap = 50;
+  clearCustomLayoutPositions();
+  draggableEls.forEach(el => el.classList.remove('gc-hidden'));
+  requestAnimationFrame(() => applyFcLayout(fcGap));
+  buildVisRow();
+  const slider = document.getElementById('gap-slider');
+  if (slider) { slider.value = fcGap; document.getElementById('gap-val').textContent = fcGap; }
+  saveLayout();
+}, { passive: false });
+
+// ═══════════════════════════════════════════
+//  GRUPOS SINCRONIZADOS — redimensionar UM controle do grupo aplica o
+//  MESMO tamanho aos outros do grupo (mantendo a posicao/centro de cada
+//  um), pra L/R, L2/R2, os dois analogicos e os 3 botoes centrais
+//  ficarem sempre parelhos sem precisar ajustar um por um.
+// ═══════════════════════════════════════════
+const SYNC_GROUPS = [
+  ['btn-fn', 'btn-select', 'btn-start'],
+  ['stick-l', 'stick-r'],
+  ['btn-l', 'btn-r'],
+  ['btn-l2', 'btn-r2'],
+];
+function getSyncPeers(id) {
+  const g = SYNC_GROUPS.find(g => g.includes(id));
+  return g ? g.filter(i => i !== id) : [];
+}
+function syncPeerSizes(sourceId, wPct, hPct) {
+  getSyncPeers(sourceId).forEach(peerId => {
+    const peerEl = document.querySelector(`[data-draggable="${peerId}"]`);
+    if (!peerEl) return;
+    const r = peerEl.getBoundingClientRect();
+    const prev = customLayout[peerId] || {
+      x: (r.left + r.width / 2) / window.innerWidth,
+      y: (r.top + r.height / 2) / window.innerHeight,
+    };
+    applyPosition(peerEl, prev.x, prev.y, wPct, hPct);
+    customLayout[peerId] = { x: prev.x, y: prev.y, w: wPct, h: hPct };
+  });
+}
+
+// ═══════════════════════════════════════════
+//  GUIAS DE ALINHAMENTO — durante um arrastar, mostra uma linha ciano
+//  quando a borda/centro do controle se aproxima da borda/centro de
+//  outro controle ou do centro da tela, e encaixa (snap) nela.
+// ═══════════════════════════════════════════
+const SNAP_PX = 8;
+const guideH = [document.getElementById('guide-h1'), document.getElementById('guide-h2')];
+const guideV = [document.getElementById('guide-v1'), document.getElementById('guide-v2')];
+let usedH = 0, usedV = 0;
+
+function hideGuides() {
+  [...guideH, ...guideV].forEach(g => g.classList.remove('active'));
+  usedH = 0; usedV = 0;
+}
+function showGuideH(px) {
+  const g = guideH[usedH % guideH.length];
+  g.style.top = px + 'px';
+  g.classList.add('active');
+  usedH++;
+}
+function showGuideV(px) {
+  const g = guideV[usedV % guideV.length];
+  g.style.left = px + 'px';
+  g.classList.add('active');
+  usedV++;
+}
+function getSnapLines(excludeEl) {
+  const hLines = new Set();
+  const vLines = new Set();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  hLines.add(vh / 2);
+  vLines.add(vw / 2);
+  draggableEls.forEach(other => {
+    if (other === excludeEl || other.classList.contains('gc-hidden')) return;
+    const r = other.getBoundingClientRect();
+    if (r.width === 0) return;
+    hLines.add(r.top); hLines.add(r.top + r.height / 2); hLines.add(r.bottom);
+    vLines.add(r.left); vLines.add(r.left + r.width / 2); vLines.add(r.right);
+  });
+  return { hLines: [...hLines], vLines: [...vLines] };
+}
+function snapPosition(el, x, y, elW, elH) {
+  hideGuides();
+  const { hLines, vLines } = getSnapLines(el);
+  let snappedX = x, snappedY = y;
+  const elCY = y + elH / 2, elB = y + elH;
+  const elCX = x + elW / 2, elR = x + elW;
+  const hCandidates = [
+    { val: y, apply: d => { snappedY = d; showGuideH(d); } },
+    { val: elCY, apply: d => { snappedY = d - elH / 2; showGuideH(d); } },
+    { val: elB, apply: d => { snappedY = d - elH; showGuideH(d); } },
+  ];
+  for (const line of hLines) for (const c of hCandidates) {
+    if (Math.abs(c.val - line) <= SNAP_PX) { c.apply(line); break; }
+  }
+  const vCandidates = [
+    { val: x, apply: d => { snappedX = d; showGuideV(d); } },
+    { val: elCX, apply: d => { snappedX = d - elW / 2; showGuideV(d); } },
+    { val: elR, apply: d => { snappedX = d - elW; showGuideV(d); } },
+  ];
+  for (const line of vLines) for (const c of vCandidates) {
+    if (Math.abs(c.val - line) <= SNAP_PX) { c.apply(line); break; }
+  }
+  return { x: snappedX, y: snappedY };
+}
+
+// ═══════════════════════════════════════════
+//  ARRASTAR — a alca de redimensionar (.rh) tem prioridade (senao o
+//  pointerdown nela seria capturado pelo closest('[data-draggable]') do
+//  drag antes de chegar no handler dela).
+// ═══════════════════════════════════════════
 document.addEventListener('pointerdown', e => {
   if (!layoutEditMode) return;
   if (e.target.classList.contains('rh')) {
     const el = e.target.closest('[data-draggable]');
     if (!el) return;
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     startResize(el, e.target, e);
     return;
   }
+  if (e.target.classList.contains('ctrl-label')) return;
+  if (e.target.classList.contains('stick-thumb')) return;
+  if (e.target.closest('#gap-pill')) return; // deixa slider/pilulas do painel funcionar
   const el = e.target.closest('[data-draggable]');
   if (!el) return;
-  e.preventDefault();
-  e.stopPropagation();
+  e.preventDefault(); e.stopPropagation();
   startDrag(el, e);
 }, { capture: true });
 
@@ -1851,11 +2187,29 @@ function startDrag(el, downEvent) {
   const pid = downEvent.pointerId;
   el.setPointerCapture(pid);
   el.classList.add('dragging');
-
+  const r0 = el.getBoundingClientRect();
+  const ox = downEvent.clientX - r0.left;
+  const oy = downEvent.clientY - r0.top;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  // Ancora pelo canto durante o arraste (preserva o ponto exato onde o
+  // dedo pegou o controle, sem "pular" pro centro) — volta pro modelo de
+  // CENTRO (translate -50%) que applyPosition usa fora do arraste, no
+  // "end" mais abaixo. Mesmo criterio do startResize.
+  el.style.position = 'fixed';
+  el.style.width = (r0.width / vw * 100) + '%';
+  el.style.height = (r0.height / vh * 100) + '%';
+  el.style.right = 'auto'; el.style.bottom = 'auto';
+  el.style.transform = 'none'; el.style.aspectRatio = 'unset';
   const move = e => {
     if (e.pointerId !== pid) return;
-    const prev = customLayout[el.dataset.draggable];
-    applyPosition(el, e.clientX / window.innerWidth, e.clientY / window.innerHeight, prev && prev.w, prev && prev.h);
+    let x = e.clientX - ox;
+    let y = e.clientY - oy;
+    const elW = el.getBoundingClientRect().width;
+    const elH = el.getBoundingClientRect().height;
+    const snapped = snapPosition(el, x, y, elW, elH);
+    el.style.left = (snapped.x / vw * 100) + '%';
+    el.style.top = (snapped.y / vh * 100) + '%';
+    if (el.id === 'face-cluster') applyFcLayout(fcGap);
   };
   const end = e => {
     if (e.pointerId !== pid) return;
@@ -1864,16 +2218,18 @@ function startDrag(el, downEvent) {
     el.removeEventListener('pointerup', end);
     el.removeEventListener('pointercancel', end);
     el.removeEventListener('lostpointercapture', end);
+    hideGuides();
     const r = el.getBoundingClientRect();
     const prev = customLayout[el.dataset.draggable];
+    const x = (r.left + r.width / 2) / vw;
+    const y = (r.top + r.height / 2) / vh;
+    applyPosition(el, x, y, prev && prev.w, prev && prev.h);
     customLayout[el.dataset.draggable] = {
-      x: (r.left + r.width / 2) / window.innerWidth,
-      y: (r.top + r.height / 2) / window.innerHeight,
+      x, y,
       ...(prev && typeof prev.w === 'number' ? { w: prev.w, h: prev.h } : {}),
     };
     saveLayout();
   };
-
   el.addEventListener('pointermove', move);
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
@@ -1882,41 +2238,26 @@ function startDrag(el, downEvent) {
 }
 
 // ═══════════════════════════════════════════
-//  REDIMENSIONAR — alca .rh, proporcao travada (mesma logica do
-//  elementos/gamepad.html). O canto SUPERIOR-ESQUERDO fica fixo durante o
-//  arraste (like a maioria dos editores) e o eixo que o dedo moveu mais
-//  manda no tamanho, escalando o outro pra manter a proporcao original —
-//  senao um arraste na diagonal distorceria o botao (vira oval/retangulo
-//  torto em vez de crescer/encolher proporcional). No final, converte de
-//  volta pro modelo de CENTRO que applyPosition/customLayout ja usam (nao
-//  guarda em canto-fixo — ia desalinhar do jeito que o drag entende
-//  posicao), senao os dois sistemas (mover vs redimensionar) ficariam
-//  gravando formatos diferentes no mesmo customLayout.
+//  REDIMENSIONAR — alca .rh, proporcao travada. Canto SUPERIOR-ESQUERDO
+//  fica fixo durante o arraste, o eixo que o dedo moveu mais manda no
+//  tamanho, escalando o outro pra manter a proporcao original. No final,
+//  converte de volta pro modelo de CENTRO e sincroniza o grupo (ver
+//  SYNC_GROUPS acima).
 // ═══════════════════════════════════════════
 function startResize(el, handle, downEvent) {
   const pid = downEvent.pointerId;
   handle.setPointerCapture(pid);
   el.classList.add('dragging');
-
   const r0 = el.getBoundingClientRect();
   const ratio = r0.width / r0.height;
-  const fixL = r0.left;
-  const fixT = r0.top;
-  const MIN = 20; // tamanho minimo em px, pra nao desaparecer de tao pequeno
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-
-  // Durante o arraste, ancora pelo canto (transform:none) — mais simples
-  // de calcular crescimento a partir de um ponto fixo do que a partir do
-  // centro. Volta pro modelo de centro no fim (ver "end" abaixo).
+  const fixL = r0.left, fixT = r0.top;
+  const MIN = 20;
+  const vw = window.innerWidth, vh = window.innerHeight;
   el.style.position = 'fixed';
   el.style.left = (fixL / vw * 100) + '%';
   el.style.top = (fixT / vh * 100) + '%';
-  el.style.right = 'auto';
-  el.style.bottom = 'auto';
-  el.style.transform = 'none';
-  el.style.aspectRatio = 'unset';
-
+  el.style.right = 'auto'; el.style.bottom = 'auto';
+  el.style.transform = 'none'; el.style.aspectRatio = 'unset';
   const move = e => {
     if (e.pointerId !== pid) return;
     const dw = Math.max(MIN, e.clientX - fixL);
@@ -1926,8 +2267,8 @@ function startResize(el, handle, downEvent) {
     else { nh = dh; nw = dh * ratio; }
     el.style.width = (nw / vw * 100) + '%';
     el.style.height = (nh / vh * 100) + '%';
+    if (el.id === 'face-cluster') applyFcLayout(fcGap);
   };
-
   const end = e => {
     if (e.pointerId !== pid) return;
     el.classList.remove('dragging');
@@ -1942,9 +2283,10 @@ function startResize(el, handle, downEvent) {
     const h = r.height / vh;
     applyPosition(el, x, y, w, h); // volta pro modelo de centro
     customLayout[el.dataset.draggable] = { x, y, w, h };
+    syncPeerSizes(el.dataset.draggable, w, h);
     saveLayout();
+    if (el.id === 'face-cluster') requestAnimationFrame(() => applyFcLayout(fcGap));
   };
-
   handle.addEventListener('pointermove', move);
   handle.addEventListener('pointerup', end);
   handle.addEventListener('pointercancel', end);
