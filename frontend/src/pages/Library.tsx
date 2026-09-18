@@ -7,7 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 import { systemMeta } from "../categories";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RemotePairingModal from "../components/RemotePairingModal";
-import RemoteControlBadge from "../components/RemoteControlBadge";
+import ControllerIndicators, { REMOTE_PENDING_LABEL, type ControllerSlot } from "../components/ControllerIndicators";
 import QrScannerModal from "../components/QrScannerModal";
 import { useRemoteControlContext } from "../remoteControl/RemoteControlContext";
 
@@ -1112,7 +1112,7 @@ export default function Library() {
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [pointerCoarse] = useState(detectPointerCoarse);
   // Assim que parear, fecha o modal grande sozinho — sobra so' o
-  // indicador pequeno (RemoteControlBadge, sempre visivel), sem tampar a
+  // indicador pequeno (ControllerIndicators, no header), sem tampar a
   // biblioteca. Mesmo criterio do Player.tsx.
   const remoteStatusRef = useRef(remoteControl.status);
   useEffect(() => {
@@ -1513,6 +1513,19 @@ export default function Library() {
   const pullActive = pullDistance > 0 || refreshing;
   const pullProgress = Math.min(1, pullDistance / PULL_THRESHOLD);
 
+  // Biblioteca so' rastreia UM controle fisico por vez (sem multiplayer
+  // aqui, so' o player 1 navega o menu, ver remotePlayerOneIsPhoneRef) —
+  // mostra ele como P1 so' quando realmente e' quem manda (nenhum celular
+  // ja' e' o player 1); "Celular (controle remoto)" e' o nome sentinela
+  // que o proprio handler do remoto usa pra ligar gamepadActive, nao um
+  // controle fisico de verdade.
+  const controllerSlots: ControllerSlot[] = [
+    ...(gamepadActive && gamepadName !== "Celular (controle remoto)" && !remotePlayerOneIsPhoneRef.current
+      ? [{ player: 1, kind: "gamepad" as const }]
+      : []),
+    ...remoteControl.phones.filter((p) => p.connected).map((p) => ({ player: p.player, kind: "phone" as const })),
+  ];
+
   return (
     <div className="library-page" ref={pageRef}>
       {pullActive && (
@@ -1579,7 +1592,11 @@ export default function Library() {
         </div>
 
         <div className="library-user">
-          {gamepadActive && <span className="gamepad-badge">🎮 {gamepadName}</span>}
+          <ControllerIndicators
+            slots={controllerSlots}
+            pendingLabel={REMOTE_PENDING_LABEL[remoteControl.status]}
+            onClick={() => setPairingModalOpen(true)}
+          />
           {remoteControl.status === "idle" && !pointerCoarse && (
             <button
               type="button"
@@ -1633,10 +1650,6 @@ export default function Library() {
         </div>
       </header>
 
-      {/* Fixo na tela, fora do header (que pode ficar atras da busca ao
-          rolar, ver .library-header sticky) — nunca some sozinho enquanto
-          uma sessao remota existir. Tocar reabre o modal do QR. */}
-      <RemoteControlBadge status={remoteControl.status} phones={remoteControl.phones} onClick={() => setPairingModalOpen(true)} />
       {pairingModalOpen && (
         <RemotePairingModal
           status={remoteControl.status}

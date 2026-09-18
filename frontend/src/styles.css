@@ -1185,24 +1185,54 @@ a {
   white-space: nowrap;
 }
 
-/* Indicador de controle conectado — discreto de proposito (era um badge
-   ciano forte com borda, chamava atencao demais pra uma info que fica o
-   tempo todo na tela). So mais um textinho fosco no canto, nao chama
-   mais atencao que o resto do header. */
-.gamepad-badge {
+/* Indicador UNIFICADO de controle(s) conectado(s) (fisico + celular
+   remoto juntos, ver ControllerIndicators.tsx) — um pill por dispositivo,
+   pontinho colorido por jogador (mesma paleta do #player-badge em
+   RemoteController.html) + icone + Pn. Substitui o antigo .gamepad-badge
+   (so' controle fisico, mostrava o nome completo do dispositivo) e o
+   RemoteControlBadge (so' celular, ficava num canto fixo desgrudado). */
+.controller-indicators {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
-  padding: 3px 9px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.controller-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 7px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-soft);
-  color: var(--text-faint);
+  color: var(--text-dim);
   font-family: var(--font-display);
-  font-size: 0.68rem;
-  font-weight: 500;
+  font-size: 0.7rem;
+  font-weight: 600;
   white-space: nowrap;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+.controller-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pill-color, #fff);
+  box-shadow: 0 0 5px 1px var(--pill-color, #fff);
+  flex-shrink: 0;
+}
+.controller-pill-icon {
+  font-size: 0.8em;
+  line-height: 1;
+}
+/* Pareando mas ainda sem nenhum celular conectado de verdade — sem isso
+   o indicador some inteiro nessa janela (ver pendingLabel em
+   ControllerIndicators.tsx) e fechar o modal do QR ficava sem volta. */
+.controller-pill-pending {
+  color: var(--text-faint);
+  border-style: dashed;
 }
 
 .back-link {
@@ -1772,44 +1802,6 @@ a {
   border-color: var(--magenta);
   color: var(--text);
 }
-
-/* Indicador flutuante e PERSISTENTE (ver RemoteControlBadge) — sempre
-   por cima (position:fixed), nunca some sozinho enquanto uma sessao
-   remota existir. Canto superior-direito, fora do fluxo do topbar (que
-   podia ficar cheio de badges de controle fisico ja). */
-.remote-badge {
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 10px);
-  right: 10px;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(10, 7, 20, 0.92);
-  border: 1px solid var(--border-soft);
-  color: var(--text-dim);
-  font-family: var(--font-display);
-  font-size: 0.72rem;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-.remote-badge:hover {
-  border-color: var(--cyan);
-  color: var(--text);
-}
-.remote-badge-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #ffb020;
-  flex-shrink: 0;
-}
-.remote-badge.connected .remote-badge-dot { background: #39ff8f; }
-.remote-badge.error .remote-badge-dot { background: #ff5050; }
 
 .qr-scanner-card {
   display: flex;

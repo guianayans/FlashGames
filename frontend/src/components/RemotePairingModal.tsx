@@ -16,7 +16,7 @@ const MAX_PLAYERS = 4;
 // o QR e' so' a URL /remote/<token> renderizada como imagem (biblioteca
 // "qrcode", client-side, sem round-trip nenhum pro servidor alem do que
 // o context ja faz). "Fechar" so' esconde o modal (o controle continua
-// conectado, ver RemoteControlBadge — fica por cima da tela); so'
+// conectado, ver ControllerIndicators — fica no topbar/header); so'
 // "Desconectar" derruba a conexao de verdade — os dois eram a MESMA
 // coisa antes, obrigando escolher entre ver o jogo/app ou ficar
 // conectado.

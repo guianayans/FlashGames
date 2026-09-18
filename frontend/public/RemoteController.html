@@ -163,11 +163,45 @@ body:not(.landscape) #shell-controls { display: none; }
   font: 600 13px/1 system-ui, sans-serif; color: #fff;
   display: none; align-items: center; gap: 8px;
   max-width: 88vw; white-space: nowrap;
+  touch-action: manipulation; cursor: pointer;
 }
 body.landscape #status-bar { display: flex; }
 #status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ffb020; flex-shrink: 0; }
 #status-bar.connected #status-dot { background: #39ff8f; }
 #status-bar.disconnected #status-dot { background: #ff5050; }
+
+/* Confirmar desconectar — toca no status-bar CONECTADO (ver JS) pra
+   abrir, mesmo estilo cyberpunk do #install-required-card. */
+#disconnect-confirm {
+  position: fixed; inset: 0; z-index: 410;
+  display: none; align-items: center; justify-content: center;
+  padding: 24px;
+  background: rgba(5, 3, 12, .72);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+#disconnect-confirm.show { display: flex; }
+#disconnect-confirm-card {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  max-width: 300px; width: 100%;
+  padding: 26px 22px;
+  border-radius: 18px;
+  background: rgba(24, 16, 40, .92);
+  border: 1px solid rgba(255, 80, 80, .3);
+  box-shadow: 0 20px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+}
+#disconnect-confirm-card p {
+  margin: 0; text-align: center; color: #f1edff;
+  font: 600 15px/1.4 "Chakra Petch", system-ui, sans-serif;
+}
+#disconnect-confirm-actions { display: flex; gap: 10px; width: 100%; }
+#disconnect-confirm-actions button {
+  flex: 1; padding: 11px 0; border-radius: 10px; border: 1px solid rgba(255,255,255,.16);
+  font: 600 13px/1 system-ui, sans-serif; cursor: pointer; touch-action: manipulation;
+  background: rgba(255,255,255,.06); color: #f1edff;
+}
+#disconnect-confirm-yes {
+  background: rgba(255,60,60,.18) !important; border-color: rgba(255,80,80,.5) !important; color: #ffb4b4 !important;
+}
 
 /* ── NUMERO DE JOGADOR (P1..P4) — multiplayer, ver assignSlot no
    RemoteControlContext do desktop. So' aparece depois que o desktop
@@ -498,6 +532,19 @@ body.config-mode .gc-hidden { opacity: .25; pointer-events: auto !important; }
 <div id="status-bar"><span id="status-dot"></span><span id="status-text">Conectando...</span></div>
 <div id="player-badge"></div>
 
+<!-- Tocar no status-bar CONECTADO abre isso — confirma antes de
+     derrubar a conexao de verdade (sem querer sair do jogo por engano
+     tocando perto do status). Mesmo estilo do #install-required-card. -->
+<div id="disconnect-confirm">
+  <div id="disconnect-confirm-card">
+    <p>Desconectar o controle?</p>
+    <div id="disconnect-confirm-actions">
+      <button type="button" id="disconnect-confirm-cancel">Cancelar</button>
+      <button type="button" id="disconnect-confirm-yes">Desconectar</button>
+    </div>
+  </div>
+</div>
+
 <div id="shell-controls">
   <!-- ── FACE CLUSTER ── -->
   <div id="face-cluster" class="gc-draggable" data-id="face-cluster">
@@ -686,6 +733,29 @@ if (!IS_STANDALONE) {
     ws.addEventListener('error', () => {});
   };
   connect();
+
+  // Tocar no status-bar CONECTADO abre a confirmacao de desconectar (ver
+  // #disconnect-confirm no HTML) — so' faz sentido depois de conectado de
+  // verdade (dai o check da classe 'connected'; enquanto ainda ta'
+  // conectando/reconectando, tocar nao faz nada). "Desconectar" e' pra
+  // valer: marca gaveUp (mesma trava que "sala cheia" usa, ver acima) pra
+  // NAO reconectar sozinho de novo, e fecha o WS na mao.
+  var disconnectConfirm = document.getElementById('disconnect-confirm');
+  statusBar.addEventListener('click', () => {
+    if (!statusBar.classList.contains('connected')) return;
+    disconnectConfirm.classList.add('show');
+  });
+  document.getElementById('disconnect-confirm-cancel').addEventListener('click', () => {
+    disconnectConfirm.classList.remove('show');
+  });
+  document.getElementById('disconnect-confirm-yes').addEventListener('click', () => {
+    disconnectConfirm.classList.remove('show');
+    gaveUp = true;
+    clearTimeout(reconnectTimer);
+    if (ws) { try { ws.close(); } catch(e) {} }
+    setStatus('disconnected', 'Desconectado');
+    setPlayerBadge(null);
+  });
 }
 
 // ══════════════════════════════════════════

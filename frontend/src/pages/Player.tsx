@@ -5,7 +5,7 @@ import type { SaveStateSlot } from "../api";
 import { systemMeta } from "../categories";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RemotePairingModal from "../components/RemotePairingModal";
-import RemoteControlBadge from "../components/RemoteControlBadge";
+import ControllerIndicators, { REMOTE_PENDING_LABEL, type ControllerSlot } from "../components/ControllerIndicators";
 import { useRemoteControlContext } from "../remoteControl/RemoteControlContext";
 import type { GameDetail, SystemLauncher } from "../types";
 
@@ -1059,6 +1059,13 @@ function DesktopPlayer({ slug }: { slug: string }) {
     remoteControlValue
   );
 
+  const controllerSlots: ControllerSlot[] = [
+    ...[gamepad1Name, gamepad2Name, gamepad3Name, gamepad4Name]
+      .map((name, i) => (name ? { player: i + 1, kind: "gamepad" as const } : null))
+      .filter((s): s is { player: number; kind: "gamepad" } => s !== null),
+    ...remoteControlValue.phones.filter((p) => p.connected).map((p) => ({ player: p.player, kind: "phone" as const })),
+  ];
+
   const remoteControl = useRemoteControlForPlayer(
     nostalgistRef,
     toggleSaveMenu,
@@ -1068,9 +1075,9 @@ function DesktopPlayer({ slug }: { slug: string }) {
   );
   const [pairingModalOpen, setPairingModalOpen] = useState(false);
   // Assim que parear, fecha o modal grande sozinho — sobra so' o
-  // indicador pequeno (RemoteControlBadge, sempre visivel, ver JSX
-  // abaixo), sem bloquear a tela do jogo. Reabrir (pra ver o QR nao
-  // conectado de novo, ou desconectar) e' so' tocar no indicador.
+  // indicador pequeno (ControllerIndicators, no topbar, ver JSX abaixo),
+  // sem bloquear a tela do jogo. Reabrir (pra ver o QR de novo, ou
+  // desconectar) e' so' tocar no indicador.
   const remoteStatusRef = useRef(remoteControl.status);
   useEffect(() => {
     if (remoteControl.status === "connected" && remoteStatusRef.current !== "connected") {
@@ -1177,10 +1184,11 @@ function DesktopPlayer({ slug }: { slug: string }) {
           ← Biblioteca
         </button>
         <h1>{game?.title ?? "Carregando..."}</h1>
-        {gamepad1Name && <span className="gamepad-badge">🎮 P1: {gamepad1Name}</span>}
-        {gamepad2Name && <span className="gamepad-badge">🎮 P2: {gamepad2Name}</span>}
-        {gamepad3Name && <span className="gamepad-badge">🎮 P3: {gamepad3Name}</span>}
-        {gamepad4Name && <span className="gamepad-badge">🎮 P4: {gamepad4Name}</span>}
+        <ControllerIndicators
+          slots={controllerSlots}
+          pendingLabel={REMOTE_PENDING_LABEL[remoteControl.status]}
+          onClick={() => setPairingModalOpen(true)}
+        />
         {remoteControl.status === "idle" && (
           <button
             type="button"
@@ -1194,11 +1202,6 @@ function DesktopPlayer({ slug }: { slug: string }) {
           </button>
         )}
       </div>
-
-      {/* Fixo na tela (fora do topbar) — nunca some sozinho enquanto uma
-          sessao remota existir (conectando, esperando ou ja conectado),
-          ver RemoteControlBadge. Tocar reabre o modal do QR. */}
-      <RemoteControlBadge status={remoteControl.status} phones={remoteControl.phones} onClick={() => setPairingModalOpen(true)} />
 
       {error && <p className="error-text">{error}</p>}
 
