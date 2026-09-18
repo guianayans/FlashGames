@@ -143,6 +143,7 @@ export function attachRemoteWebSocket(server) {
       if (pairing.desktopWs) sendTo(ws, { type: "paired" });
     }
 
+    let explicitLeave = false;
     ws.on("message", (data) => {
       // data chega como Buffer (a lib "ws" entrega binario por padrao,
       // mesmo pra frames de texto) — precisa fazer o parse aqui de
@@ -166,6 +167,15 @@ export function attachRemoteWebSocket(server) {
         } else {
           notifyAllPhones(parsed);
         }
+      } else if (parsed.type === "leaving") {
+        // Celular apertou "Desconectar" de proposito (ver
+        // RemoteController.html) — nao repassa pro desktop agora, so'
+        // marca: o 'close' que vem logo em seguida (o proprio celular
+        // fecha o WS depois de mandar isso) usa essa marca pra avisar o
+        // desktop que foi INTENCIONAL, nao uma queda de wifi. Sem essa
+        // distincao o desktop nao tinha como saber se devia parar de
+        // esperar o celular voltar sozinho ou continuar tentando.
+        explicitLeave = true;
       } else {
         notifyDesktop({ ...parsed, clientId });
       }
@@ -177,7 +187,7 @@ export function attachRemoteWebSocket(server) {
         notifyAllPhones({ type: "peer-disconnected" });
       } else {
         if (pairing.phones.get(clientId) === ws) pairing.phones.delete(clientId);
-        notifyDesktop({ type: "phone-left", clientId });
+        notifyDesktop({ type: "phone-left", clientId, explicit: explicitLeave });
       }
       if (!pairing.desktopWs && pairing.phones.size === 0) pairings.delete(token);
     });

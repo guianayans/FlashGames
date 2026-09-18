@@ -164,13 +164,24 @@ export default function Library() {
   focusedIdRef.current = focusedId;
   // Movido pra cima (era declarado so' la' embaixo, perto do resto do
   // codigo do controle remoto) porque o poll() do controle FISICO
-  // (efeito logo abaixo) tambem precisa saber quem e' o player 1 pra' so'
-  // deixar UM dispositivo controlar a biblioteca por vez (ver
-  // remotePlayerOneIsPhoneRef) — controle e celular mandando comando ao
-  // mesmo tempo bagunçava a navegacao.
+  // (efeito logo abaixo) tambem precisa saber quem manda na biblioteca
+  // agora pra' so' deixar UM dispositivo controlar por vez (ver
+  // activePhonePlayerRef) — controle e celular mandando comando ao mesmo
+  // tempo bagunçava a navegacao.
+  //
+  // "Quem manda" e' DINAMICO, nao so' "player 1 fixo": e' o MENOR numero
+  // entre os celulares CONECTADOS agora (physical so' assume quando
+  // NENHUM celular esta conectado) — se o player 1 desconectar, o player
+  // 2 (se ainda conectado) assume sozinho; se o player 1 voltar, ele
+  // retoma (pedido explicito). Fisico nao tem numero proprio aqui (a
+  // biblioteca so' rastreia UM controle fisico, sem multiplayer de
+  // verdade) — so' entra quando nenhum celular concorre.
   const remoteControl = useRemoteControlContext();
-  const remotePlayerOneIsPhoneRef = useRef(false);
-  remotePlayerOneIsPhoneRef.current = remoteControl.phones.some((p) => p.connected && p.player === 1);
+  const activePhonePlayerRef = useRef<number | null>(null);
+  {
+    const connectedPhoneNumbers = remoteControl.phones.filter((p) => p.connected).map((p) => p.player);
+    activePhonePlayerRef.current = connectedPhoneNumbers.length > 0 ? Math.min(...connectedPhoneNumbers) : null;
+  }
   // Espelhos pra ler estado sempre atual de dentro do loop de poll do
   // gamepad (aquele efeito so roda uma vez — ver comentario mais abaixo —
   // entao closures que leem estado direto ficariam presas no valor da
@@ -949,15 +960,21 @@ export default function Library() {
         }
       }
       if (gp) {
-        // So' o player 1 controla a biblioteca — com controle fisico E
-        // celular conectados ao mesmo tempo, os dois mandando comando pra
-        // grade simultaneamente bagunçava a navegacao (pedido explicito).
-        // "player 1" aqui e' definido pelo RemoteControlContext (mesmo
-        // criterio do jogo, ver reservePhysicalSlots em Player.tsx): a
-        // biblioteca so' precisa saber se algum celular JA' e' o player 1;
-        // se nenhum e', o controle fisico assume sozinho (comportamento
-        // de sempre, sem ninguem disputando).
-        if (remotePlayerOneIsPhoneRef.current) {
+        // So' UM dispositivo controla a biblioteca por vez — com controle
+        // fisico E celular conectados ao mesmo tempo, os dois mandando
+        // comando pra grade simultaneamente bagunçava a navegacao (pedido
+        // explicito). Fisico so' manda quando NENHUM celular esta
+        // conectado agora (ver activePhonePlayerRef) — se um celular
+        // conectar, ele assume; se todos os celulares desconectarem, o
+        // fisico volta a mandar sozinho.
+        if (activePhonePlayerRef.current !== null) {
+          raf = requestAnimationFrame(poll);
+          return;
+        }
+        // Modal do QR code (parear/gerenciar celular) aberto: o controle
+        // fisico vira dele, senao apertar um botao continuava mexendo na
+        // grade por TRAS do modal.
+        if (pairingModalOpenRef.current) {
           raf = requestAnimationFrame(poll);
           return;
         }
@@ -1109,6 +1126,8 @@ export default function Library() {
   // equivalente do controle fisico (ver poll() logo acima) — mesmo
   // mapeamento, so' que disparado por mensagem em vez de getGamepads().
   const [pairingModalOpen, setPairingModalOpen] = useState(false);
+  const pairingModalOpenRef = useRef(pairingModalOpen);
+  pairingModalOpenRef.current = pairingModalOpen;
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [pointerCoarse] = useState(detectPointerCoarse);
   // Assim que parear, fecha o modal grande sozinho — sobra so' o
@@ -1184,12 +1203,22 @@ export default function Library() {
     }
 
     const unsubscribe = remoteControl.subscribe((msg) => {
-      if ("type" in msg) return; // exit/toggleSaveMenu nao fazem sentido fora de um jogo
-      // So' o player 1 controla a biblioteca — com controle fisico E
-      // celular conectados ao mesmo tempo, os dois mandando comando
-      // simultaneamente bagunçava a navegacao (pedido explicito, mesmo
-      // criterio do poll() fisico la' em cima).
-      if (msg.player !== 1) return;
+      if ("type" in msg) return; // exit/toggleSaveMenu/toggleFullscreen nao fazem sentido fora de um jogo
+      // So' UM celular controla a biblioteca por vez — o de MENOR numero
+      // entre os CONECTADOS agora (ver activePhonePlayerRef la' em cima):
+      // se o player 1 desconectar, o player 2 assume sozinho; se o
+      // player 1 voltar, retoma o comando (pedido explicito, mesmo
+      // criterio do poll() fisico).
+      if (msg.player !== activePhonePlayerRef.current) return;
+
+      // Modal do QR code (parear/gerenciar celular) aberto: o celular
+      // vira dele, senao apertar um botao continuava mexendo na grade
+      // por TRAS do modal. "a"/"start" fecha (mesma convencao do resto
+      // dos overlays), o resto so' fica em espera.
+      if (pairingModalOpenRef.current) {
+        if (msg.down && (msg.button === "a" || msg.button === "start")) setPairingModalOpen(false);
+        return;
+      }
 
       // Direcoes e o analogico direito precisam saber do "solta" (down
       // false) pra CANCELAR a repeticao/rolagem, entao tratam antes do
@@ -1514,13 +1543,12 @@ export default function Library() {
   const pullProgress = Math.min(1, pullDistance / PULL_THRESHOLD);
 
   // Biblioteca so' rastreia UM controle fisico por vez (sem multiplayer
-  // aqui, so' o player 1 navega o menu, ver remotePlayerOneIsPhoneRef) —
-  // mostra ele como P1 so' quando realmente e' quem manda (nenhum celular
-  // ja' e' o player 1); "Celular (controle remoto)" e' o nome sentinela
-  // que o proprio handler do remoto usa pra ligar gamepadActive, nao um
-  // controle fisico de verdade.
+  // aqui) — mostra ele como P1 so' quando realmente e' quem manda (nenhum
+  // celular conectado agora, ver activePhonePlayerRef); "Celular (controle
+  // remoto)" e' o nome sentinela que o proprio handler do remoto usa pra
+  // ligar gamepadActive, nao um controle fisico de verdade.
   const controllerSlots: ControllerSlot[] = [
-    ...(gamepadActive && gamepadName !== "Celular (controle remoto)" && !remotePlayerOneIsPhoneRef.current
+    ...(gamepadActive && gamepadName !== "Celular (controle remoto)" && activePhonePlayerRef.current === null
       ? [{ player: 1, kind: "gamepad" as const }]
       : []),
     ...remoteControl.phones.filter((p) => p.connected).map((p) => ({ player: p.player, kind: "phone" as const })),

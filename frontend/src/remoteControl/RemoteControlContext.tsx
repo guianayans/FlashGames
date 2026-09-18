@@ -25,8 +25,9 @@ export type RemoteMessage =
   | { button: string; down: boolean; player: number }
   | { type: "exit"; player: number }
   | { type: "toggleSaveMenu"; player: number }
+  | { type: "toggleFullscreen"; player: number }
   | { type: "phoneJoined"; clientId: string; player: number }
-  | { type: "phoneLeft"; clientId: string }
+  | { type: "phoneLeft"; clientId: string; explicit?: boolean }
   | { type: "phoneRejected"; clientId: string };
 type RemoteHandler = (msg: RemoteMessage) => void;
 
@@ -259,10 +260,19 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
       if (d.type === "phone-left" && typeof d.clientId === "string") {
         connectedPhonesRef.current.delete(d.clientId);
         syncPhonesState();
-        handlerRef.current?.({ type: "phoneLeft", clientId: d.clientId });
+        handlerRef.current?.({ type: "phoneLeft", clientId: d.clientId, explicit: d.explicit === true });
+        // Celular saiu de PROPOSITO (botao "Desconectar", ver
+        // RemoteController.html) e nao sobrou mais nenhum conectado: nao
+        // faz sentido o desktop ficar "aguardando celular" sozinho pra
+        // sempre — encerra a sessao (pedido explicito). Uma queda de
+        // wifi (explicit=false) NAO entra aqui, continua tentando
+        // reconectar sozinha como sempre.
+        if (d.explicit === true && connectedPhonesRef.current.size === 0) {
+          stop();
+        }
         return;
       }
-      if (d.type === "exit" || d.type === "toggleSaveMenu") {
+      if (d.type === "exit" || d.type === "toggleSaveMenu" || d.type === "toggleFullscreen") {
         const clientId = typeof d.clientId === "string" ? d.clientId : null;
         const player = clientId ? phoneSlotsRef.current.get(clientId) : undefined;
         if (!player) return; // mensagem de um celular ainda sem slot atribuido (corrida rara) — ignora

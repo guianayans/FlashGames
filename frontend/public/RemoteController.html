@@ -792,6 +792,11 @@ if (!IS_STANDALONE) {
   document.getElementById('disconnect-confirm-yes').addEventListener('click', () => {
     gaveUp = true;
     clearTimeout(reconnectTimer);
+    // Avisa o relay que essa saida e' de PROPOSITO (ver remoteRelay.js,
+    // "leaving") ANTES de fechar — sem isso o desktop nao tem como
+    // distinguir de uma queda de wifi, e ficava preso em "Aguardando
+    // celular..." pra sempre em vez de encerrar a sessao sozinho.
+    if (ws && ws.readyState === WebSocket.OPEN) { try { ws.send(JSON.stringify({ type: 'leaving' })); } catch(e) {} }
     if (ws) { try { ws.close(); } catch(e) {} }
     location.href = '/';
   });
@@ -1557,14 +1562,21 @@ function wireSimpleBtn(el) {
   el.addEventListener('pointerleave',release);
   el.addEventListener('lostpointercapture',release);
 }
-['btn-start','btn-l','btn-r','btn-l2','btn-r2'].forEach(id=>wireSimpleBtn(document.getElementById(id)));
+['btn-start','btn-l','btn-r'].forEach(id=>wireSimpleBtn(document.getElementById(id)));
 
 // ══════════════════════════════════════════
-//  FN (segurar 700ms = sair) / SEL (segurar 350ms = menu de save state)
-//  — mesmos gestos/tempos que o controle fisico e o GameScreen.html
-//  local ja usam (ver useGamepadPlayer em Player.tsx); disparam um
-//  {type:'exit'}/{type:'toggleSaveMenu'} discreto em vez de pressDown/
-//  pressUp normal, ver useRemoteControl do lado do desktop.
+//  FN (segurar 700ms = sair) / SEL (segurar 350ms = menu de save state) /
+//  L2 (segurar 700ms = sair, mesmo gesto do FN) / R2 (segurar 700ms =
+//  tela cheia) — mesmos gestos/tempos/BOTOES que o controle FISICO usa
+//  pra essas 3 acoes (useGamepadPlayer em Player.tsx: L2=sair, R2=tela
+//  cheia, Select=save state) — antes so' FN/SEL existiam aqui, L2/R2
+//  do celular nao obedeciam esses atalhos (pedido explicito). Por isso
+//  L2/R2 NAO entram em wireSimpleBtn: o controle fisico tambem nunca
+//  manda L2/R2 como botao de jogo normal (so' usa pra esses 2 gestos),
+//  entao o celular fica consistente fazendo o mesmo. Disparam um
+//  {type:'exit'}/{type:'toggleSaveMenu'}/{type:'toggleFullscreen'}
+//  discreto em vez de pressDown/pressUp normal, ver useRemoteControl do
+//  lado do desktop.
 // ══════════════════════════════════════════
 function wireHoldGesture(id, holdMs, message) {
   const el = document.getElementById(id);
@@ -1596,6 +1608,8 @@ function wireHoldGesture(id, holdMs, message) {
 }
 wireHoldGesture('btn-fn', 700, { type: 'exit' });
 wireHoldGesture('btn-select', 350, { type: 'toggleSaveMenu' });
+wireHoldGesture('btn-l2', 700, { type: 'exit' });
+wireHoldGesture('btn-r2', 700, { type: 'toggleFullscreen' });
 
 // ══════════════════════════════════════════
 //  GAMEPAD FÍSICO (pareado no proprio celular, opcional)

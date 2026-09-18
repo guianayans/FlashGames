@@ -719,6 +719,15 @@ body.landscape #config-toggle, body.landscape #hide-all-toggle { display: flex; 
    depende de conta, e' so' uma conveniencia momentanea de tela, volta
    sozinho ao apertar de novo. */
 body.landscape.controls-all-hidden [data-draggable] { display: none; }
+/* #btn-l2/#btn-r2 tem "display:flex" com especificidade de ID (ver
+   "body.landscape #btn-l2" mais acima, necessario pra vencer o
+   "display:none" do retrato) — a regra generica de cima (seletor de
+   atributo, especificidade menor que ID) nunca conseguia vencer isso,
+   entao "esconder tudo" nao escondia L2/R2 (ajuste pedido). Repete os
+   IDs aqui pra' bater especificidade igual, com a classe extra
+   ".controls-all-hidden" garantindo que ESSA regra ganha quando ativa. */
+body.landscape.controls-all-hidden #btn-l2,
+body.landscape.controls-all-hidden #btn-r2 { display: none; }
 
 /* Esconder um controle ESPECIFICO (persistido na conta, ver #vis-row) —
    fica 0% opaco fora do modo de configurar, e semi-visivel (25%) DENTRO

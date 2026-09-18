@@ -17,6 +17,15 @@ export interface EmulatorConfig {
   // prefetchWithProgress) — pros outros sistemas (SNES/NES/Genesis/GBA,
   // via metodo de conveniencia do Nostalgist) nunca e' chamado.
   onProgress?: (fraction: number) => void;
+  // Quantos jogadores ja' estao ativos NO MOMENTO do launch (controle
+  // fisico + celular remoto conectado, ver Player.tsx) — so' usado pelo
+  // PS1 (ver singleControllerSession abaixo). Contar SO' navigator.
+  // getGamepads() aqui (como era antes) ignorava celulares conectados via
+  // QR code inteiramente, entao uma sessao 1 fisico + 1 celular era
+  // tratada como "sessao solo" e desligava a porta 2 do jogo por engano
+  // (bug real: P1 "arrastava" o personagem do P2 em jogos tipo Metal
+  // Slug X, mesmo com o celular do P2 mandando input certinho).
+  connectedPlayerCount?: number;
 }
 
 // O Nostalgist, quando o "rom"/"bios" que a gente manda NAO e' uma URL
@@ -181,13 +190,15 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
       // impressao de estar se movendo igual. input_libretro_device_p2 = 0
       // (None) e' a config PADRAO do RetroArch — nao especifica do
       // core — que avisa o core "porta 2 vazia", resolvendo isso pra quem
-      // ta jogando sozinho. So aplica quando NAO ha um segundo controle
-      // de verdade ja conectado no navegador nesse momento, pra nao
-      // quebrar co-op local com 2 controles fisicos (ver useGamepadPlayer
-      // em Player.tsx, que ja manda input de P2 quando um segundo
-      // gamepad conecta).
-      const connectedGamepads = (navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean).length;
-      const singleControllerSession = connectedGamepads < 2;
+      // ta jogando sozinho. So aplica quando NAO ha um segundo JOGADOR de
+      // verdade ja conectado nesse momento (config.connectedPlayerCount,
+      // ver Player.tsx — soma controle fisico E celular remoto, nao so'
+      // navigator.getGamepads() como era antes: contar so' fisico tratava
+      // uma sessao "1 controle fisico + 1 celular" como solo por engano,
+      // desligando a porta 2 mesmo com o celular do P2 mandando input
+      // certinho — bug real, P1 "arrastava" o personagem do P2 pela
+      // fase).
+      const singleControllerSession = (config.connectedPlayerCount ?? 1) < 2;
 
       return Nostalgist.launch({
         core: "pcsx_rearmed",

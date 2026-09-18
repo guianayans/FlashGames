@@ -267,6 +267,7 @@ function useGamepadPlayer(
   saveMenuOpen: boolean,
   onToggleExitConfirm: () => void,
   exitConfirmOpen: boolean,
+  pairingModalOpen: boolean,
   remoteControl: ReturnType<typeof useRemoteControlContext>
 ): (string | null)[] {
   const [names, setNames] = useState<(string | null)[]>([null, null, null, null]);
@@ -282,6 +283,8 @@ function useGamepadPlayer(
   onToggleExitConfirmRef.current = onToggleExitConfirm;
   const exitConfirmOpenRef = useRef(exitConfirmOpen);
   exitConfirmOpenRef.current = exitConfirmOpen;
+  const pairingModalOpenRef = useRef(pairingModalOpen);
+  pairingModalOpenRef.current = pairingModalOpen;
   const remotePlayersRef = useRef<Set<number>>(new Set());
   remotePlayersRef.current = new Set(remoteControl.phones.map((p) => p.player));
   const reservePhysicalSlotsRef = useRef(remoteControl.reservePhysicalSlots);
@@ -449,12 +452,14 @@ function useGamepadPlayer(
           }
         }
 
-        // Menu de save state ou dialogo de sair aberto: o controle vira
-        // deles pro overlay (cada um le o gamepad direto pra navegar em
-        // si, ver SaveStateMenu/ExitConfirmDialog) — solta qualquer botao/
+        // Menu de save state, dialogo de sair, ou modal do QR code (parear/
+        // gerenciar celular) aberto: o controle vira deles pro overlay
+        // (save-state/sair cada um le o gamepad direto, ver
+        // SaveStateMenu/ExitConfirmDialog; o modal do QR nao tem
+        // navegacao propria ainda, so' bloqueia) — solta qualquer botao/
         // direcao que tivesse ficado preso e para de mandar input pro
         // jogo ate fechar.
-        if (saveMenuOpenRef.current || exitConfirmOpenRef.current) {
+        if (saveMenuOpenRef.current || exitConfirmOpenRef.current || pairingModalOpenRef.current) {
           clearSlot(slot);
           continue;
         }
@@ -513,13 +518,20 @@ function useGamepadPlayer(
 // logica de mutua exclusao entre os dois.
 function useRemoteControlForPlayer(
   nostalgistRef: React.RefObject<Nostalgist | null>,
+  onToggleFullscreen: () => void,
   onToggleSaveMenu: () => void,
   saveMenuOpen: boolean,
   onToggleExitConfirm: () => void,
-  exitConfirmOpen: boolean
+  exitConfirmOpen: boolean,
+  pairingModalOpen: boolean,
+  onClosePairingModal: () => void
 ) {
   const remote = useRemoteControlContext();
+  const onClosePairingModalRef = useRef(onClosePairingModal);
+  onClosePairingModalRef.current = onClosePairingModal;
 
+  const onToggleFullscreenRef = useRef(onToggleFullscreen);
+  onToggleFullscreenRef.current = onToggleFullscreen;
   const onToggleSaveMenuRef = useRef(onToggleSaveMenu);
   onToggleSaveMenuRef.current = onToggleSaveMenu;
   const saveMenuOpenRef = useRef(saveMenuOpen);
@@ -528,17 +540,22 @@ function useRemoteControlForPlayer(
   onToggleExitConfirmRef.current = onToggleExitConfirm;
   const exitConfirmOpenRef = useRef(exitConfirmOpen);
   exitConfirmOpenRef.current = exitConfirmOpen;
+  const pairingModalOpenRef = useRef(pairingModalOpen);
+  pairingModalOpenRef.current = pairingModalOpen;
 
   useEffect(() => {
     return remote.subscribe((msg) => {
       if ("type" in msg) {
-        // FN/SEL sao controles GLOBAIS da sessao (sair/save-state), nao
-        // de um jogador especifico — so' o celular assumido como P1
-        // dispara, mesmo criterio do controle fisico (useGamepadPlayer so'
-        // le R2/L2/Select do slot.player===1). Sem essa trava, o P2/P3/P4
-        // tambem poderiam abrir/fechar o menu do jogo do P1 sem querer.
-        if (msg.type === "exit" && msg.player === 1 && !saveMenuOpenRef.current) onToggleExitConfirmRef.current();
-        else if (msg.type === "toggleSaveMenu" && msg.player === 1 && !exitConfirmOpenRef.current) onToggleSaveMenuRef.current();
+        // FN/SEL/L2/R2 sao controles GLOBAIS da sessao (sair/save-state/
+        // fullscreen), nao de um jogador especifico — so' o celular
+        // assumido como P1 dispara, mesmo criterio do controle fisico
+        // (useGamepadPlayer so' le R2/L2/Select do slot.player===1). Sem
+        // essa trava, o P2/P3/P4 tambem poderiam mexer na tela do P1 sem
+        // querer.
+        if (!("player" in msg) || msg.player !== 1) return;
+        if (msg.type === "exit" && !saveMenuOpenRef.current) onToggleExitConfirmRef.current();
+        else if (msg.type === "toggleSaveMenu" && !exitConfirmOpenRef.current) onToggleSaveMenuRef.current();
+        else if (msg.type === "toggleFullscreen") onToggleFullscreenRef.current();
         // phoneJoined/phoneLeft/phoneRejected: nada pra fazer aqui, o
         // badge/modal ja reagem sozinhos via remoteControl.phones (estado
         // no proprio context, nao passa por aqui).
@@ -550,6 +567,14 @@ function useRemoteControlForPlayer(
       // navegacao remota fica pra depois), input normal fica em espera
       // ate fechar.
       if (saveMenuOpenRef.current || exitConfirmOpenRef.current) return;
+      // Modal do QR code (parear/gerenciar celular) aberto: nao deixa
+      // vazar pro jogo por tras — sem essa trava, apertar um botao no
+      // celular continuava mexendo no personagem com o modal aberto por
+      // cima. "a"/"start" fecha (mesma convencao da Biblioteca).
+      if (pairingModalOpenRef.current) {
+        if (msg.down && msg.player === 1 && (msg.button === "a" || msg.button === "start")) onClosePairingModalRef.current();
+        return;
+      }
       const inst = nostalgistRef.current;
       if (!inst) return;
       if (msg.down) inst.pressDown({ button: msg.button, player: msg.player });
@@ -1048,6 +1073,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
     else requestExit();
   }
 
+  const [pairingModalOpen, setPairingModalOpen] = useState(false);
   const remoteControlValue = useRemoteControlContext();
   const [gamepad1Name, gamepad2Name, gamepad3Name, gamepad4Name] = useGamepadPlayer(
     nostalgistRef,
@@ -1056,6 +1082,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
     saveMenuOpen,
     toggleExitConfirmViaL2,
     exitConfirmOpen,
+    pairingModalOpen,
     remoteControlValue
   );
 
@@ -1068,12 +1095,14 @@ function DesktopPlayer({ slug }: { slug: string }) {
 
   const remoteControl = useRemoteControlForPlayer(
     nostalgistRef,
+    toggleFullscreen,
     toggleSaveMenu,
     saveMenuOpen,
     toggleExitConfirmViaL2,
-    exitConfirmOpen
+    exitConfirmOpen,
+    pairingModalOpen,
+    () => setPairingModalOpen(false)
   );
-  const [pairingModalOpen, setPairingModalOpen] = useState(false);
   // Assim que parear, fecha o modal grande sozinho — sobra so' o
   // indicador pequeno (ControllerIndicators, no topbar, ver JSX abaixo),
   // sem bloquear a tela do jogo. Reabrir (pra ver o QR de novo, ou
@@ -1146,11 +1175,19 @@ function DesktopPlayer({ slug }: { slug: string }) {
         canvas.style.cssText = "width:100%;height:100%;object-fit:contain;background:#000;display:block;";
         stageRef.current.appendChild(canvas);
 
+        // Fisico + celular remoto JA conectado agora (ver
+        // connectedPlayerCount em loadEmulatorScript.ts — so' navigator.
+        // getGamepads() ignorava celular remoto, tratando "1 fisico + 1
+        // celular" como sessao solo por engano e quebrando o PS1 em jogo
+        // de 2P de verdade).
+        const physicalCount = (navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean).length;
+        const phoneCount = remoteControlValue.phones.filter((p) => p.connected).length;
         const instance = await loadEmulator({
           launcher: detail.launcher,
           romUrl: detail.rom,
           romExtras: detail.romExtras,
           canvas,
+          connectedPlayerCount: physicalCount + phoneCount,
           onProgress: (f) => !cancelled && setLoadProgress(f),
         });
         if (cancelled) {
