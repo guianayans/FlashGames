@@ -4,6 +4,7 @@ import { api, SAVE_STATE_SLOTS } from "../api";
 import type { SaveStateSlot } from "../api";
 import { systemMeta } from "../categories";
 import ConfirmDialog from "../components/ConfirmDialog";
+import RemotePairingModal from "../components/RemotePairingModal";
 import type { GameDetail, SystemLauncher } from "../types";
 
 // Proporcao nativa de cada console — usada pra dimensionar o palco do jogo
@@ -471,6 +472,123 @@ function useGamepadPlayer(
   }, [nostalgistRef]);
 
   return names;
+}
+
+export type RemoteControlStatus = "idle" | "connecting" | "waiting" | "connected" | "error";
+
+// Celular pareado por QR code vira um controle de P1 remoto (ver
+// frontend/public/RemoteController.html + backend/src/remoteRelay.js) —
+// mesma ideia do useGamepadPlayer acima, so que o "gamepad" e' uma
+// conexao WebSocket em vez de navigator.getGamepads(). Reaproveita as
+// MESMAS callbacks de toggle de save-state/sair (onToggleSaveMenu/
+// onToggleExitConfirm) que o controle fisico ja usa, entao o gesto de
+// segurar SEL/FN no celular remoto abre o mesmo menu/dialogo de sempre,
+// sem duplicar logica de mutua exclusao entre os dois.
+function useRemoteControl(
+  nostalgistRef: React.RefObject<Nostalgist | null>,
+  onToggleSaveMenu: () => void,
+  saveMenuOpen: boolean,
+  onToggleExitConfirm: () => void,
+  exitConfirmOpen: boolean
+) {
+  const [status, setStatus] = useState<RemoteControlStatus>("idle");
+  const [remoteUrl, setRemoteUrl] = useState<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  const onToggleSaveMenuRef = useRef(onToggleSaveMenu);
+  onToggleSaveMenuRef.current = onToggleSaveMenu;
+  const saveMenuOpenRef = useRef(saveMenuOpen);
+  saveMenuOpenRef.current = saveMenuOpen;
+  const onToggleExitConfirmRef = useRef(onToggleExitConfirm);
+  onToggleExitConfirmRef.current = onToggleExitConfirm;
+  const exitConfirmOpenRef = useRef(exitConfirmOpen);
+  exitConfirmOpenRef.current = exitConfirmOpen;
+
+  function stop() {
+    wsRef.current?.close();
+    wsRef.current = null;
+    setStatus("idle");
+    setRemoteUrl(null);
+  }
+
+  async function start() {
+    stop();
+    setStatus("connecting");
+    try {
+      const res = await fetch("/api/remote/pair", { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error("pair_failed");
+      const data: { token: string; path: string } = await res.json();
+      setRemoteUrl(`${window.location.origin}${data.path}`);
+
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const ws = new WebSocket(
+        `${proto}//${window.location.host}/ws/remote?token=${encodeURIComponent(data.token)}&role=desktop`
+      );
+      wsRef.current = ws;
+
+      ws.addEventListener("open", () => setStatus("waiting"));
+      ws.addEventListener("error", () => setStatus("error"));
+      ws.addEventListener("close", () => {
+        if (wsRef.current !== ws) return; // ja foi substituida por start() de novo
+        wsRef.current = null;
+        setStatus("idle");
+        setRemoteUrl(null);
+      });
+      ws.addEventListener("message", (e) => {
+        let msg: unknown;
+        try {
+          msg = JSON.parse(e.data);
+        } catch {
+          return;
+        }
+        if (!msg || typeof msg !== "object") return;
+        const d = msg as Record<string, unknown>;
+
+        if (d.type === "paired") {
+          setStatus("connected");
+          return;
+        }
+        if (d.type === "peer-disconnected") {
+          setStatus("waiting");
+          return;
+        }
+        // Mesmos gestos que L2/Select do controle fisico disparam — ver
+        // useGamepadPlayer acima, mesma mutua exclusao: FN (sair) so' se
+        // o menu de save state nao estiver aberto, SEL (save state) so'
+        // se o dialogo de sair nao estiver aberto.
+        if (d.type === "exit") {
+          if (!saveMenuOpenRef.current) onToggleExitConfirmRef.current();
+          return;
+        }
+        if (d.type === "toggleSaveMenu") {
+          if (!exitConfirmOpenRef.current) onToggleSaveMenuRef.current();
+          return;
+        }
+        if (typeof d.button === "string" && typeof d.down === "boolean") {
+          // Menu de save state ou dialogo de sair aberto: o celular vira
+          // deles pra tela (o proprio RemoteController.html so manda o
+          // gesto de toggle, nao navega dentro do menu — v1 e' so isso,
+          // navegacao remota fica pra depois), input normal fica em
+          // espera ate fechar.
+          if (saveMenuOpenRef.current || exitConfirmOpenRef.current) return;
+          const inst = nostalgistRef.current;
+          if (!inst) return;
+          if (d.down) inst.pressDown({ button: d.button, player: 1 });
+          else inst.pressUp({ button: d.button, player: 1 });
+        }
+      });
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      wsRef.current?.close();
+    };
+  }, []);
+
+  return { status, remoteUrl, start, stop };
 }
 
 // Icone do console (ver frontend/public/images/consoles/) andando pela
@@ -969,6 +1087,15 @@ function DesktopPlayer({ slug }: { slug: string }) {
     exitConfirmOpen
   );
 
+  const remoteControl = useRemoteControl(
+    nostalgistRef,
+    toggleSaveMenu,
+    saveMenuOpen,
+    toggleExitConfirmViaL2,
+    exitConfirmOpen
+  );
+  const [pairingModalOpen, setPairingModalOpen] = useState(false);
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
@@ -1069,6 +1196,16 @@ function DesktopPlayer({ slug }: { slug: string }) {
         <h1>{game?.title ?? "Carregando..."}</h1>
         {gamepad1Name && <span className="gamepad-badge">🎮 P1: {gamepad1Name}</span>}
         {gamepad2Name && <span className="gamepad-badge">🎮 P2: {gamepad2Name}</span>}
+        <button
+          type="button"
+          className="remote-connect-btn"
+          onClick={() => {
+            setPairingModalOpen(true);
+            if (remoteControl.status === "idle") remoteControl.start();
+          }}
+        >
+          📱 {remoteControl.status === "connected" ? "Controle conectado" : "Conectar controle"}
+        </button>
       </div>
 
       {error && <p className="error-text">{error}</p>}
@@ -1122,6 +1259,16 @@ function DesktopPlayer({ slug }: { slug: string }) {
         )}
         {exitConfirmOpen && (
           <ConfirmDialog message="Sair do jogo e voltar pra biblioteca?" onConfirm={confirmExit} onCancel={cancelExit} />
+        )}
+        {pairingModalOpen && (
+          <RemotePairingModal
+            status={remoteControl.status}
+            remoteUrl={remoteControl.remoteUrl}
+            onClose={() => {
+              setPairingModalOpen(false);
+              remoteControl.stop();
+            }}
+          />
         )}
       </div>
 

@@ -1217,6 +1217,25 @@ a {
   transition: color 0.15s ease;
 }
 
+.remote-connect-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.remote-connect-btn:hover {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+
 .back-link:hover {
   color: var(--cyan);
 }
@@ -1646,6 +1665,79 @@ a {
 .confirm-btn.bp-focused {
   border-color: var(--magenta) !important;
   box-shadow: 0 0 0 2px var(--magenta), 0 0 20px -4px var(--magenta) !important;
+  color: var(--text);
+}
+
+.remote-pairing-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 320px;
+  padding: 24px;
+  background: var(--surface);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  text-align: center;
+}
+.remote-pairing-card h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--text);
+}
+.remote-pairing-status {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+.remote-pairing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffb020;
+  flex-shrink: 0;
+}
+.remote-pairing-dot.connected { background: #39ff8f; }
+.remote-pairing-dot.error { background: #ff5050; }
+.remote-pairing-qr {
+  width: 220px;
+  height: 220px;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: 10px;
+}
+.remote-pairing-connected-icon {
+  font-size: 64px;
+  padding: 40px 0;
+}
+.remote-pairing-hint {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.remote-pairing-close {
+  margin-top: 4px;
+  min-width: 96px;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.remote-pairing-close:hover {
+  border-color: var(--magenta);
   color: var(--text);
 }
 

@@ -2,6 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "node:path";
+import http from "node:http";
 
 import authRoutes from "./routes/auth.js";
 import gamesRoutes from "./routes/games.js";
@@ -13,6 +14,7 @@ import playsRoutes from "./routes/plays.js";
 import preferencesRoutes from "./routes/preferences.js";
 import { ROMS_DIR } from "./gamesLibrary.js";
 import { readAuth } from "./auth.js";
+import { remoteRouter, attachRemoteWebSocket } from "./remoteRelay.js";
 
 const app = express();
 const PORT = process.env.PORT || 4070;
@@ -46,6 +48,7 @@ app.use("/api/controls", controlsRoutes);
 app.use("/api/favorites", favoritesRoutes);
 app.use("/api/plays", playsRoutes);
 app.use("/api/preferences", preferencesRoutes);
+app.use("/api/remote", remoteRouter);
 
 // As ROMs (e capas) de cada sistema, servidas diretamente das pastas
 // SNES/NES/GENESIS/GBA
@@ -53,10 +56,23 @@ app.use("/roms", express.static(ROMS_DIR, { fallthrough: true }));
 
 // Frontend buildado (SPA)
 app.use(express.static(PUBLIC_DIR));
+
+// Celular pareado por QR code (ver remoteRelay.js) — tela standalone
+// separada do SPA React, mesmo criterio do /GameScreen.html (HTML/JS
+// puro, sem depender de rota do React Router). O token em si (parte
+// depois de /remote/) e' lido no proprio HTML via location.pathname, nao
+// precisa de nada aqui alem de sempre servir o mesmo arquivo.
+app.get("/remote/*", (_req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "RemoteController.html"));
+});
+
 app.get(/^(?!\/api|\/roms).*/, (_req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
 
-app.listen(PORT, "0.0.0.0", () => {
+const server = http.createServer(app);
+attachRemoteWebSocket(server);
+
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`flashgames backend listening on :${PORT}`);
 });

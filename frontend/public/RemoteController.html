@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Controle remoto</title>
+<style>
+* {
+  box-sizing: border-box; margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+:root { --app-height: 100vh; }
+@supports (height: 100dvh) { :root { --app-height: 100dvh; } }
+html, body { position: fixed; inset: 0; overflow: hidden; }
+body {
+  background: #0a0a0a;
+  font-family: system-ui, sans-serif;
+  overscroll-behavior: none;
+  color: #fff;
+}
+
+/* ── AVISO DE ORIENTAÇÃO (retrato) — essa tela SO funciona em paisagem,
+   diferente do GameScreen.html (que tem layout proprio pro retrato). Sem
+   jogo local pra mostrar aqui, nao faz sentido um layout de retrato. ── */
+#rotate-hint {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px; text-align: center;
+  background: #0a0a0a;
+}
+#rotate-hint .icon { font-size: 48px; animation: rotate-pulse 1.6s ease-in-out infinite; }
+@keyframes rotate-pulse { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(90deg); } }
+#rotate-hint p { color: rgba(255,255,255,.7); font-size: 14px; max-width: 280px; }
+body.landscape #rotate-hint { display: none; }
+
+/* ── STATUS DE CONEXAO ── */
+#status-bar {
+  position: fixed; top: calc(env(safe-area-inset-top,0px) + 10px); left: 50%;
+  transform: translateX(-50%); z-index: 60;
+  padding: 8px 16px; border-radius: 999px;
+  background: rgba(10,7,20,.94); border: 1px solid rgba(0,229,255,.5);
+  font: 600 13px/1 system-ui, sans-serif;
+  display: none; align-items: center; gap: 8px;
+  max-width: 88vw; white-space: nowrap;
+}
+body.landscape #status-bar { display: flex; }
+#status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ffb020; flex-shrink: 0; }
+#status-bar.connected #status-dot { background: #39ff8f; }
+#status-bar.disconnected #status-dot { background: #ff5050; }
+
+/* ── CONFIG TOGGLE (arrastar/redimensionar) ── */
+#config-toggle-btn {
+  position: fixed; top: calc(env(safe-area-inset-top,0px) + 10px); right: 10px; z-index: 60;
+  width: 30px; height: 30px; border-radius: 7px;
+  background: rgba(0,0,0,.75); border: 1px solid rgba(255,255,255,.22);
+  color: rgba(255,255,255,.85); font-size: 15px;
+  display: none; align-items: center; justify-content: center;
+  touch-action: auto; cursor: pointer;
+}
+body.landscape #config-toggle-btn { display: flex; }
+#config-toggle-btn.active { background: rgba(0,229,255,.85); color: #000; border-color: rgba(0,229,255,.85); }
+
+/* ── CONTROLES — mesma posicao/tamanho/desenho do elementos/gamepad.html
+   (prototipo do usuario), replicado 1:1. ── */
+.btn, .cbtn {
+  position: absolute; border-radius: 50%;
+  background: rgba(255,255,255,.10);
+  touch-action: none;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.12);
+  transition: background 50ms;
+}
+.btn.pressed, .cbtn.pressed { background: rgba(255,255,255,.30); }
+
+#btn-x { top:35.335vh; left:77.025vw; width:6.596vw; height:5.182vh; }
+#btn-y { top:40.263vh; left:71.519vw; width:6.432vw; height:5.053vh; }
+#btn-a { top:40.366vh; left:83.165vw; width:6.324vw; height:4.969vh; }
+#btn-b { top:44.656vh; left:77.435vw; width:6.358vw; height:4.995vh; }
+
+#dpad {
+  position: absolute;
+  top:36.065vh; left:11.941vw; width:16.12vw; height:12.665vh;
+  border-radius: 10px;
+  background: rgba(255,255,255,.10);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
+  touch-action: none;
+}
+.dp { position: absolute; background: transparent; touch-action: none; transition: background 50ms; }
+.dp.pressed { background: rgba(255,255,255,.22); }
+#dp-up    { top:-4px;   left:30%; width:42%; height:42%; border-radius:3px 3px 0 0; }
+#dp-right { top:30%;   right:-5px; width:42%; height:42%; border-radius:0 3px 3px 0; }
+#dp-down  { bottom:-3px; left:30%; width:42%; height:42%; border-radius:0 0 3px 3px; }
+#dp-left  { top:29%;   left:-3px; width:42%; height:42%; border-radius:3px 0 0 3px; }
+
+.stick-zone {
+  position: absolute; border-radius: 50%;
+  background: rgba(255,255,255,.10);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
+  touch-action: none;
+}
+#stick-l { top:50.519vh; left:20.372vw; width:12.666vw; height:9.952vh; }
+#stick-r { top:50.682vh; left:66.923vw; width:12.517vw; height:9.835vh; }
+.stick-thumb {
+  position: absolute; width: 45%; height: 45%; border-radius: 50%;
+  background: rgba(255,255,255,.20);
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  pointer-events: none; will-change: transform; transition: background 60ms;
+}
+.stick-zone.active .stick-thumb { background: rgba(255,255,255,.38); }
+
+#btn-fn     { top:47.397vh; left:47.125vw; width:5.855vw; height:4.406vh; }
+#btn-select { top:52.32vh;  left:41.344vw; width:5.099vw; height:4.006vh; }
+#btn-start  { top:52.331vh; left:53.431vw; width:5.204vw; height:4.089vh; }
+
+.shoulder {
+  position: absolute;
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 5; touch-action: none;
+}
+.shoulder::after {
+  content: attr(data-label);
+  color: rgba(255,255,255,.75);
+  font: 700 clamp(9px,2.6vw,12px)/1 system-ui, sans-serif;
+  pointer-events: none;
+}
+.shoulder.pressed { background: rgba(255,255,255,.32); }
+.shoulder.pressed::after { color: #000; }
+#btn-l { top:62.744vh; left:9.076vw;  width:7.154vw; height:4.47vh; }
+#btn-r { top:62.983vh; left:83.842vw; width:7.322vw; height:4.576vh; }
+
+/* Controles so aparecem em paisagem (retrato mostra so o aviso de
+   girar) — igual o resto desta tela. */
+.btn, .cbtn, .stick-zone, #dpad { display: none; }
+body.landscape .btn, body.landscape .cbtn, body.landscape .stick-zone, body.landscape #dpad { display: block; }
+body.landscape #dpad, body.landscape .stick-zone { display: block; }
+body.landscape .dp { display: block; }
+
+/* ── MODO DE LAYOUT (arrastar/redimensionar) — mesma logica/visual do
+   GameScreen.html (ver frontend/public/GameScreen.html, secao
+   REDIMENSIONAR), so' que persistido em localStorage (essa tela nao tem
+   login — o celular so precisa do token do QR, ver script). ── */
+body.layout-edit [data-draggable] {
+  outline: 2px dashed rgba(0,229,255,.6);
+  outline-offset: 3px;
+}
+[data-draggable].dragging { outline: 2px solid rgba(0,229,255,.95) !important; }
+.rh {
+  display: none;
+  position: absolute;
+  width: 18px; height: 18px;
+  right: -9px; bottom: -9px;
+  border-radius: 4px;
+  background: #00e5ff;
+  border: 2px solid rgba(0,0,0,.7);
+  z-index: 60; touch-action: none; cursor: nwse-resize;
+}
+.rh::after {
+  content: '↗';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: #000; font-weight: 900;
+  transform: rotate(90deg);
+  pointer-events: none;
+}
+body.landscape.layout-edit .rh { display: block; }
+
+#layout-hint {
+  position: fixed; bottom: calc(env(safe-area-inset-bottom,0px) + 10px); left: 50%;
+  transform: translateX(-50%); z-index: 60;
+  padding: 6px 14px; border-radius: 999px;
+  background: rgba(8,8,8,.9); border: 1px solid rgba(255,255,255,.15);
+  font: 500 11px/1 system-ui, sans-serif; color: rgba(255,255,255,.6);
+  display: none; white-space: nowrap; touch-action: auto;
+}
+body.landscape.layout-edit #layout-hint { display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  #rotate-hint .icon { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="rotate-hint">
+  <div class="icon">📱</div>
+  <p>Gire o celular na horizontal pra usar como controle.</p>
+</div>
+
+<div id="status-bar"><span id="status-dot"></span><span id="status-text">Conectando...</span></div>
+<button id="config-toggle-btn" title="Arrastar/redimensionar controles">⚙</button>
+<div id="layout-hint">Arraste pra mover • alça ↘ pra redimensionar</div>
+
+<div id="dpad" data-draggable="dpad">
+  <div id="dp-up"    class="dp" data-dir="up"></div>
+  <div id="dp-right" class="dp" data-dir="right"></div>
+  <div id="dp-down"  class="dp" data-dir="down"></div>
+  <div id="dp-left"  class="dp" data-dir="left"></div>
+  <div class="rh"></div>
+</div>
+
+<div id="btn-x" class="btn" data-key="x" data-label="X" data-draggable="btn-x"><div class="rh"></div></div>
+<div id="btn-y" class="btn" data-key="y" data-label="Y" data-draggable="btn-y"><div class="rh"></div></div>
+<div id="btn-a" class="btn" data-key="a" data-label="A" data-draggable="btn-a"><div class="rh"></div></div>
+<div id="btn-b" class="btn" data-key="b" data-label="B" data-draggable="btn-b"><div class="rh"></div></div>
+
+<div id="btn-l" class="cbtn shoulder" data-key="l" data-label="L" data-draggable="btn-l"><div class="rh"></div></div>
+<div id="btn-r" class="cbtn shoulder" data-key="r" data-label="R" data-draggable="btn-r"><div class="rh"></div></div>
+
+<div id="stick-l" class="stick-zone" data-stick="left" data-draggable="stick-l">
+  <div class="stick-thumb"></div>
+  <div class="rh"></div>
+</div>
+<div id="stick-r" class="stick-zone" data-stick="right" data-draggable="stick-r">
+  <div class="stick-thumb"></div>
+  <div class="rh"></div>
+</div>
+
+<div id="btn-fn"     class="cbtn" data-label="FN"    data-draggable="btn-fn"><div class="rh"></div></div>
+<div id="btn-select" class="cbtn" data-label="SEL"   data-draggable="btn-select"><div class="rh"></div></div>
+<div id="btn-start"  class="cbtn" data-key="start" data-label="START" data-draggable="btn-start"><div class="rh"></div></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CONEXAO — le o token da URL (/remote/<token>), abre o WebSocket do
+//  relay (ver backend/src/remoteRelay.js) e reconecta sozinho se cair.
+// ═══════════════════════════════════════════
+const TOKEN = location.pathname.split('/').filter(Boolean)[1] || '';
+const statusBar = document.getElementById('status-bar');
+const statusText = document.getElementById('status-text');
+
+function setStatus(state, text) {
+  statusBar.className = state;
+  statusText.textContent = text;
+}
+
+let ws = null;
+let reconnectTimer = null;
+let intentionalClose = false;
+
+function connect() {
+  if (!TOKEN) { setStatus('disconnected', 'Link invalido'); return; }
+  setStatus('', 'Conectando...');
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/remote?token=${encodeURIComponent(TOKEN)}&role=phone`);
+  ws.addEventListener('open', () => setStatus('', 'Aguardando o desktop...'));
+  ws.addEventListener('message', e => {
+    let data;
+    try { data = JSON.parse(e.data); } catch { return; }
+    if (data.type === 'paired') setStatus('connected', 'Conectado');
+    else if (data.type === 'peer-disconnected') setStatus('disconnected', 'Desktop desconectou');
+  });
+  ws.addEventListener('close', () => {
+    if (intentionalClose) return;
+    setStatus('disconnected', 'Reconectando...');
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, 1500);
+  });
+  ws.addEventListener('error', () => {});
+}
+connect();
+
+function sendButton(key, down) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  try { ws.send(JSON.stringify({ button: key, down })); } catch (e) {}
+}
+
+function haptic() { try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) {} }
+
+const activeReleasers = [];
+function releaseAll() { activeReleasers.forEach(fn => { try { fn(); } catch (e) {} }); }
+document.addEventListener('touchend',   e => { if (!e.touches.length) releaseAll(); }, { passive: true });
+document.addEventListener('touchcancel',e => { if (!e.touches.length) releaseAll(); }, { passive: true });
+
+// ═══════════════════════════════════════════
+//  ORIENTAÇÃO
+// ═══════════════════════════════════════════
+const mqLandscape = window.matchMedia('(orientation: landscape)');
+function syncOrientation() {
+  document.body.classList.toggle('landscape', mqLandscape.matches);
+}
+mqLandscape.addEventListener('change', syncOrientation);
+syncOrientation();
+
+// ═══════════════════════════════════════════
+//  LAYOUT CUSTOM (arrastar/redimensionar) — localStorage, sem conta (ver
+//  cabecalho do arquivo). Mesma logica de frontend/public/GameScreen.html
+//  (secao REDIMENSIONAR) — centro em x/y, tamanho opcional em w/h.
+// ═══════════════════════════════════════════
+const draggableEls = Array.from(document.querySelectorAll('[data-draggable]'));
+let customLayout = {};
+try {
+  const saved = localStorage.getItem('fg_remote_layout');
+  if (saved) customLayout = JSON.parse(saved);
+} catch (e) {}
+
+function applyPosition(el, xPct, yPct, wPct, hPct) {
+  el.style.position = 'fixed';
+  el.style.left = (xPct * 100) + '%';
+  el.style.top = (yPct * 100) + '%';
+  el.style.right = 'auto';
+  el.style.bottom = 'auto';
+  el.style.transform = 'translate(-50%, -50%)';
+  if (typeof wPct === 'number') el.style.width = (wPct * 100) + '%';
+  if (typeof hPct === 'number') el.style.height = (hPct * 100) + '%';
+}
+function applyCustomLayout() {
+  draggableEls.forEach(el => {
+    const pos = customLayout[el.dataset.draggable];
+    if (pos) applyPosition(el, pos.x, pos.y, pos.w, pos.h);
+  });
+}
+applyCustomLayout();
+
+function saveLayout() {
+  try { localStorage.setItem('fg_remote_layout', JSON.stringify(customLayout)); } catch (e) {}
+}
+
+let layoutEditMode = false;
+const configBtn = document.getElementById('config-toggle-btn');
+function setLayoutEditMode(on) {
+  layoutEditMode = on;
+  configBtn.classList.toggle('active', on);
+  document.body.classList.toggle('layout-edit', on);
+}
+configBtn.addEventListener('click', () => setLayoutEditMode(!layoutEditMode), { passive: false });
+
+document.addEventListener('pointerdown', e => {
+  if (!layoutEditMode) return;
+  if (e.target.classList.contains('rh')) {
+    const el = e.target.closest('[data-draggable]');
+    if (!el) return;
+    e.preventDefault(); e.stopPropagation();
+    startResize(el, e.target, e);
+    return;
+  }
+  const el = e.target.closest('[data-draggable]');
+  if (!el) return;
+  e.preventDefault(); e.stopPropagation();
+  startDrag(el, e);
+}, { capture: true });
+
+function startDrag(el, downEvent) {
+  const pid = downEvent.pointerId;
+  el.setPointerCapture(pid);
+  el.classList.add('dragging');
+  const move = e => {
+    if (e.pointerId !== pid) return;
+    const prev = customLayout[el.dataset.draggable];
+    applyPosition(el, e.clientX / window.innerWidth, e.clientY / window.innerHeight, prev && prev.w, prev && prev.h);
+  };
+  const end = e => {
+    if (e.pointerId !== pid) return;
+    el.classList.remove('dragging');
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', end);
+    el.removeEventListener('pointercancel', end);
+    el.removeEventListener('lostpointercapture', end);
+    const r = el.getBoundingClientRect();
+    const prev = customLayout[el.dataset.draggable];
+    customLayout[el.dataset.draggable] = {
+      x: (r.left + r.width / 2) / window.innerWidth,
+      y: (r.top + r.height / 2) / window.innerHeight,
+      ...(prev && typeof prev.w === 'number' ? { w: prev.w, h: prev.h } : {}),
+    };
+    saveLayout();
+  };
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('lostpointercapture', end);
+  move(downEvent);
+}
+
+function startResize(el, handle, downEvent) {
+  const pid = downEvent.pointerId;
+  handle.setPointerCapture(pid);
+  el.classList.add('dragging');
+  const r0 = el.getBoundingClientRect();
+  const ratio = r0.width / r0.height;
+  const fixL = r0.left, fixT = r0.top;
+  const MIN = 20;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  el.style.position = 'fixed';
+  el.style.left = (fixL / vw * 100) + '%';
+  el.style.top = (fixT / vh * 100) + '%';
+  el.style.right = 'auto'; el.style.bottom = 'auto';
+  el.style.transform = 'none';
+  const move = e => {
+    if (e.pointerId !== pid) return;
+    const dw = Math.max(MIN, e.clientX - fixL);
+    const dh = Math.max(MIN, e.clientY - fixT);
+    let nw, nh;
+    if (dw / ratio >= dh) { nw = dw; nh = dw / ratio; }
+    else { nh = dh; nw = dh * ratio; }
+    el.style.width = (nw / vw * 100) + '%';
+    el.style.height = (nh / vh * 100) + '%';
+  };
+  const end = e => {
+    if (e.pointerId !== pid) return;
+    el.classList.remove('dragging');
+    handle.removeEventListener('pointermove', move);
+    handle.removeEventListener('pointerup', end);
+    handle.removeEventListener('pointercancel', end);
+    handle.removeEventListener('lostpointercapture', end);
+    const r = el.getBoundingClientRect();
+    const x = (r.left + r.width / 2) / vw;
+    const y = (r.top + r.height / 2) / vh;
+    const w = r.width / vw;
+    const h = r.height / vh;
+    applyPosition(el, x, y, w, h);
+    customLayout[el.dataset.draggable] = { x, y, w, h };
+    saveLayout();
+  };
+  handle.addEventListener('pointermove', move);
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+  handle.addEventListener('lostpointercapture', end);
+}
+
+// ═══════════════════════════════════════════
+//  BOTÕES FACE + CENTRO + GATILHOS
+// ═══════════════════════════════════════════
+document.querySelectorAll('.btn, .cbtn').forEach(el => {
+  if (el.id === 'btn-fn' || el.id === 'btn-select') return; // segurar dispara um gesto (sair/save state) — wiring proprio logo abaixo
+  let pid = null;
+  function release() {
+    if (pid === null) return;
+    pid = null;
+    if (layoutEditMode) return;
+    el.classList.remove('pressed'); sendButton(el.dataset.key, false);
+  }
+  activeReleasers.push(release);
+  el.addEventListener('pointerdown', e => {
+    if (layoutEditMode) return;
+    e.preventDefault();
+    pid = e.pointerId; el.setPointerCapture(pid);
+    el.classList.add('pressed'); haptic(); sendButton(el.dataset.key, true);
+  });
+  ['pointerup', 'pointercancel'].forEach(ev =>
+    window.addEventListener(ev, e => { if (e.pointerId === pid) release(); }));
+  el.addEventListener('pointerleave', release);
+  el.addEventListener('lostpointercapture', release);
+});
+
+// FN (sair) e SEL (menu de save state) nao mandam pressDown/pressUp pro
+// jogo — disparam um GESTO discreto ao segurar, igual o L2/Select fisico
+// ja fazem em useGamepadPlayer (ver frontend/src/pages/Player.tsx):
+// segurar FN por FN_HOLD_MS manda {type:'exit'}, segurar SEL por
+// SELECT_HOLD_MS manda {type:'toggleSaveMenu'} — MESMOS tempos que o
+// gamepad fisico usa no desktop, pro gesto sentir igual venha de onde vier.
+function wireHoldGesture(id, holdMs, message) {
+  const el = document.getElementById(id);
+  let pid = null;
+  let timer = null;
+  function clear() { if (timer !== null) { clearTimeout(timer); timer = null; } }
+  function release() {
+    if (pid === null) return;
+    pid = null; clear();
+    if (layoutEditMode) return;
+    el.classList.remove('pressed');
+  }
+  activeReleasers.push(release);
+  el.addEventListener('pointerdown', e => {
+    if (layoutEditMode) return;
+    e.preventDefault();
+    pid = e.pointerId; el.setPointerCapture(pid);
+    el.classList.add('pressed'); haptic();
+    clear();
+    timer = setTimeout(() => {
+      timer = null;
+      if (ws && ws.readyState === WebSocket.OPEN) { try { ws.send(JSON.stringify(message)); } catch (e) {} }
+    }, holdMs);
+  });
+  ['pointerup', 'pointercancel'].forEach(ev =>
+    window.addEventListener(ev, e => { if (e.pointerId === pid) release(); }));
+  el.addEventListener('pointerleave', release);
+  el.addEventListener('lostpointercapture', release);
+}
+wireHoldGesture('btn-fn', 700, { type: 'exit' });
+wireHoldGesture('btn-select', 350, { type: 'toggleSaveMenu' });
+
+// ═══════════════════════════════════════════
+//  D-PAD — mesma logica de deteccao por angulo do GameScreen.html
+// ═══════════════════════════════════════════
+(function () {
+  const dpad = document.getElementById('dpad');
+  let activeDir = null;
+  const DEAD = 6;
+  function dirFrom(dx, dy) {
+    if (Math.abs(dx) < DEAD && Math.abs(dy) < DEAD) return null;
+    const a = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (a > -45 && a <= 45) return 'right';
+    if (a > 45 && a <= 135) return 'down';
+    if (a > 135 || a <= -135) return 'left';
+    return 'up';
+  }
+  // Nomes de direcao ja batem com o que nostalgist.pressDown/pressUp
+  // espera (up/down/left/right) — sem tradução pra tecla, diferente do
+  // GameScreen.html (que manda pro game-wrapper.ts via postMessage, ai
+  // sim precisando de ArrowUp/ArrowDown/etc).
+  function setDir(dir) {
+    if (dir === activeDir) return;
+    if (activeDir) {
+      sendButton(activeDir, false);
+      const e = document.getElementById('dp-' + activeDir); if (e) e.classList.remove('pressed');
+    }
+    activeDir = dir;
+    if (dir) {
+      sendButton(dir, true);
+      const e = document.getElementById('dp-' + dir); if (e) e.classList.add('pressed');
+    }
+  }
+  let dpPid = null;
+  activeReleasers.push(() => { dpPid = null; setDir(null); });
+  dpad.addEventListener('pointerdown', e => {
+    if (layoutEditMode) return;
+    e.preventDefault();
+    dpPid = e.pointerId; dpad.setPointerCapture(dpPid);
+    haptic();
+    const r = dpad.getBoundingClientRect();
+    setDir(dirFrom(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)));
+  });
+  window.addEventListener('pointermove', e => {
+    if (e.pointerId !== dpPid) return;
+    const r = dpad.getBoundingClientRect();
+    setDir(dirFrom(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)));
+  });
+  ['pointerup', 'pointercancel'].forEach(ev =>
+    window.addEventListener(ev, e => { if (e.pointerId === dpPid) { dpPid = null; setDir(null); } }));
+  dpad.addEventListener('lostpointercapture', () => { dpPid = null; setDir(null); });
+})();
+
+// ═══════════════════════════════════════════
+//  ANALÓGICOS
+// ═══════════════════════════════════════════
+document.querySelectorAll('.stick-zone').forEach(stick => {
+  const thumb = stick.querySelector('.stick-thumb');
+  const MAX = 32;
+  let pid = null, ox = 0, oy = 0;
+  const release = () => {
+    if (pid === null) return;
+    pid = null;
+    stick.classList.remove('active');
+    thumb.style.transform = 'translate(-50%,-50%)';
+  };
+  activeReleasers.push(release);
+  stick.addEventListener('pointerdown', e => {
+    if (layoutEditMode) return;
+    e.preventDefault();
+    pid = e.pointerId; stick.setPointerCapture(pid); stick.classList.add('active');
+    haptic();
+    const r = stick.getBoundingClientRect(); ox = r.left + r.width / 2; oy = r.top + r.height / 2;
+  });
+  window.addEventListener('pointermove', e => {
+    if (e.pointerId !== pid) return;
+    const dx = e.clientX - ox, dy = e.clientY - oy, d = Math.hypot(dx, dy), s = d > MAX ? MAX / d : 1;
+    thumb.style.transform = `translate(calc(-50% + ${dx * s}px),calc(-50% + ${dy * s}px))`;
+  });
+  ['pointerup', 'pointercancel'].forEach(ev =>
+    window.addEventListener(ev, e => { if (e.pointerId === pid) release(); }));
+  stick.addEventListener('lostpointercapture', release);
+});
+</script>
+</body>
+</html>
