@@ -1872,6 +1872,16 @@ let layoutEditMode = false;
 let customLayout = {};   // { <id>: {x,y,w,h} } — x/y = centro, w/h = tamanho, fracao da viewport
 let controlsHidden = {}; // { <id>: true } — escondido POR CONTROLE, persistido na conta
 let fcGap = 50;           // espacamento do cluster ABXY (0-100), persistido na conta
+// Posicoes/tamanhos PADRAO dos botoes mudaram (redesenho igual ao
+// RemoteController.html — cores solidas, novo diamante do XYAB, etc) —
+// um "positions" salvo numa conta de ANTES dessa mudanca tinha x/y/w/h
+// calibrados pro visual/posicao ANTIGOS, e aplicar ele por cima botava os
+// botoes num lugar/tamanho errado (nao correspondiam mais ao design
+// novo). Mesmo criterio ja documentado aqui em cima ("formato ANTIGO...
+// nao migrado, reseta pro padrao — app pessoal, poucas contas") — so'
+// que agora versionado, pra qualquer redesenho futuro se autocorrigir
+// sozinho sem precisar editar esse comentario de novo.
+const LAYOUT_POSITIONS_VERSION = 2;
 const configToggle = document.getElementById('config-toggle');
 const draggableEls = Array.from(document.querySelectorAll('[data-draggable]'));
 const faceCluster = document.getElementById('face-cluster');
@@ -1881,7 +1891,7 @@ fetch('/api/controls/layout', { credentials: 'include' })
   .then(d => {
     const saved = d && d.layout;
     if (saved) {
-      customLayout = saved.positions || {};
+      customLayout = saved.positionsVersion === LAYOUT_POSITIONS_VERSION ? (saved.positions || {}) : {};
       controlsHidden = saved.hidden || {};
       if (typeof saved.fcGap === 'number') fcGap = saved.fcGap;
     }
@@ -1948,7 +1958,7 @@ function saveLayout() {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ layout: { positions: customLayout, hidden: controlsHidden, fcGap } }),
+      body: JSON.stringify({ layout: { positions: customLayout, positionsVersion: LAYOUT_POSITIONS_VERSION, hidden: controlsHidden, fcGap } }),
     }).catch(() => {});
   }, 400);
 }
