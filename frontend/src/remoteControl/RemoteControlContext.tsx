@@ -194,6 +194,16 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
         const newPlayer = player - 1;
         phoneSlotsRef.current.set(clientId, newPlayer);
         shifts.push({ oldPlayer: player, newPlayer });
+        // Avisa ESSE celular especifico do numero novo (mesma mensagem
+        // "assignSlot" que ja' manda na hora que ele entra — ver
+        // handlePhoneArrival) — sem isso o proprio badge P1..P4 na TELA
+        // DELE (RemoteController.html, ver setPlayerBadge) ficava
+        // "preso" no numero antigo pra sempre depois de uma promocao,
+        // mesmo com o input dele ja' funcionando certinho com o numero
+        // novo por baixo dos panos — confuso pro usuario ("sera que
+        // virei P1 mesmo? a tela ainda mostra P2"). Pedido explicito:
+        // atualizar em tempo real.
+        sendRaw({ to: clientId, type: "assignSlot", player: newPlayer });
       }
     }
     if (reservedPhysicalRef.current.size > 0) {
