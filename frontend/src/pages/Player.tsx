@@ -1186,6 +1186,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
         <h1>{game?.title ?? "Carregando..."}</h1>
         <ControllerIndicators
           slots={controllerSlots}
+          variant="dots"
           pendingLabel={REMOTE_PENDING_LABEL[remoteControl.status]}
           onClick={() => setPairingModalOpen(true)}
         />

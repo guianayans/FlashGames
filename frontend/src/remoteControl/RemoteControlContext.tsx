@@ -3,8 +3,11 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 // Controle remoto via QR code (celular vira controle) — a conexao em si
 // (WebSocket, pareamento, status, ate' 4 jogadores) mora AQUI, num
 // Provider montado acima do router (ver main.tsx), pra sobreviver a troca
-// de pagina (Biblioteca -> Player e vice-versa) E a um refresh de pagina
-// inteiro (ver sessionStorage abaixo). Cada pagina so' REGISTRA um handler
+// de pagina (Biblioteca -> Player e vice-versa), a um refresh de pagina
+// inteiro, e ate' a pagina inteira sendo FECHADA e reaberta numa aba nova
+// (ver localStorage abaixo — nao sessionStorage, que e' por ABA: fechar a
+// aba e abrir outra perderia o token mesmo com o celular ainda
+// conectado). Cada pagina so' REGISTRA um handler
 // (ver subscribe) pra decidir o que fazer com a mensagem que chega — a
 // Biblioteca navega a grade (moveFocus/confirmFocused, ignora "player" —
 // nao tem conceito de jogador na tela de biblioteca), o Player manda pro
@@ -55,7 +58,7 @@ type StoredSession = { token: string; path: string; phoneSlots: [string, number]
 
 function loadStoredSession(): StoredSession | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (typeof d?.token !== "string" || typeof d?.path !== "string" || !Array.isArray(d?.phoneSlots)) return null;
@@ -95,14 +98,14 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
         path: pathRef.current,
         phoneSlots: Array.from(phoneSlotsRef.current.entries()),
       };
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {
-      // storage indisponivel (modo privado etc) — reconexao apos refresh so' nao funciona, sem quebrar nada
+      // storage indisponivel (modo privado etc) — reconexao apos refresh/aba nova so' nao funciona, sem quebrar nada
     }
   }
   function clearSession() {
     try {
-      sessionStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEY);
     } catch {
       // ver persistSession
     }

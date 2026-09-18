@@ -1592,11 +1592,6 @@ export default function Library() {
         </div>
 
         <div className="library-user">
-          <ControllerIndicators
-            slots={controllerSlots}
-            pendingLabel={REMOTE_PENDING_LABEL[remoteControl.status]}
-            onClick={() => setPairingModalOpen(true)}
-          />
           {remoteControl.status === "idle" && !pointerCoarse && (
             <button
               type="button"
@@ -1649,6 +1644,17 @@ export default function Library() {
           <button onClick={() => logout()}>Sair</button>
         </div>
       </header>
+
+      {/* Flutuante, fora do fluxo do header (que pode ficar atras da
+          busca ao rolar, ver .library-header sticky) — mesma
+          posicao/comportamento que o indicador ja tinha antes (so' o
+          Player/"gamescreen" era pra ter mudado de posicao). */}
+      <ControllerIndicators
+        slots={controllerSlots}
+        floating
+        pendingLabel={REMOTE_PENDING_LABEL[remoteControl.status]}
+        onClick={() => setPairingModalOpen(true)}
+      />
 
       {pairingModalOpen && (
         <RemotePairingModal

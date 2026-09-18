@@ -734,27 +734,27 @@ if (!IS_STANDALONE) {
   };
   connect();
 
-  // Tocar no status-bar CONECTADO abre a confirmacao de desconectar (ver
-  // #disconnect-confirm no HTML) — so' faz sentido depois de conectado de
-  // verdade (dai o check da classe 'connected'; enquanto ainda ta'
-  // conectando/reconectando, tocar nao faz nada). "Desconectar" e' pra
-  // valer: marca gaveUp (mesma trava que "sala cheia" usa, ver acima) pra
-  // NAO reconectar sozinho de novo, e fecha o WS na mao.
+  // Tocar no status-bar abre a confirmacao de desconectar (ver
+  // #disconnect-confirm no HTML) em QUALQUER estado (conectando,
+  // aguardando, conectado, reconectando, sala cheia) — nao so' quando ja'
+  // esta conectado: mesmo tentando parear ainda, o usuario pode querer
+  // desistir e voltar pro app. "Desconectar" e' pra valer: marca gaveUp
+  // (mesma trava que "sala cheia" usa, ver acima) pra NAO reconectar
+  // sozinho de novo, fecha o WS na mao, e volta pra tela inicial do app
+  // (essa pagina e' um controle avulso, sem "casa" propria — depois de
+  // desconectar nao faz sentido ficar solto aqui).
   var disconnectConfirm = document.getElementById('disconnect-confirm');
   statusBar.addEventListener('click', () => {
-    if (!statusBar.classList.contains('connected')) return;
     disconnectConfirm.classList.add('show');
   });
   document.getElementById('disconnect-confirm-cancel').addEventListener('click', () => {
     disconnectConfirm.classList.remove('show');
   });
   document.getElementById('disconnect-confirm-yes').addEventListener('click', () => {
-    disconnectConfirm.classList.remove('show');
     gaveUp = true;
     clearTimeout(reconnectTimer);
     if (ws) { try { ws.close(); } catch(e) {} }
-    setStatus('disconnected', 'Desconectado');
-    setPlayerBadge(null);
+    location.href = '/';
   });
 }
 
