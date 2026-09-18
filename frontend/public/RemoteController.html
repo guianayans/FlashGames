@@ -574,10 +574,20 @@ body.config-mode .gc-hidden { opacity: .25; pointer-events: auto !important; }
   <div id="face-cluster" class="gc-draggable" data-id="face-cluster">
     <span class="ctrl-label" style="font-size:2vmin;letter-spacing:.05em;color:rgba(255,255,255,.7)">ABXY</span>
     <div class="rh"></div>
-    <div id="btn-b" class="facebtn" data-key="b">△</div>
+    <!-- data-key NAO e' "b"/"x" nos ids correspondentes de proposito: o
+         id/posicao de cada botao (topo=btn-b, base=btn-x, ver
+         applyFcLayout mais abaixo) e' so' um rotulo de LUGAR no diamante,
+         herdado do design; o simbolo (△/✕) e' quem representa a funcao
+         de verdade. Padrao RetroPad libretro: X=topo=Triangulo,
+         B=base=Cruz — entao o botao id=btn-b (que fica no TOPO, mostra
+         △) tem que MANDAR "x", e o id=btn-x (que fica embaixo, mostra
+         ✕) tem que mandar "b". Antes estava ao contrario (bug relatado:
+         cima/baixo com a funcao trocada). Y/A (esquerda/direita) ja'
+         estavam certos, sem mudar. -->
+    <div id="btn-b" class="facebtn" data-key="x">△</div>
     <div id="btn-y" class="facebtn" data-key="y">□</div>
     <div id="btn-a" class="facebtn" data-key="a">○</div>
-    <div id="btn-x" class="facebtn" data-key="x">✕</div>
+    <div id="btn-x" class="facebtn" data-key="b">✕</div>
   </div>
 
   <!-- Overlay de configurar (posicao/tamanho/esconder/espacamento) — fica

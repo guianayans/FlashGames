@@ -601,9 +601,9 @@ body.landscape.layout-edit #gap-pill.visible { display: flex; }
   background: rgba(255,70,70,.12); border-color: rgba(255,70,70,.4);
   color: #ff6060; text-decoration: line-through;
 }
-#gap-row { display: flex; align-items: center; gap: 10px; }
-#gap-slider { flex: 1; accent-color: #00e5ff; cursor: pointer; touch-action: auto; }
-#gap-val { color: #00e5ff; font: 700 12px/1 system-ui, sans-serif; min-width: 22px; text-align: right; }
+#gap-row, #opacity-row { display: flex; align-items: center; gap: 10px; }
+#gap-slider, #opacity-slider { flex: 1; accent-color: #00e5ff; cursor: pointer; touch-action: auto; }
+#gap-val, #opacity-val { color: #00e5ff; font: 700 12px/1 system-ui, sans-serif; min-width: 30px; text-align: right; }
 #gap-actions { display: flex; justify-content: flex-end; }
 #cfg-reset {
   padding: 7px 12px; border-radius: 8px;
@@ -696,7 +696,7 @@ body.landscape #remap-btn { top: 10px; bottom: auto; right: 10px; }
    👁 esconder/mostrar TODOS de uma vez) — so' na paisagem. Estilo copiado
    do #config-toggle do RemoteController.html (fixed, 32x32, canto
    superior direito) — pedido explicito, era menor/diferente aqui antes. */
-#config-toggle, #hide-all-toggle {
+#config-toggle, #hide-all-toggle, #keyboard-toggle {
   position: fixed; top: 12px; bottom: auto; left: auto;
   width: 32px; height: 32px; border-radius: 8px;
   background: rgba(20,20,30,.85);
@@ -708,12 +708,24 @@ body.landscape #remap-btn { top: 10px; bottom: auto; right: 10px; }
 }
 #config-toggle { right: 12px; }
 #hide-all-toggle { right: 52px; }
-body.landscape #config-toggle, body.landscape #hide-all-toggle { display: flex; }
+/* Canto superior ESQUERDO (pedido explicito) — teclado do celular pra
+   digitar "como se fosse" o teclado do PC (ver #kb-input mais abaixo). */
+#keyboard-toggle { left: 12px; right: auto; }
+body.landscape #config-toggle, body.landscape #hide-all-toggle, body.landscape #keyboard-toggle { display: flex; }
 #config-toggle.active {
   background: rgba(255,180,0,.9); color: #000; border-color: rgba(255,180,0,.9);
 }
 #hide-all-toggle.active {
   background: rgba(255,46,110,.9); color: #000; border-color: rgba(255,46,110,.9);
+}
+#keyboard-toggle.active {
+  background: rgba(0,229,255,.9); color: #000; border-color: rgba(0,229,255,.9);
+}
+/* #kb-input fica fora da tela mas continua FOCAVEL (display:none nao
+   pode — o teclado do celular so abre com foco de verdade). */
+#kb-input {
+  position: fixed; top: 0; left: -9999px; width: 1px; height: 1px;
+  opacity: 0; border: none; padding: 0;
 }
 /* Esconder TODOS (toggle binario, ver hideAllToggle no <script>) — nao
    depende de conta, e' so' uma conveniencia momentanea de tela, volta
@@ -728,6 +740,19 @@ body.landscape.controls-all-hidden [data-draggable] { display: none; }
    ".controls-all-hidden" garantindo que ESSA regra ganha quando ativa. */
 body.landscape.controls-all-hidden #btn-l2,
 body.landscape.controls-all-hidden #btn-r2 { display: none; }
+
+/* Opacidade de TODOS os controles de toque (slider no #gap-pill,
+   #opacity-slider) — 0 a 100%, padrao 40%. Variavel CSS setada por JS
+   (applyCtrlOpacity) em vez de opacity fixo, pra' poder mudar em tempo
+   real sem reescrever a regra. So' os CONTROLES (data-draggable) —
+   nao os botoes de configurar/teclado no canto, esses continuam sempre
+   100% visiveis. */
+body.landscape { --ctrl-opacity: .4; }
+/* :not(.gc-hidden) pra nao brigar de especificidade com .gc-hidden logo
+   abaixo (esconder por controle/conta tem que continuar ganhando —
+   sem isso um controle "escondido" apareceria fantasma no --ctrl-opacity
+   em vez de 100% invisivel). */
+body.landscape [data-draggable]:not(.gc-hidden) { opacity: var(--ctrl-opacity); }
 
 /* Esconder um controle ESPECIFICO (persistido na conta, ver #vis-row) —
    fica 0% opaco fora do modo de configurar, e semi-visivel (25%) DENTRO
@@ -808,6 +833,11 @@ body.landscape.layout-edit .rh { display: block; }
     <button id="remap-btn" title="Remapear botoes">⚙</button>
     <button id="config-toggle" title="Configurar controles (mover/redimensionar/esconder)">✥</button>
     <button id="hide-all-toggle" title="Esconder/mostrar todos os controles">👁</button>
+    <button id="keyboard-toggle" title="Abrir teclado (digitar como no PC)">⌨</button>
+    <!-- Input real, fora da tela mas focavel — foco de verdade e' o unico
+         jeito de abrir o teclado do sistema no celular (ver #kb-input no
+         CSS e wireKeyboardToggle no <script>). -->
+    <input id="kb-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="-1" aria-hidden="true">
   </div>
 
   <!-- D-PAD — cruz decorativa (dp-h/dp-v/dp-center) igual RemoteController.html;
@@ -854,6 +884,13 @@ body.landscape.layout-edit .rh { display: block; }
       <div id="gap-row">
         <input id="gap-slider" type="range" min="0" max="100" step="1" value="50">
         <span id="gap-val">50</span>
+      </div>
+    </div>
+    <div class="gap-pill-section">
+      <span class="gap-pill-label">Opacidade dos controles</span>
+      <div id="opacity-row">
+        <input id="opacity-slider" type="range" min="0" max="100" step="1" value="40">
+        <span id="opacity-val">40%</span>
       </div>
     </div>
     <div id="gap-actions">
@@ -1871,7 +1908,17 @@ function syncOrientation() {
   if (isLandscape) {
     if (typeof applyCustomLayout === 'function') applyCustomLayout();
     if (typeof applyControlsHidden === 'function') applyControlsHidden();
-    if (typeof applyFcLayout === 'function') requestAnimationFrame(() => applyFcLayout(fcGap));
+    if (typeof applyFcLayout === 'function') {
+      requestAnimationFrame(() => applyFcLayout(fcGap));
+      // Logo apos girar, alguns navegadores (Safari/Chrome mobile)
+      // ainda estao no meio da animacao de esconder a barra de
+      // enderecos quando o rAF acima roda — o viewport medido nesse
+      // instante fica menor/errado, e o calculo do diamante sai
+      // errado (botoes gigantes/fora do lugar, precisava "resetar" pra
+      // corrigir). Recalcula de novo um pouco depois, quando o
+      // viewport ja' estabilizou, se autocorrigindo sozinho.
+      setTimeout(() => applyFcLayout(fcGap), 250);
+    }
     // Girou pra paisagem com um controle fisico ja conectado — esconde os
     // botoes de toque direto (ver hideControlsForGamepad, secao CONTROLE
     // FISICO), sem precisar esperar um evento de conexao novo.
@@ -1880,6 +1927,7 @@ function syncOrientation() {
     }
   } else {
     if (typeof clearCustomLayoutPositions === 'function') clearCustomLayoutPositions();
+    if (typeof clearFcButtonPositions === 'function') clearFcButtonPositions();
     // Modo de configurar so existe na paisagem — se o usuario girar o
     // aparelho com ele ainda ligado, tem que desligar aqui tambem (nao so
     // esconder o botao), senao o toque continuaria sendo interceptado como
@@ -1927,6 +1975,7 @@ let layoutEditMode = false;
 let customLayout = {};   // { <id>: {x,y,w,h} } — x/y = centro, w/h = tamanho, fracao da viewport
 let controlsHidden = {}; // { <id>: true } — escondido POR CONTROLE, persistido na conta
 let fcGap = 50;           // espacamento do cluster ABXY (0-100), persistido na conta
+let ctrlOpacity = 40;     // opacidade de todos os controles (0-100), persistido na conta
 // Posicoes/tamanhos PADRAO dos botoes mudaram (redesenho igual ao
 // RemoteController.html — cores solidas, novo diamante do XYAB, etc) —
 // um "positions" salvo numa conta de ANTES dessa mudanca tinha x/y/w/h
@@ -1949,7 +1998,9 @@ fetch('/api/controls/layout', { credentials: 'include' })
       customLayout = saved.positionsVersion === LAYOUT_POSITIONS_VERSION ? (saved.positions || {}) : {};
       controlsHidden = saved.hidden || {};
       if (typeof saved.fcGap === 'number') fcGap = saved.fcGap;
+      if (typeof saved.ctrlOpacity === 'number') ctrlOpacity = saved.ctrlOpacity;
     }
+    applyCtrlOpacity(ctrlOpacity);
     if (document.body.classList.contains('landscape')) {
       applyCustomLayout();
       applyControlsHidden();
@@ -1957,6 +2008,15 @@ fetch('/api/controls/layout', { credentials: 'include' })
     }
   })
   .catch(() => {});
+
+// Opacidade de TODOS os controles (slider no #gap-pill) — so' seta a
+// variavel CSS (ver "--ctrl-opacity" no <style>), aplicada em qualquer
+// orientacao (fica pronta se girar pra paisagem, nao precisa recalcular
+// nada de layout como o fcGap).
+function applyCtrlOpacity(v) {
+  ctrlOpacity = v;
+  document.body.style.setProperty('--ctrl-opacity', v / 100);
+}
 
 // wPct/hPct sao opcionais (fracao da LARGURA/ALTURA da viewport, mesmo
 // criterio de xPct/yPct pro centro) — layout salvo antes do redimensionar
@@ -2013,7 +2073,7 @@ function saveLayout() {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ layout: { positions: customLayout, positionsVersion: LAYOUT_POSITIONS_VERSION, hidden: controlsHidden, fcGap } }),
+      body: JSON.stringify({ layout: { positions: customLayout, positionsVersion: LAYOUT_POSITIONS_VERSION, hidden: controlsHidden, fcGap, ctrlOpacity } }),
     }).catch(() => {});
   }, 400);
 }
@@ -2029,6 +2089,9 @@ function setLayoutEditStage(stage) {
     const slider = document.getElementById('gap-slider');
     slider.value = fcGap;
     document.getElementById('gap-val').textContent = fcGap;
+    const opSlider = document.getElementById('opacity-slider');
+    opSlider.value = ctrlOpacity;
+    document.getElementById('opacity-val').textContent = ctrlOpacity + '%';
     pill.classList.add('visible');
   } else {
     pill.classList.remove('visible');
@@ -2140,12 +2203,31 @@ function applyFcLayout(v) {
     b.style.right = '';
     b.style.bottom = '';
   });
-  // topo (B), base (X), esquerda (Y), direita (A) — mesmo diamante do
-  // prototipo (nao e' um erro de troca: e' a disposicao la tambem).
-  bB.style.top = (cx - offset - half) + 'px'; bB.style.left = (cx - half) + 'px';
-  bX.style.top = (cx + offset - half) + 'px'; bX.style.left = (cx - half) + 'px';
+  // topo (X), base (B), esquerda (Y), direita (A) — mesma posicao do
+  // shell fisico no retrato (ver #btn-x/#btn-b em CSS, X sempre em cima
+  // de B la) e do RetroPad padrao libretro (X=cima, B=baixo). O
+  // prototipo tinha B/X trocados aqui (bug herdado, nao intencional —
+  // corrigido a pedido do usuario: a funcao de cima/baixo estava
+  // invertida so' na paisagem, o retrato sempre esteve certo).
+  bX.style.top = (cx - offset - half) + 'px'; bX.style.left = (cx - half) + 'px';
+  bB.style.top = (cx + offset - half) + 'px'; bB.style.left = (cx - half) + 'px';
   bY.style.top = (cx - half) + 'px'; bY.style.left = (cx - offset - half) + 'px';
   bA.style.top = (cx - half) + 'px'; bA.style.left = (cx + offset - half) + 'px';
+}
+function clearFcButtonPositions() {
+  // applyFcLayout() acima seta estilo INLINE por botao (top/left/width/
+  // height/etc, direto em #btn-x/#btn-y/#btn-a/#btn-b) — inline sempre
+  // vence qualquer CSS, ate' o de ID do retrato (#btn-x{top:58.7%...} em
+  // cima). Sem limpar isso ao voltar pro retrato, os botoes ficavam
+  // "presos" na ultima posicao calculada da paisagem (bug relatado: os
+  // botoes da direita, perfeitos no retrato antes, pareciam ter ficado
+  // amarrados ao fullscreen).
+  ['btn-b', 'btn-y', 'btn-a', 'btn-x'].forEach(id => {
+    const b = document.getElementById(id);
+    b.style.width = ''; b.style.height = ''; b.style.fontSize = '';
+    b.style.position = ''; b.style.transform = '';
+    b.style.top = ''; b.style.left = ''; b.style.right = ''; b.style.bottom = '';
+  });
 }
 requestAnimationFrame(() => applyFcLayout(fcGap));
 
@@ -2155,6 +2237,17 @@ requestAnimationFrame(() => applyFcLayout(fcGap));
   slider.addEventListener('input', () => {
     applyFcLayout(+slider.value);
     val.textContent = slider.value;
+    saveLayout();
+  }, { passive: true });
+  slider.addEventListener('pointerdown', e => e.stopPropagation(), { capture: true });
+})();
+
+(function () {
+  const slider = document.getElementById('opacity-slider');
+  const val = document.getElementById('opacity-val');
+  slider.addEventListener('input', () => {
+    applyCtrlOpacity(+slider.value);
+    val.textContent = slider.value + '%';
     saveLayout();
   }, { passive: true });
   slider.addEventListener('pointerdown', e => e.stopPropagation(), { capture: true });
@@ -2200,6 +2293,9 @@ document.getElementById('cfg-reset').addEventListener('click', () => {
   buildVisRow();
   const slider = document.getElementById('gap-slider');
   if (slider) { slider.value = fcGap; document.getElementById('gap-val').textContent = fcGap; }
+  applyCtrlOpacity(40);
+  const opSlider = document.getElementById('opacity-slider');
+  if (opSlider) { opSlider.value = 40; document.getElementById('opacity-val').textContent = '40%'; }
   saveLayout();
 }, { passive: false });
 
@@ -2431,6 +2527,70 @@ function startResize(el, handle, downEvent) {
   handle.addEventListener('pointercancel', end);
   handle.addEventListener('lostpointercapture', end);
 }
+
+// ═══════════════════════════════════════════
+//  TECLADO DO CELULAR (canto superior esquerdo, so' na paisagem) — abre
+//  o teclado do sistema focando um <input> de verdade (unico jeito
+//  confiavel de abrir o teclado do SO no celular, nao tem API direta
+//  pra isso) e repassa cada caractere digitado pro jogo/iframe como um
+//  KeyboardEvent de VERDADE (diferente do sendKey() normal dos botoes,
+//  que so' manda postMessage pro game-wrapper.ts chamar pressDown/
+//  pressUp — aqui o pedido e' justamente simular teclado de PC de
+//  verdade, pra RetroArch/o core enxergar como digitacao real). Le pelo
+//  evento "input" (nao "keydown") comparando o valor antes/depois —
+//  teclado virtual/IME de celular (principalmente iOS) nao dispara
+//  keydown confiavel com a tecla certa, mas o "input" sempre reflete o
+//  texto de verdade digitado.
+(function () {
+  const toggle = document.getElementById('keyboard-toggle');
+  const input = document.getElementById('kb-input');
+  if (!toggle || !input) return;
+  let lastValue = '';
+
+  function sendRawKey(key, type) {
+    const win = getWin();
+    if (!win) return;
+    try { win.postMessage({ type: 'rawKey', key, kind: type }, '*'); } catch (e) {}
+  }
+
+  input.addEventListener('input', () => {
+    const value = input.value;
+    if (value.length > lastValue.length && value.startsWith(lastValue)) {
+      // Caracteres novos no final — o caso comum (digitou pra frente).
+      const added = value.slice(lastValue.length);
+      for (const ch of added) { sendRawKey(ch, 'keydown'); sendRawKey(ch, 'keyup'); }
+    } else if (value.length < lastValue.length) {
+      // Apagou (Backspace/Delete do teclado do SO) — manda Backspace
+      // pra cada caractere removido, nao da pra saber a diferenca exata.
+      const removed = lastValue.length - value.length;
+      for (let i = 0; i < removed; i++) { sendRawKey('Backspace', 'keydown'); sendRawKey('Backspace', 'keyup'); }
+    } else if (value !== lastValue) {
+      // Substituiu tudo de uma vez (autocorrect/ditado) — so' manda o
+      // texto novo inteiro, sem tentar diffar caractere a caractere.
+      for (const ch of value) { sendRawKey(ch, 'keydown'); sendRawKey(ch, 'keyup'); }
+    }
+    lastValue = value;
+    input.value = '';
+    lastValue = '';
+  }, { passive: true });
+
+  input.addEventListener('keydown', e => {
+    // Enter nao dispara "input" em todo navegador — trata na mao.
+    if (e.key === 'Enter') { sendRawKey('Enter', 'keydown'); sendRawKey('Enter', 'keyup'); }
+  });
+
+  input.addEventListener('blur', () => toggle.classList.remove('active'));
+
+  toggle.addEventListener('click', () => {
+    if (toggle.classList.contains('active')) {
+      input.blur();
+    } else {
+      toggle.classList.add('active');
+      input.value = ''; lastValue = '';
+      input.focus();
+    }
+  }, { passive: false });
+})();
 
 syncOrientation();
 

@@ -194,8 +194,41 @@ async function handleDeleteState(slot: number) {
   }
 }
 
+// "Teclado do celular" (ver #keyboard-toggle/#kb-input em GameScreen.html)
+// — diferente de press() acima (que so' entende os botoes FIXOS do
+// GAMEPAD_BUTTON_MAP via KEY_TO_BUTTON), aqui o pedido e' simular
+// digitacao de PC de verdade, entao despacha um KeyboardEvent REAL no
+// document (RetroArch/emscripten escuta keydown/keyup globais pra seu
+// proprio suporte a teclado, ex. entrada de texto em algum core/menu).
+// code (KeyA/Digit0/etc) so' existe pra letras/digitos/espaco/enter/
+// backspace — e' o que o SDL do emscripten usa pra mapear scancode;
+// caracteres acentuados/especiais (portugues: á/ç/ã...) nao tem
+// scancode fisico equivalente, entao só chegam via .key (best-effort,
+// pode nao ser reconhecido por todo core).
+function charToKeyInfo(ch: string): { code: string; keyCode: number } {
+  if (ch === "Enter") return { code: "Enter", keyCode: 13 };
+  if (ch === "Backspace") return { code: "Backspace", keyCode: 8 };
+  if (ch === " ") return { code: "Space", keyCode: 32 };
+  const upper = ch.toUpperCase();
+  if (/^[A-Z]$/.test(upper)) return { code: `Key${upper}`, keyCode: upper.charCodeAt(0) };
+  if (/^[0-9]$/.test(ch)) return { code: `Digit${ch}`, keyCode: ch.charCodeAt(0) };
+  return { code: "", keyCode: ch.charCodeAt(0) };
+}
+function dispatchRawKey(key: string, kind: "keydown" | "keyup") {
+  const { code, keyCode } = charToKeyInfo(key);
+  const ev = new KeyboardEvent(kind, { key, code, bubbles: true, cancelable: true });
+  try {
+    Object.defineProperty(ev, "keyCode", { get: () => keyCode });
+    Object.defineProperty(ev, "which", { get: () => keyCode });
+  } catch {
+    // Browser sem suporte pra redefinir keyCode/which (raro) — .code/.key
+    // sozinhos ja cobrem o caso mais comum (emscripten usa .code).
+  }
+  document.dispatchEvent(ev);
+}
+
 window.addEventListener("message", (e: MessageEvent) => {
-  const d = e.data as { type?: string; key?: string; player?: number; slot?: number } | null;
+  const d = e.data as { type?: string; key?: string; player?: number; slot?: number; kind?: string } | null;
   if (!d || !d.type) return;
 
   if (d.type === "releaseAll") {
@@ -204,6 +237,10 @@ window.addEventListener("message", (e: MessageEvent) => {
   }
   if ((d.type === "keydown" || d.type === "keyup") && d.key) {
     press(d.type, d.key, d.player || 1);
+    return;
+  }
+  if (d.type === "rawKey" && d.key && (d.kind === "keydown" || d.kind === "keyup")) {
+    dispatchRawKey(d.key, d.kind);
     return;
   }
   // Pausa/retoma de verdade o jogo (ver GameScreen.html, openSaveMenu/

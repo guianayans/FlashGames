@@ -2006,6 +2006,15 @@ a {
     white-space: normal;
     row-gap: 8px;
   }
+  /* minmax(230px,1fr) do card padrao so' cabe 1 por linha na maioria dos
+     celulares (pedido explicito pra mostrar mais de um) — 150px cabe 2
+     na maioria dos aparelhos (~360-430px de largura) e ate' 3 nos
+     maiores, sem ficar apertado/ilegivel (capa + titulo continuam dando
+     pra ler). */
+  .game-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
 }
 
 @media (max-width: 480px) {

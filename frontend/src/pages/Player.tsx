@@ -242,6 +242,14 @@ const GAMEPAD_BUTTON_MAP: Record<number, string> = {
 const GAMEPAD_DPAD_MAP: Record<number, string> = { 12: "up", 13: "down", 14: "left", 15: "right" };
 const GAMEPAD_STICK_DEAD = 0.5;
 
+// Todo nome de botao que um celular remoto pode mandar (ver
+// MULTIPLAYER_BUTTON_ORDER em loadEmulatorScript.ts, mesma lista) — usado
+// so' pra soltar por garantia depois de uma renumeracao de player (ver
+// useRemoteControlForPlayer, msg.type === "playerRenumbered").
+const RENUMBER_RELEASE_BUTTONS = [
+  "up", "down", "left", "right", "a", "b", "x", "y", "l", "r", "l2", "r2", "select", "start",
+];
+
 type GamepadSlot = {
   player: 1 | 2 | 3 | 4;
   gpIndex: number | null;
@@ -346,15 +354,45 @@ function useGamepadPlayer(
       });
     }
 
+    // Renumeracao (pedido explicito, mesmo criterio do celular — ver
+    // renumberAfterExplicitLeave em RemoteControlContext.tsx): quando um
+    // controle fisico desconecta, os controles fisicos com numero MAIOR
+    // descem um, sem deixar buraco (quem era P2 fisico vira P1 fisico).
+    // So' desloca ENTRE controles fisicos — um celular ja' conectado como
+    // P2 nao "sobe" pra P1 so' porque um fisico P1 saiu (isso exigiria as
+    // duas pontas, fisico e celular, decidirem numero juntas; hoje cada
+    // lado so' sabe evitar pisar no numero do outro, ver
+    // remotePlayersRef/reservePhysicalSlots — nao renumerar o outro lado).
+    function compactPhysicalSlots(vacatedPlayer: number) {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      for (let p = vacatedPlayer; p < MAX_PLAYERS; p++) {
+        const lower = slots[p - 1];
+        const higher = slots[p];
+        if (higher.gpIndex === null) continue;
+        // Solta por garantia tudo que "higher" tivesse preso ANTES de
+        // mover — o "solta" de um botao segurado bem na hora da troca ia
+        // sair com o numero NOVO (ver press() acima, le slot.player
+        // fresco), deixando o numero ANTIGO preso pra sempre senao.
+        clearSlot(higher);
+        const name = pads[higher.gpIndex]?.id || "Controle";
+        lower.gpIndex = higher.gpIndex;
+        higher.gpIndex = null;
+        setName(lower.player, name);
+        setName(higher.player, null);
+      }
+    }
+
     function onConnected(e: GamepadEvent) {
       assignSlot(e.gamepad);
     }
     function onDisconnected(e: GamepadEvent) {
       const slot = slotForIndex(e.gamepad.index);
       if (!slot) return;
+      const vacatedPlayer = slot.player;
       slot.gpIndex = null;
       setName(slot.player, null);
       clearSlot(slot);
+      compactPhysicalSlots(vacatedPlayer);
       reportReservedSlots();
     }
     window.addEventListener("gamepadconnected", onConnected);
@@ -552,6 +590,24 @@ function useRemoteControlForPlayer(
         // (useGamepadPlayer so' le R2/L2/Select do slot.player===1). Sem
         // essa trava, o P2/P3/P4 tambem poderiam mexer na tela do P1 sem
         // querer.
+        if (msg.type === "playerRenumbered") {
+          // Celular foi promovido (P2 virou P1, etc — ver
+          // renumberAfterExplicitLeave em RemoteControlContext.tsx). A
+          // partir de agora ele ja' manda os botoes com o numero NOVO
+          // (lido fresco do phoneSlotsRef a cada mensagem), mas se
+          // estivesse segurando algum botao bem na hora da troca, o
+          // "solta" dele ia chegar com o numero novo — o numero ANTIGO
+          // ficaria com um botao preso pra sempre no emulador. Solta
+          // tudo que for possivel no numero antigo, por garantia (nao
+          // custa nada soltar um botao que nao estava preso).
+          const inst = nostalgistRef.current;
+          if (inst) {
+            for (const button of RENUMBER_RELEASE_BUTTONS) {
+              inst.pressUp({ button, player: msg.oldPlayer });
+            }
+          }
+          return;
+        }
         if (!("player" in msg) || msg.player !== 1) return;
         if (msg.type === "exit" && !saveMenuOpenRef.current) onToggleExitConfirmRef.current();
         else if (msg.type === "toggleSaveMenu" && !exitConfirmOpenRef.current) onToggleSaveMenuRef.current();

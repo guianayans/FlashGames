@@ -55,12 +55,14 @@ router.put("/keymap", requireAuth, (req, res) => {
 
 // Layout dos controles em tela cheia (paisagem) — por conta de usuario,
 // nao por jogo (ver comentario no schema em db.js). Formato:
-// { positions: { <id>: {x,y,w,h} }, hidden: { <id>: true }, fcGap: number }
-// — positions e' centro (x,y) + tamanho (w,h) em fracao da viewport
-// (mesmo criterio de sempre); hidden marca quais controles o usuario
-// escondeu (visibilidade fica escondida na conta, nao so' no aparelho);
-// fcGap e' o espalhamento do cluster ABXY (0-100, ver applyFcLayout no
-// GameScreen.html). Formato ANTIGO (antes de existir hidden/fcGap) era
+// { positions: { <id>: {x,y,w,h} }, hidden: { <id>: true }, fcGap: number,
+// ctrlOpacity: number } — positions e' centro (x,y) + tamanho (w,h) em
+// fracao da viewport (mesmo criterio de sempre); hidden marca quais
+// controles o usuario escondeu (visibilidade fica escondida na conta,
+// nao so' no aparelho); fcGap e' o espalhamento do cluster ABXY (0-100,
+// ver applyFcLayout no GameScreen.html); ctrlOpacity e' a opacidade de
+// TODOS os controles (0-100, padrao 40, ver applyCtrlOpacity la
+// tambem). Formato ANTIGO (antes de existir hidden/fcGap) era
 // so' o mapa de posicoes direto — nao migrado, um layout salvo antes
 // desta mudanca simplesmente reresseta pro padrao (app pessoal, poucas
 // contas, nao vale a complexidade de migrar um formato tao antigo).

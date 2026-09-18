@@ -28,7 +28,8 @@ export type RemoteMessage =
   | { type: "toggleFullscreen"; player: number }
   | { type: "phoneJoined"; clientId: string; player: number }
   | { type: "phoneLeft"; clientId: string; explicit?: boolean }
-  | { type: "phoneRejected"; clientId: string };
+  | { type: "phoneRejected"; clientId: string }
+  | { type: "playerRenumbered"; oldPlayer: number; newPlayer: number };
 type RemoteHandler = (msg: RemoteMessage) => void;
 
 export interface RemotePhone {
@@ -140,6 +141,33 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
       }
     }
     return null;
+  }
+
+  // Renumeracao (pedido explicito): quando um celular sai de PROPOSITO
+  // ("Desconectar", ver phone-left explicit=true), o numero que ele
+  // deixava vago NAO fica pulado — todo celular com numero MAIOR desce
+  // um (quem era P2 vira P1 e assume o direito de mexer no menu/HUD,
+  // etc), sempre ficando 1,2,3... sem buraco. So' entra aqui em leave
+  // EXPLICITO — uma queda de wifi (explicit=false) mantem o numero
+  // antigo intacto de proposito, pro celular voltar pro MESMO slot sem
+  // atropelar quem ja' foi promovido nesse meio tempo (ver
+  // reconexao/estavel mais abaixo). Devolve os "saltos" (old->new) pra
+  // quem escuta (ver useRemoteControlForPlayer em Player.tsx) soltar
+  // qualquer botao que estivesse preso no numero ANTIGO — sem isso um
+  // botao que o celular estava segurando bem na hora da renumeracao
+  // ficaria preso pra sempre no emulador (o "solta" dele chegaria com o
+  // numero NOVO, nunca liberando o antigo).
+  function renumberAfterExplicitLeave(vacatedPlayer: number): { oldPlayer: number; newPlayer: number }[] {
+    const shifts: { oldPlayer: number; newPlayer: number }[] = [];
+    const entries = Array.from(phoneSlotsRef.current.entries()).sort((a, b) => a[1] - b[1]);
+    for (const [clientId, player] of entries) {
+      if (player > vacatedPlayer) {
+        const newPlayer = player - 1;
+        phoneSlotsRef.current.set(clientId, newPlayer);
+        shifts.push({ oldPlayer: player, newPlayer });
+      }
+    }
+    return shifts;
   }
 
   function sendRaw(msg: unknown) {
@@ -259,15 +287,29 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
       }
       if (d.type === "phone-left" && typeof d.clientId === "string") {
         connectedPhonesRef.current.delete(d.clientId);
+        const explicit = d.explicit === true;
+        let shifts: { oldPlayer: number; newPlayer: number }[] = [];
+        if (explicit) {
+          // Leave de PROPOSITO libera o slot de vez (diferente da queda
+          // de wifi, que mantem a entrada estavel pra' reconectar no
+          // mesmo numero) e promove quem tiver numero maior — ver
+          // renumberAfterExplicitLeave acima.
+          const vacatedPlayer = phoneSlotsRef.current.get(d.clientId);
+          phoneSlotsRef.current.delete(d.clientId);
+          if (typeof vacatedPlayer === "number") shifts = renumberAfterExplicitLeave(vacatedPlayer);
+        }
         syncPhonesState();
-        handlerRef.current?.({ type: "phoneLeft", clientId: d.clientId, explicit: d.explicit === true });
+        handlerRef.current?.({ type: "phoneLeft", clientId: d.clientId, explicit });
+        for (const s of shifts) {
+          handlerRef.current?.({ type: "playerRenumbered", oldPlayer: s.oldPlayer, newPlayer: s.newPlayer });
+        }
         // Celular saiu de PROPOSITO (botao "Desconectar", ver
         // RemoteController.html) e nao sobrou mais nenhum conectado: nao
         // faz sentido o desktop ficar "aguardando celular" sozinho pra
         // sempre — encerra a sessao (pedido explicito). Uma queda de
         // wifi (explicit=false) NAO entra aqui, continua tentando
         // reconectar sozinha como sempre.
-        if (d.explicit === true && connectedPhonesRef.current.size === 0) {
+        if (explicit && connectedPhonesRef.current.size === 0) {
           stop();
         }
         return;
