@@ -39,12 +39,20 @@ export default function ControllerIndicators({
   floating = false,
   pendingLabel,
   onClick,
+  dataBpId,
+  focused = false,
 }: {
   slots: ControllerSlot[];
   variant?: "pills" | "dots";
   floating?: boolean;
   pendingLabel?: string;
   onClick: () => void;
+  // So' a Biblioteca usa (ver Library.tsx) — deixa o badge navegavel pelo
+  // controle junto com o resto do [data-bp-id] (pedido explicito: o
+  // controle nao conseguia chegar nele antes). O Player/"gamescreen" nao
+  // tem esse sistema de navegacao espacial, entao fica opcional.
+  dataBpId?: string;
+  focused?: boolean;
 }) {
   const pending = slots.length === 0 && !!pendingLabel;
   if (slots.length === 0 && !pending) return null;
@@ -54,7 +62,8 @@ export default function ControllerIndicators({
     return (
       <button
         type="button"
-        className={`controller-dots${floating ? " controller-indicators-floating" : ""}`}
+        data-bp-id={dataBpId}
+        className={`controller-dots${floating ? " controller-indicators-floating" : ""}${focused ? " bp-focused" : ""}`}
         onClick={onClick}
         aria-label="Controles conectados"
       >
@@ -73,7 +82,8 @@ export default function ControllerIndicators({
   return (
     <button
       type="button"
-      className={`controller-indicators${floating ? " controller-indicators-floating" : ""}`}
+      data-bp-id={dataBpId}
+      className={`controller-indicators${floating ? " controller-indicators-floating" : ""}${focused ? " bp-focused" : ""}`}
       onClick={onClick}
       aria-label="Controles conectados"
     >

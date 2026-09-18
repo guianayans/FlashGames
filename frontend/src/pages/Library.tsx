@@ -835,6 +835,23 @@ export default function Library() {
       goToPage(pageSafeRef.current - 1);
     } else if (id === "page:next") {
       goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
+    } else if (id === "remote-connect") {
+      // Mesma acao do botao (que troca de "Conectar controle" pra "Ler QR
+      // Code" no celular, ver pointerCoarse) — pedido explicito: o
+      // controle nao conseguia chegar nos botoes do lado direito da
+      // busca nem no badge dos controles, ver tambem "controller-badge"
+      // e os outros ids novos abaixo.
+      if (pointerCoarse) setQrScannerOpen(true);
+      else {
+        setPairingModalOpen(true);
+        remoteControl.start();
+      }
+    } else if (id === "controller-badge") {
+      setPairingModalOpen(true);
+    } else if (id === "covers-toggle") {
+      toggleOriginalCovers();
+    } else if (id === "logout") {
+      logout();
     }
   }
 
@@ -1749,7 +1766,8 @@ export default function Library() {
           {remoteControl.status === "idle" && !pointerCoarse && (
             <button
               type="button"
-              className="remote-connect-btn"
+              data-bp-id="remote-connect"
+              className={`remote-connect-btn${focusVisible && focusedId === "remote-connect" ? " bp-focused" : ""}`}
               onClick={() => {
                 setPairingModalOpen(true);
                 remoteControl.start();
@@ -1764,13 +1782,19 @@ export default function Library() {
               precisar do app de camera nativo (que nunca abre o app
               instalado, so' o navegador). */}
           {pointerCoarse && (
-            <button type="button" className="remote-connect-btn" onClick={() => setQrScannerOpen(true)}>
+            <button
+              type="button"
+              data-bp-id="remote-connect"
+              className={`remote-connect-btn${focusVisible && focusedId === "remote-connect" ? " bp-focused" : ""}`}
+              onClick={() => setQrScannerOpen(true)}
+            >
               📷 Ler QR Code
             </button>
           )}
           <button
             type="button"
-            className={`library-covers-toggle${originalCovers ? " active" : ""}`}
+            data-bp-id="covers-toggle"
+            className={`library-covers-toggle${originalCovers ? " active" : ""}${focusVisible && focusedId === "covers-toggle" ? " bp-focused" : ""}`}
             onClick={toggleOriginalCovers}
             aria-pressed={originalCovers}
             aria-label={originalCovers ? "Usar capas cortadas" : "Usar capas em tamanho original"}
@@ -1795,7 +1819,13 @@ export default function Library() {
           <span>
             Ola, <strong>{user?.username}</strong>
           </span>
-          <button onClick={() => logout()}>Sair</button>
+          <button
+            data-bp-id="logout"
+            className={focusVisible && focusedId === "logout" ? "bp-focused" : ""}
+            onClick={() => logout()}
+          >
+            Sair
+          </button>
         </div>
       </header>
 
@@ -1808,6 +1838,8 @@ export default function Library() {
         floating
         pendingLabel={REMOTE_PENDING_LABEL[remoteControl.status]}
         onClick={() => setPairingModalOpen(true)}
+        dataBpId="controller-badge"
+        focused={focusVisible && focusedId === "controller-badge"}
       />
 
       {pairingModalOpen && (
