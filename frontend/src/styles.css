@@ -627,7 +627,8 @@ a {
 }
 
 .keyboard-row .alpha-chip-all,
-.keyboard-row .alpha-chip-space {
+.keyboard-row .alpha-chip-space,
+.keyboard-row .alpha-chip-backspace {
   flex: 1 1 auto;
   aspect-ratio: auto;
 }

@@ -1487,6 +1487,13 @@ export default function Library() {
   function confirmOverlayFocus() {
     const key = overlayFocusedKeyRef.current;
     if (!key) return;
+    // "__BACKSPACE__" (chip novo, ver alpha-chip-backspace no JSX) nao
+    // passa por pickLetter — ele so' sabe ACRESCENTAR (letra normal) ou
+    // limpar tudo ("__ALL__"), nao apagar um caractere so'.
+    if (key === "__BACKSPACE__") {
+      backspaceQuery();
+      return;
+    }
     pickLetter(resolveOverlayKey(key));
   }
 
@@ -1730,7 +1737,7 @@ export default function Library() {
               </button>
             </div>
             {keyboardMode && (
-              <p className="alpha-hint">✕ digita · ▢ so' seleciona · ○ fecha · △ apaga tudo</p>
+              <p className="alpha-hint">✕ digita · ▢ so' seleciona · ○ fecha · △ apaga último</p>
             )}
             {keyboardMode ? (
               <div className="alpha-grid keyboard-rows">
@@ -1767,6 +1774,15 @@ export default function Library() {
                     onClick={() => pickLetter(" ")}
                   >
                     Espaço
+                  </button>
+                  <button
+                    type="button"
+                    data-letter="__BACKSPACE__"
+                    className={`alpha-chip alpha-chip-backspace${overlayFocusedKey === "__BACKSPACE__" ? " gamepad-focused" : ""}`}
+                    onClick={() => backspaceQuery()}
+                    aria-label="Apagar último caractere"
+                  >
+                    ⌫
                   </button>
                 </div>
               </div>
