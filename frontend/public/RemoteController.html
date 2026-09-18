@@ -10,39 +10,34 @@
   -webkit-tap-highlight-color: transparent;
   user-select: none; -webkit-user-select: none;
   touch-action: none;
-  -webkit-touch-callout: none;
 }
 :root { --app-height: 100vh; }
 @supports (height: 100dvh) { :root { --app-height: 100dvh; } }
-html, body { position: fixed; inset: 0; overflow: hidden; }
-body {
-  background: #0a0a0a;
-  font-family: system-ui, sans-serif;
-  overscroll-behavior: none;
-  color: #fff;
-}
+html, body { position: fixed; inset: 0; overflow: hidden; background: #000; }
 
-/* ── AVISO DE ORIENTAÇÃO (retrato) — essa tela SO funciona em paisagem,
-   diferente do GameScreen.html (que tem layout proprio pro retrato). Sem
-   jogo local pra mostrar aqui, nao faz sentido um layout de retrato. ── */
+/* ── AVISO DE ORIENTAÇÃO (retrato) — o layout inteiro (elementos/
+   gamepad-atualizado.html) so' faz sentido em paisagem; sem jogo local
+   pra mostrar aqui (ve' PUBLIC API no fim do <script>), nao tem "modo
+   retrato" pra desenhar — so' pede pra girar. ── */
 #rotate-hint {
-  position: fixed; inset: 0; z-index: 200;
+  position: fixed; inset: 0; z-index: 300;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 14px; padding: 24px; text-align: center;
-  background: #0a0a0a;
+  background: #000; color: #fff;
 }
 #rotate-hint .icon { font-size: 48px; animation: rotate-pulse 1.6s ease-in-out infinite; }
 @keyframes rotate-pulse { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(90deg); } }
 #rotate-hint p { color: rgba(255,255,255,.7); font-size: 14px; max-width: 280px; }
 body.landscape #rotate-hint { display: none; }
+body:not(.landscape) #shell-controls { display: none; }
 
 /* ── STATUS DE CONEXAO ── */
 #status-bar {
   position: fixed; top: calc(env(safe-area-inset-top,0px) + 10px); left: 50%;
-  transform: translateX(-50%); z-index: 60;
+  transform: translateX(-50%); z-index: 90;
   padding: 8px 16px; border-radius: 999px;
   background: rgba(10,7,20,.94); border: 1px solid rgba(0,229,255,.5);
-  font: 600 13px/1 system-ui, sans-serif;
+  font: 600 13px/1 system-ui, sans-serif; color: #fff;
   display: none; align-items: center; gap: 8px;
   max-width: 88vw; white-space: nowrap;
 }
@@ -51,133 +46,279 @@ body.landscape #status-bar { display: flex; }
 #status-bar.connected #status-dot { background: #39ff8f; }
 #status-bar.disconnected #status-dot { background: #ff5050; }
 
-/* ── CONFIG TOGGLE (arrastar/redimensionar) ── */
-#config-toggle-btn {
-  position: fixed; top: calc(env(safe-area-inset-top,0px) + 10px); right: 10px; z-index: 60;
-  width: 30px; height: 30px; border-radius: 7px;
-  background: rgba(0,0,0,.75); border: 1px solid rgba(255,255,255,.22);
-  color: rgba(255,255,255,.85); font-size: 15px;
-  display: none; align-items: center; justify-content: center;
-  touch-action: auto; cursor: pointer;
-}
-body.landscape #config-toggle-btn { display: flex; }
-#config-toggle-btn.active { background: rgba(0,229,255,.85); color: #000; border-color: rgba(0,229,255,.85); }
+/* ═══════════════════════════
+   BUTTONS — all position:fixed (identico a elementos/gamepad-atualizado.html)
+═══════════════════════════ */
 
-/* ── CONTROLES — mesma posicao/tamanho/desenho do elementos/gamepad.html
-   (prototipo do usuario), replicado 1:1. ── */
-.btn, .cbtn {
-  position: absolute; border-radius: 50%;
-  background: rgba(255,255,255,.10);
-  touch-action: none;
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.12);
-  transition: background 50ms;
+#face-cluster {
+  position: fixed;
+  width: 24vmin; height: 24vmin;
+  top: 12%; right: 4%;
+  touch-action: none; aspect-ratio: 1;
+  overflow: visible;
 }
-.btn.pressed, .cbtn.pressed { background: rgba(255,255,255,.30); }
+.facebtn {
+  position: absolute;
+  border-radius: 50%;
+  width: 40%; height: 40%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; touch-action: none;
+  font: 700 3.2vmin/1 system-ui, sans-serif;
+  transition: filter 60ms, transform 60ms;
+  border: none; outline: none;
+}
+.facebtn.pressed { filter: brightness(1.6); transform: scale(.84); }
 
-#btn-x { top:35.335vh; left:77.025vw; width:6.596vw; height:5.182vh; }
-#btn-y { top:40.263vh; left:71.519vw; width:6.432vw; height:5.053vh; }
-#btn-a { top:40.366vh; left:83.165vw; width:6.324vw; height:4.969vh; }
-#btn-b { top:44.656vh; left:77.435vw; width:6.358vw; height:4.995vh; }
+#btn-b, #btn-x { left: 50%; transform: translateX(-50%); }
+#btn-y, #btn-a { top: 50%; }
+#btn-b.pressed { transform: translateX(-50%) scale(.84); }
+#btn-y.pressed { transform: translateY(-50%) scale(.84); }
+#btn-a.pressed { transform: translateY(-50%) scale(.84); }
+#btn-x.pressed { transform: translateX(-50%) scale(.84); }
+
+#btn-x {
+  background: radial-gradient(circle at 38% 32%, #8ec0ff 0%, #2563eb 55%, #1a3a7a 100%);
+  box-shadow: 0 0 2vmin .4vmin rgba(59,130,246,.6), inset 0 1px 0 rgba(255,255,255,.25);
+  color: #c8dcff; text-shadow: 0 1px 6px rgba(30,64,175,.8);
+}
+#btn-y {
+  background: radial-gradient(circle at 38% 32%, #f9a8d4 0%, #db2777 55%, #831843 100%);
+  box-shadow: 0 0 2vmin .4vmin rgba(219,39,119,.6), inset 0 1px 0 rgba(255,255,255,.25);
+  color: #fde8f0; text-shadow: 0 1px 6px rgba(157,23,77,.8);
+}
+#btn-a {
+  background: radial-gradient(circle at 38% 32%, #fca5a5 0%, #dc2626 55%, #7f1d1d 100%);
+  box-shadow: 0 0 2vmin .4vmin rgba(220,38,38,.6), inset 0 1px 0 rgba(255,255,255,.25);
+  color: #fee2e2; text-shadow: 0 1px 6px rgba(153,27,27,.8);
+}
+#btn-b {
+  background: radial-gradient(circle at 38% 32%, #6ee7b7 0%, #059669 55%, #064e3b 100%);
+  box-shadow: 0 0 2vmin .4vmin rgba(16,185,129,.6), inset 0 1px 0 rgba(255,255,255,.25);
+  color: #d1fae5; text-shadow: 0 1px 6px rgba(6,78,59,.8);
+}
 
 #dpad {
-  position: absolute;
-  top:36.065vh; left:11.941vw; width:16.12vw; height:12.665vh;
-  border-radius: 10px;
-  background: rgba(255,255,255,.10);
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
-  touch-action: none;
+  position: fixed;
+  width: 22vmin; height: 22vmin;
+  top: 18%; left: 4%;
+  touch-action: none; cursor: pointer; aspect-ratio: 1;
 }
-.dp { position: absolute; background: transparent; touch-action: none; transition: background 50ms; }
-.dp.pressed { background: rgba(255,255,255,.22); }
-#dp-up    { top:-4px;   left:30%; width:42%; height:42%; border-radius:3px 3px 0 0; }
-#dp-right { top:30%;   right:-5px; width:42%; height:42%; border-radius:0 3px 3px 0; }
-#dp-down  { bottom:-3px; left:30%; width:42%; height:42%; border-radius:0 0 3px 3px; }
-#dp-left  { top:29%;   left:-3px; width:42%; height:42%; border-radius:3px 0 0 3px; }
+.dp-h, .dp-v {
+  position: absolute;
+  background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.18) 0%, rgba(70,70,90,.8) 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(120,120,180,.25), inset 0 1px 0 rgba(255,255,255,.14);
+}
+.dp-h { top: 33.3%; left: 0; width: 100%; height: 33.3%; }
+.dp-v { top: 0; left: 33.3%; width: 33.3%; height: 100%; }
+.dp-center {
+  position: absolute;
+  top: 33.3%; left: 33.3%; width: 33.3%; height: 33.3%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.15), rgba(50,50,70,.9));
+  pointer-events: none;
+}
+.dp { position: absolute; background: transparent; touch-action: none; }
+.dp.pressed + .dp-h,
+.dp.pressed + .dp-v { filter: brightness(1.8); }
+#dp-up    { top: 0;    left: 33.3%; width: 33.3%; height: 33.3%; }
+#dp-down  { bottom: 0; left: 33.3%; width: 33.3%; height: 33.3%; }
+#dp-left  { top: 33.3%; left: 0;    width: 33.3%; height: 33.3%; }
+#dp-right { top: 33.3%; right: 0;   width: 33.3%; height: 33.3%; }
 
 .stick-zone {
-  position: absolute; border-radius: 50%;
-  background: rgba(255,255,255,.10);
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
-  touch-action: none;
+  position: fixed;
+  border-radius: 50%;
+  touch-action: none; cursor: pointer;
+  background: radial-gradient(circle at 38% 32%, rgba(255,255,255,.10) 0%, rgba(30,30,50,.92) 60%, #080814 100%);
+  box-shadow: 0 0 3vmin 1vmin rgba(100,100,255,.12),
+              inset 0 2px 0 rgba(255,255,255,.10),
+              inset 0 -2px 4px rgba(0,0,0,.6);
 }
-#stick-l { top:50.519vh; left:20.372vw; width:12.666vw; height:9.952vh; }
-#stick-r { top:50.682vh; left:66.923vw; width:12.517vw; height:9.835vh; }
+#stick-l { width: 20vmin; height: 20vmin; bottom: 8%;  left: 22%; aspect-ratio: 1; }
+#stick-r { width: 20vmin; height: 20vmin; bottom: 8%;  right: 22%; aspect-ratio: 1; }
 .stick-thumb {
-  position: absolute; width: 45%; height: 45%; border-radius: 50%;
-  background: rgba(255,255,255,.20);
+  position: absolute; width: 50%; height: 50%; border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, rgba(255,255,255,.22), rgba(40,40,60,.92));
+  box-shadow: 0 2px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.2);
   top: 50%; left: 50%; transform: translate(-50%,-50%);
-  pointer-events: none; will-change: transform; transition: background 60ms;
+  pointer-events: none; will-change: transform;
 }
-.stick-zone.active .stick-thumb { background: rgba(255,255,255,.38); }
+.stick-zone.active .stick-thumb {
+  background: radial-gradient(circle at 38% 32%, rgba(255,255,255,.36), rgba(60,60,100,.92));
+}
 
-#btn-fn     { top:47.397vh; left:47.125vw; width:5.855vw; height:4.406vh; }
-#btn-select { top:52.32vh;  left:41.344vw; width:5.099vw; height:4.006vh; }
-#btn-start  { top:52.331vh; left:53.431vw; width:5.204vw; height:4.089vh; }
+.cc-btn {
+  position: fixed;
+  border-radius: 50%;
+  width: 6vmin; height: 6vmin; aspect-ratio: 1;
+  background: radial-gradient(circle at 38% 32%, rgba(255,255,255,.14) 0%, rgba(35,35,55,.97) 70%);
+  box-shadow: 0 0 6px rgba(255,255,255,.07),
+              inset 0 1px 0 rgba(255,255,255,.14),
+              inset 0 -1px 3px rgba(0,0,0,.5);
+  border: 1px solid rgba(255,255,255,.10);
+  cursor: pointer; touch-action: none;
+  display: flex; align-items: center; justify-content: center;
+  font: 700 1.8vmin/1 system-ui, sans-serif;
+  color: rgba(255,255,255,.55);
+  transition: filter 60ms, transform 60ms;
+}
+.cc-btn.pressed { transform: scale(.84) !important; filter: brightness(1.8); }
+
+#btn-fn     { top: 18%; left: 47%; }
+#btn-select { top: 42%; left: 42%; }
+#btn-start  { top: 42%; left: 55%; }
 
 .shoulder {
-  position: absolute;
-  background: rgba(0,0,0,.55);
-  border: 1px solid rgba(255,255,255,.28);
-  border-radius: 6px;
+  position: fixed;
+  border-radius: 10px;
+  width: 13vw; height: 7.5vh;
+  background: radial-gradient(ellipse at 50% 20%, rgba(255,255,255,.13) 0%, rgba(30,30,48,.97) 80%);
+  box-shadow: 0 0 8px rgba(255,255,255,.05),
+              inset 0 1px 0 rgba(255,255,255,.13),
+              inset 0 -1px 3px rgba(0,0,0,.5);
+  border: 1px solid rgba(255,255,255,.10);
+  cursor: pointer; touch-action: none;
   display: flex; align-items: center; justify-content: center;
-  z-index: 5; touch-action: none;
+  font: 700 2.4vmin/1 system-ui, sans-serif;
+  color: rgba(255,255,255,.6);
+  transition: filter 60ms, transform 60ms;
 }
-.shoulder::after {
-  content: attr(data-label);
-  color: rgba(255,255,255,.75);
-  font: 700 clamp(9px,2.6vw,12px)/1 system-ui, sans-serif;
+.shoulder.pressed { transform: scale(.92) !important; filter: brightness(1.6); }
+#btn-l  { top: 2%; left: 2%; }
+#btn-r  { top: 2%; right: 2%; }
+#btn-l2 { top: 2%; left: 18%; }
+#btn-r2 { top: 2%; right: 18%; }
+
+/* ═══════════════════════════
+   SNAP GUIDES
+═══════════════════════════ */
+.snap-guide {
+  position: fixed;
   pointer-events: none;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity .08s;
 }
-.shoulder.pressed { background: rgba(255,255,255,.32); }
-.shoulder.pressed::after { color: #000; }
-#btn-l { top:62.744vh; left:9.076vw;  width:7.154vw; height:4.47vh; }
-#btn-r { top:62.983vh; left:83.842vw; width:7.322vw; height:4.576vh; }
-
-/* Controles so aparecem em paisagem (retrato mostra so o aviso de
-   girar) — igual o resto desta tela. */
-.btn, .cbtn, .stick-zone, #dpad { display: none; }
-body.landscape .btn, body.landscape .cbtn, body.landscape .stick-zone, body.landscape #dpad { display: block; }
-body.landscape #dpad, body.landscape .stick-zone { display: block; }
-body.landscape .dp { display: block; }
-
-/* ── MODO DE LAYOUT (arrastar/redimensionar) — mesma logica/visual do
-   GameScreen.html (ver frontend/public/GameScreen.html, secao
-   REDIMENSIONAR), so' que persistido em localStorage (essa tela nao tem
-   login — o celular so precisa do token do QR, ver script). ── */
-body.layout-edit [data-draggable] {
-  outline: 2px dashed rgba(0,229,255,.6);
-  outline-offset: 3px;
+.snap-guide.h {
+  left: 0; right: 0; height: 1px;
+  background: rgba(0,229,255,.7);
+  box-shadow: 0 0 4px rgba(0,229,255,.9);
 }
-[data-draggable].dragging { outline: 2px solid rgba(0,229,255,.95) !important; }
+.snap-guide.v {
+  top: 0; bottom: 0; width: 1px;
+  background: rgba(0,229,255,.7);
+  box-shadow: 0 0 4px rgba(0,229,255,.9);
+}
+.snap-guide.active { opacity: 1; }
+
+/* ═══════════════════════════
+   CONFIG MODE
+═══════════════════════════ */
+#config-toggle {
+  position: fixed; top: 12px; right: 12px; z-index: 100;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(20,20,30,.85);
+  border: 1px solid rgba(255,255,255,.18);
+  color: rgba(255,255,255,.7); cursor: pointer;
+  font-size: 16px; touch-action: auto;
+  display: flex; align-items: center; justify-content: center;
+}
+#config-toggle.active {
+  background: rgba(255,180,0,.9); color: #000; border-color: rgba(255,180,0,.9);
+}
+
+body.config-mode .gc-draggable {
+  outline: 1.5px dashed rgba(0,229,255,.6);
+}
+body.config-mode .gc-draggable.dragging {
+  outline-color: #00e5ff; opacity: .82; z-index: 60;
+}
+
 .rh {
   display: none;
-  position: absolute;
-  width: 18px; height: 18px;
-  right: -9px; bottom: -9px;
-  border-radius: 4px;
-  background: #00e5ff;
-  border: 2px solid rgba(0,0,0,.7);
-  z-index: 60; touch-action: none; cursor: nwse-resize;
+  position: absolute; right: -8px; bottom: -8px;
+  width: 16px; height: 16px; border-radius: 4px;
+  background: #00e5ff; border: 2px solid rgba(0,0,0,.7);
+  z-index: 70; touch-action: none; cursor: nwse-resize;
 }
 .rh::after {
-  content: '↗';
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; color: #000; font-weight: 900;
-  transform: rotate(90deg);
-  pointer-events: none;
+  content: '';
+  position: absolute; inset: 3px;
+  border-right: 2px solid rgba(0,0,0,.6);
+  border-bottom: 2px solid rgba(0,0,0,.6);
 }
-body.landscape.layout-edit .rh { display: block; }
+body.config-mode .rh { display: block; }
 
-#layout-hint {
-  position: fixed; bottom: calc(env(safe-area-inset-bottom,0px) + 10px); left: 50%;
-  transform: translateX(-50%); z-index: 60;
-  padding: 6px 14px; border-radius: 999px;
-  background: rgba(8,8,8,.9); border: 1px solid rgba(255,255,255,.15);
-  font: 500 11px/1 system-ui, sans-serif; color: rgba(255,255,255,.6);
-  display: none; white-space: nowrap; touch-action: auto;
+.ctrl-label {
+  display: none;
+  position: absolute; inset: 0;
+  align-items: center; justify-content: center;
+  color: rgba(255,255,255,.9); font: 700 10px/1 system-ui,sans-serif;
+  pointer-events: none; text-shadow: 0 1px 4px #000; z-index: 2;
 }
-body.landscape.layout-edit #layout-hint { display: block; }
+body.config-mode .ctrl-label { display: flex; }
+
+.gc-hidden { opacity: 0; pointer-events: none !important; }
+body.config-mode .gc-hidden { opacity: .25; pointer-events: auto !important; }
+
+#gap-pill {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 95;
+  background: rgba(8,8,14,.95);
+  border: 1px solid rgba(0,229,255,.3);
+  border-radius: 14px;
+  padding: 8px 12px;
+  flex-direction: column;
+  gap: 8px;
+  touch-action: auto;
+  box-shadow: 0 2px 16px rgba(0,0,0,.6);
+  min-width: 200px;
+  white-space: nowrap;
+}
+#gap-pill.visible { display: flex; }
+#vis-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.vis-pill {
+  padding: 3px 8px; border-radius: 12px;
+  font: 500 9px/1 system-ui, sans-serif;
+  cursor: pointer; touch-action: manipulation;
+  border: 1px solid; transition: all .15s;
+  background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.2); color: rgba(255,255,255,.7);
+}
+.vis-pill.is-hidden {
+  background: rgba(255,70,70,.12); border-color: rgba(255,70,70,.4); color: #ff6060; text-decoration: line-through;
+}
+#gap-row { display: flex; align-items: center; gap: 8px; }
+#gap-row span:first-child { color: rgba(255,255,255,.5); font: 500 10px/1 system-ui, sans-serif; flex-shrink: 0; }
+#gap-slider { width: 90px; accent-color: #00e5ff; cursor: pointer; touch-action: auto; }
+#gap-val { color: #00e5ff; font: 700 10px/1 system-ui, sans-serif; min-width: 20px; text-align: right; }
+#gap-actions { display: flex; gap: 6px; justify-content: flex-end; }
+#cfg-reset {
+  padding: 5px 10px; border-radius: 6px;
+  border: 1px solid rgba(255,80,80,.35); background: rgba(255,80,80,.10);
+  color: #ff5050; font: 600 10px/1 system-ui, sans-serif;
+  cursor: pointer; touch-action: manipulation;
+}
+
+#gamepad-toast{
+  position:fixed;top:calc(env(safe-area-inset-top,0px)+10px);left:50%;
+  transform:translateX(-50%) translateY(-14px);z-index:60;
+  padding:8px 16px;border-radius:999px;
+  background:rgba(10,7,20,.94);border:1px solid rgba(0,229,255,.45);color:#fff;
+  font:600 13px/1 system-ui,sans-serif;max-width:88vw;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;
+}
+#gamepad-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.btn.listening,.cc-btn.listening,.shoulder.listening,.facebtn.listening{
+  animation:gc-pulse 900ms ease-in-out infinite;
+}
+@keyframes gc-pulse{0%,100%{opacity:1}50%{opacity:.25}}
 
 @media (prefers-reduced-motion: reduce) {
   #rotate-hint .icon { animation: none; }
@@ -192,43 +333,99 @@ body.landscape.layout-edit #layout-hint { display: block; }
 </div>
 
 <div id="status-bar"><span id="status-dot"></span><span id="status-text">Conectando...</span></div>
-<button id="config-toggle-btn" title="Arrastar/redimensionar controles">⚙</button>
-<div id="layout-hint">Arraste pra mover • alça ↘ pra redimensionar</div>
 
-<div id="dpad" data-draggable="dpad">
-  <div id="dp-up"    class="dp" data-dir="up"></div>
-  <div id="dp-right" class="dp" data-dir="right"></div>
-  <div id="dp-down"  class="dp" data-dir="down"></div>
-  <div id="dp-left"  class="dp" data-dir="left"></div>
-  <div class="rh"></div>
+<div id="shell-controls">
+  <!-- ── FACE CLUSTER ── -->
+  <div id="face-cluster" class="gc-draggable" data-id="face-cluster">
+    <span class="ctrl-label" style="font-size:2vmin;letter-spacing:.05em;color:rgba(255,255,255,.7)">ABXY</span>
+    <div class="rh"></div>
+    <div id="btn-b" class="facebtn" data-key="b">△</div>
+    <div id="btn-y" class="facebtn" data-key="y">□</div>
+    <div id="btn-a" class="facebtn" data-key="a">○</div>
+    <div id="btn-x" class="facebtn" data-key="x">✕</div>
+    <div id="gap-pill">
+      <div id="vis-row"></div>
+      <div id="gap-row">
+        <span>Espaçamento</span>
+        <input id="gap-slider" type="range" min="0" max="100" step="1" value="50">
+        <span id="gap-val">50</span>
+      </div>
+      <div id="gap-actions">
+        <button id="cfg-reset" type="button">↺ Resetar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── D-PAD ── -->
+  <div id="dpad" class="gc-draggable" data-id="dpad">
+    <div class="dp-h"></div>
+    <div class="dp-v"></div>
+    <div class="dp-center"></div>
+    <div id="dp-up"    class="dp" data-dir="up"></div>
+    <div id="dp-right" class="dp" data-dir="right"></div>
+    <div id="dp-down"  class="dp" data-dir="down"></div>
+    <div id="dp-left"  class="dp" data-dir="left"></div>
+    <span class="ctrl-label">DPAD</span>
+    <div class="rh"></div>
+  </div>
+
+  <!-- ── ANALOG STICKS ── -->
+  <div id="stick-l" class="stick-zone gc-draggable" data-id="stick-l">
+    <span class="ctrl-label">L</span>
+    <div class="rh"></div>
+    <div class="stick-thumb"></div>
+  </div>
+  <div id="stick-r" class="stick-zone gc-draggable" data-id="stick-r">
+    <span class="ctrl-label">R</span>
+    <div class="rh"></div>
+    <div class="stick-thumb"></div>
+  </div>
+
+  <!-- ── CENTER (FN faz "segurar = sair", SEL faz "segurar = save state") ── -->
+  <div id="btn-fn"     class="cc-btn gc-draggable" data-id="btn-fn">
+    <span class="ctrl-label">FN</span><div class="rh"></div>FN
+  </div>
+  <div id="btn-select" class="cc-btn gc-draggable" data-id="btn-select">
+    <span class="ctrl-label">SEL</span><div class="rh"></div>SEL
+  </div>
+  <div id="btn-start"  class="cc-btn gc-draggable" data-id="btn-start" data-key="start">
+    <span class="ctrl-label">STA</span><div class="rh"></div>STA
+  </div>
+
+  <!-- ── SHOULDERS ── -->
+  <div id="btn-l" class="shoulder gc-draggable" data-id="btn-l" data-key="l">
+    <span class="ctrl-label">L</span><div class="rh"></div>L
+  </div>
+  <div id="btn-r" class="shoulder gc-draggable" data-id="btn-r" data-key="r">
+    <span class="ctrl-label">R</span><div class="rh"></div>R
+  </div>
+  <div id="btn-l2" class="shoulder gc-draggable" data-id="btn-l2" data-key="l2">
+    <span class="ctrl-label">L2</span><div class="rh"></div>L2
+  </div>
+  <div id="btn-r2" class="shoulder gc-draggable" data-id="btn-r2" data-key="r2">
+    <span class="ctrl-label">R2</span><div class="rh"></div>R2
+  </div>
+
+  <!-- ── SNAP GUIDES ── -->
+  <div id="guide-h1" class="snap-guide h"></div>
+  <div id="guide-h2" class="snap-guide h"></div>
+  <div id="guide-v1" class="snap-guide v"></div>
+  <div id="guide-v2" class="snap-guide v"></div>
+
+  <!-- ── CONFIG BUTTON ── -->
+  <button id="config-toggle" title="Configurar layout">⚙</button>
 </div>
 
-<div id="btn-x" class="btn" data-key="x" data-label="X" data-draggable="btn-x"><div class="rh"></div></div>
-<div id="btn-y" class="btn" data-key="y" data-label="Y" data-draggable="btn-y"><div class="rh"></div></div>
-<div id="btn-a" class="btn" data-key="a" data-label="A" data-draggable="btn-a"><div class="rh"></div></div>
-<div id="btn-b" class="btn" data-key="b" data-label="B" data-draggable="btn-b"><div class="rh"></div></div>
-
-<div id="btn-l" class="cbtn shoulder" data-key="l" data-label="L" data-draggable="btn-l"><div class="rh"></div></div>
-<div id="btn-r" class="cbtn shoulder" data-key="r" data-label="R" data-draggable="btn-r"><div class="rh"></div></div>
-
-<div id="stick-l" class="stick-zone" data-stick="left" data-draggable="stick-l">
-  <div class="stick-thumb"></div>
-  <div class="rh"></div>
-</div>
-<div id="stick-r" class="stick-zone" data-stick="right" data-draggable="stick-r">
-  <div class="stick-thumb"></div>
-  <div class="rh"></div>
-</div>
-
-<div id="btn-fn"     class="cbtn" data-label="FN"    data-draggable="btn-fn"><div class="rh"></div></div>
-<div id="btn-select" class="cbtn" data-label="SEL"   data-draggable="btn-select"><div class="rh"></div></div>
-<div id="btn-start"  class="cbtn" data-key="start" data-label="START" data-draggable="btn-start"><div class="rh"></div></div>
+<div id="gamepad-toast"></div>
 
 <script>
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
 //  CONEXAO — le o token da URL (/remote/<token>), abre o WebSocket do
 //  relay (ver backend/src/remoteRelay.js) e reconecta sozinho se cair.
-// ═══════════════════════════════════════════
+//  Sem login: o token do QR e' o unico segredo (mesmo modelo do
+//  Chromecast/AirPlay) — ver useRemoteControl em frontend/src/pages/
+//  Player.tsx do lado do desktop.
+// ══════════════════════════════════════════
 const TOKEN = location.pathname.split('/').filter(Boolean)[1] || '';
 const statusBar = document.getElementById('status-bar');
 const statusText = document.getElementById('status-text');
@@ -240,7 +437,6 @@ function setStatus(state, text) {
 
 let ws = null;
 let reconnectTimer = null;
-let intentionalClose = false;
 
 function connect() {
   if (!TOKEN) { setStatus('disconnected', 'Link invalido'); return; }
@@ -255,7 +451,6 @@ function connect() {
     else if (data.type === 'peer-disconnected') setStatus('disconnected', 'Desktop desconectou');
   });
   ws.addEventListener('close', () => {
-    if (intentionalClose) return;
     setStatus('disconnected', 'Reconectando...');
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(connect, 1500);
@@ -264,21 +459,35 @@ function connect() {
 }
 connect();
 
-function sendButton(key, down) {
+// ══════════════════════════════════════════
+//  ELEMENTS
+// ══════════════════════════════════════════
+const draggables = Array.from(document.querySelectorAll('.gc-draggable'));
+const activeReleasers = [];
+
+function haptic() { try { if (navigator.vibrate) navigator.vibrate(10); } catch(e) {} }
+// Manda {button, down} pro relay — quem interpreta e chama
+// nostalgist.pressDown/pressUp e' o DesktopPlayer (useRemoteControl).
+function sendKey(button, type) {
+  if (type==='down') haptic();
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  try { ws.send(JSON.stringify({ button: key, down })); } catch (e) {}
+  try { ws.send(JSON.stringify({ button, down: type === 'down' })); } catch (e) {}
 }
 
-function haptic() { try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) {} }
+document.addEventListener('touchend',   e => { if (!e.touches.length) releaseAll(); }, {passive:true});
+document.addEventListener('touchcancel',e => { if (!e.touches.length) releaseAll(); }, {passive:true});
+let lastTE=0;
+document.addEventListener('touchend', e => {
+  if (e.target.closest('#gap-pill')) return;
+  const now=Date.now(); if(now-lastTE<=350) e.preventDefault(); lastTE=now;
+}, {passive:false});
+function releaseAll() { activeReleasers.forEach(fn=>{ try{fn();}catch(e){} }); }
 
-const activeReleasers = [];
-function releaseAll() { activeReleasers.forEach(fn => { try { fn(); } catch (e) {} }); }
-document.addEventListener('touchend',   e => { if (!e.touches.length) releaseAll(); }, { passive: true });
-document.addEventListener('touchcancel',e => { if (!e.touches.length) releaseAll(); }, { passive: true });
-
-// ═══════════════════════════════════════════
-//  ORIENTAÇÃO
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════
+//  ORIENTAÇÃO — layout inteiro so' faz sentido em paisagem (ver
+//  #rotate-hint) — igual o GameScreen.html decide, so' que sem modo
+//  retrato nenhum pra desenhar aqui.
+// ══════════════════════════════════════════
 const mqLandscape = window.matchMedia('(orientation: landscape)');
 function syncOrientation() {
   document.body.classList.toggle('landscape', mqLandscape.matches);
@@ -286,173 +495,616 @@ function syncOrientation() {
 mqLandscape.addEventListener('change', syncOrientation);
 syncOrientation();
 
-// ═══════════════════════════════════════════
-//  LAYOUT CUSTOM (arrastar/redimensionar) — localStorage, sem conta (ver
-//  cabecalho do arquivo). Mesma logica de frontend/public/GameScreen.html
-//  (secao REDIMENSIONAR) — centro em x/y, tamanho opcional em w/h.
-// ═══════════════════════════════════════════
-const draggableEls = Array.from(document.querySelectorAll('[data-draggable]'));
-let customLayout = {};
-try {
-  const saved = localStorage.getItem('fg_remote_layout');
-  if (saved) customLayout = JSON.parse(saved);
-} catch (e) {}
+// ══════════════════════════════════════════
+//  LAYOUT PERSISTENCE — localStorage (sem conta, ver cabecalho)
+// ══════════════════════════════════════════
+const LS_KEY = 'gc_layout_v4';
+let layout   = {};
+let hidden   = {};
 
-function applyPosition(el, xPct, yPct, wPct, hPct) {
-  el.style.position = 'fixed';
-  el.style.left = (xPct * 100) + '%';
-  el.style.top = (yPct * 100) + '%';
-  el.style.right = 'auto';
-  el.style.bottom = 'auto';
-  el.style.transform = 'translate(-50%, -50%)';
-  if (typeof wPct === 'number') el.style.width = (wPct * 100) + '%';
-  if (typeof hPct === 'number') el.style.height = (hPct * 100) + '%';
+function readPos(el) {
+  const r   = el.getBoundingClientRect();
+  const vw  = window.innerWidth, vh = window.innerHeight;
+  const isShoulder = el.classList.contains('shoulder');
+  return {
+    lp:  +(r.left   / vw * 100).toFixed(4),
+    tp:  +(r.top    / vh * 100).toFixed(4),
+    wp:  +(r.width  / Math.min(vw, vh) * 100).toFixed(4),
+    hp:  +(r.height / Math.min(vw, vh) * 100).toFixed(4),
+    wvw: +(r.width  / vw * 100).toFixed(4),
+    hvh: +(r.height / vh * 100).toFixed(4),
+    shoulder: isShoulder,
+  };
 }
-function applyCustomLayout() {
-  draggableEls.forEach(el => {
-    const pos = customLayout[el.dataset.draggable];
-    if (pos) applyPosition(el, pos.x, pos.y, pos.w, pos.h);
+function applyPos(el, p) {
+  const isShoulder = p.shoulder ?? el.classList.contains('shoulder');
+  el.style.position    = 'fixed';
+  el.style.right       = 'auto';
+  el.style.bottom      = 'auto';
+  el.style.transform   = 'none';
+  el.style.aspectRatio = 'unset';
+  el.style.left = (p.lp ?? p.l ?? 0) + 'vw';
+  el.style.top  = (p.tp ?? p.t ?? 0) + 'vh';
+  if (isShoulder) {
+    el.style.width        = (p.wvw ?? p.w ?? 14) + 'vw';
+    el.style.height       = (p.hvh ?? p.h ?? 5)  + 'vh';
+    el.style.borderRadius = '10px';
+  } else {
+    const sz = (p.wp ?? p.wm ?? p.w ?? 10) + 'vmin';
+    el.style.width        = sz;
+    el.style.height       = sz;
+    el.style.borderRadius = '50%';
+  }
+}
+function clearPos(el) {
+  ['position','left','top','width','height','right','bottom','transform','aspectRatio','borderRadius']
+    .forEach(k=>el.style[k]='');
+}
+function applyHidden(el, id) {
+  el.classList.toggle('gc-hidden', !!hidden[id]);
+}
+const DEFAULT_LAYOUT = {
+  "btn-select":   {"lp":36.8803,"tp":28.5335,"wp":10.9701,"hp":10.9701,"wvw":6.2866,"hvh":10.9701,"shoulder":false},
+  "btn-start":    {"lp":56.6155,"tp":28.5335,"wp":10.9701,"hp":10.9701,"wvw":6.2866,"hvh":10.9701,"shoulder":false},
+  "btn-fn":       {"lp":46.8908,"tp":17.5621,"wp":10.9701,"hp":10.9701,"wvw":6.2866,"hvh":10.9701,"shoulder":false},
+  "dpad":         {"lp":26.872,"tp":55.6022,"wp":34.9326,"hp":34.9326,"wvw":20.0188,"hvh":34.9326,"shoulder":false},
+  "stick-l":      {"lp":5.2203,"tp":14.8632,"wp":38.8044,"hp":38.8044,"wvw":22.2376,"hvh":38.8044,"shoulder":false},
+  "stick-r":      {"lp":53.1774,"tp":53.6676,"wp":38.8044,"hp":38.8044,"wvw":22.2376,"hvh":38.8044,"shoulder":false},
+  "face-cluster": {"lp":71.6682,"tp":14.8632,"wp":41.026,"hp":41.026,"wvw":23.5107,"hvh":41.026,"shoulder":false},
+  "btn-l":        {"lp":7.6265,"tp":85.3523,"wvw":8.9858,"hvh":5.1824,"shoulder":true},
+  "btn-r":        {"lp":85.6833,"tp":85.3523,"wvw":8.9858,"hvh":5.1824,"shoulder":true},
+  "btn-l2":       {"lp":6.813,"tp":92.4719,"wvw":10.6129,"hvh":6.1222,"shoulder":true},
+  "btn-r2":       {"lp":84.8697,"tp":92.4719,"wvw":10.6129,"hvh":6.1222,"shoulder":true}
+};
+
+function loadStorage() {
+  try {
+    const s = localStorage.getItem(LS_KEY);
+    if (s) { const d=JSON.parse(s); layout=d.layout||{}; hidden=d.hidden||{}; }
+    Object.keys(DEFAULT_LAYOUT).forEach(k => {
+      const def = DEFAULT_LAYOUT[k];
+      const cur = layout[k];
+      if (!cur) { layout[k] = def; return; }
+      if (def.shoulder) {
+        const hasRect = cur.wvw && cur.hvh && (cur.wvw / cur.hvh > 1.3);
+        if (!hasRect) layout[k] = def;
+      }
+    });
+  } catch(e) {
+    layout = Object.assign({}, DEFAULT_LAYOUT);
+  }
+}
+function saveStorage() {
+  draggables.forEach(el => { layout[el.dataset.id] = readPos(el); });
+  try { localStorage.setItem(LS_KEY, JSON.stringify({layout, hidden})); } catch(e) {}
+  try { localStorage.setItem(GAP_KEY, fcGap); } catch(e) {}
+}
+function applyAll() {
+  draggables.forEach(el => {
+    const id = el.dataset.id;
+    if (layout[id]) applyPos(el, layout[id]);
+    applyHidden(el, id);
   });
 }
-applyCustomLayout();
+loadStorage();
+applyAll();
 
-function saveLayout() {
-  try { localStorage.setItem('fg_remote_layout', JSON.stringify(customLayout)); } catch (e) {}
-}
+// ── face cluster gap ──
+const FC      = document.getElementById('face-cluster');
+const GAP_KEY = 'gc_fc_gap';
+let fcGap = 50;
 
-let layoutEditMode = false;
-const configBtn = document.getElementById('config-toggle-btn');
-function setLayoutEditMode(on) {
-  layoutEditMode = on;
-  configBtn.classList.toggle('active', on);
-  document.body.classList.toggle('layout-edit', on);
-}
-configBtn.addEventListener('click', () => setLayoutEditMode(!layoutEditMode), { passive: false });
+try { const g = localStorage.getItem(GAP_KEY); if (g !== null) fcGap = +g; } catch(e) {}
 
-document.addEventListener('pointerdown', e => {
-  if (!layoutEditMode) return;
-  if (e.target.classList.contains('rh')) {
-    const el = e.target.closest('[data-draggable]');
-    if (!el) return;
-    e.preventDefault(); e.stopPropagation();
-    startResize(el, e.target, e);
-    return;
+const SQRT2 = Math.sqrt(2);
+
+function applyFcLayout(v) {
+  fcGap = v;
+  const r    = FC.getBoundingClientRect();
+  const S    = r.width;
+  const BASE = S * 0.34;
+  const MIN  = S * 0.12;
+  let btnSize, offset;
+  if (v <= 50) {
+    btnSize   = BASE;
+    const oMin = (BASE / SQRT2) * 1.08;
+    const oMax = S / 2 - BASE / 2;
+    offset    = oMin + (v / 50) * (oMax - oMin);
+  } else {
+    const t   = (v - 50) / 50;
+    btnSize   = BASE - t * (BASE - MIN);
+    offset    = S / 2 - btnSize / 2;
   }
-  const el = e.target.closest('[data-draggable]');
+  const half = btnSize / 2;
+  const cx   = S / 2;
+  const bB = document.getElementById('btn-b');
+  const bY = document.getElementById('btn-y');
+  const bA = document.getElementById('btn-a');
+  const bX = document.getElementById('btn-x');
+  const sz  = btnSize + 'px';
+  const fsz = (btnSize * 0.38) + 'px';
+  [bB, bY, bA, bX].forEach(b => {
+    b.style.width    = sz;
+    b.style.height   = sz;
+    b.style.fontSize = fsz;
+    b.style.position = 'absolute';
+    b.style.transform = 'none';
+  });
+  bB.style.top    = (cx - offset - half) + 'px';
+  bB.style.left   = (cx - half) + 'px';
+  bB.style.bottom = ''; bB.style.right = '';
+  bX.style.top    = (cx + offset - half) + 'px';
+  bX.style.left   = (cx - half) + 'px';
+  bX.style.bottom = ''; bX.style.right = '';
+  bY.style.left   = (cx - offset - half) + 'px';
+  bY.style.top    = (cx - half) + 'px';
+  bY.style.bottom = ''; bY.style.right = '';
+  bA.style.left   = (cx + offset - half) + 'px';
+  bA.style.top    = (cx - half) + 'px';
+  bA.style.bottom = ''; bA.style.right = '';
+  if (configMode) positionGapPill();
+  try { localStorage.setItem(GAP_KEY, v); } catch(e) {}
+}
+function fcLayoutAfterResize() { applyFcLayout(fcGap); }
+requestAnimationFrame(() => applyFcLayout(fcGap));
+
+// ══════════════════════════════════════════
+//  CONFIG MODE
+// ══════════════════════════════════════════
+let configMode = false;
+const configToggle = document.getElementById('config-toggle');
+const LABELS = {
+  'face-cluster':'△□○✕',
+  'dpad':'D-Pad','stick-l':'Stick L','stick-r':'Stick R',
+  'btn-fn':'FN','btn-select':'SEL','btn-start':'STA',
+  'btn-l':'L','btn-r':'R','btn-l2':'L2','btn-r2':'R2',
+};
+function positionGapPill() {}
+
+function setConfigMode(on) {
+  configMode = on;
+  configToggle.classList.toggle('active', on);
+  document.body.classList.toggle('config-mode', on);
+  if (on) {
+    buildVisRow();
+    const sl = document.getElementById('gap-slider');
+    sl.value = fcGap;
+    document.getElementById('gap-val').textContent = fcGap;
+    document.getElementById('gap-pill').style.display = 'flex';
+    positionGapPill();
+  } else {
+    document.getElementById('gap-pill').style.display = 'none';
+  }
+}
+function buildVisRow() {
+  const row = document.getElementById('vis-row');
+  if (!row) return;
+  row.innerHTML = '';
+  draggables.forEach(el => {
+    const id = el.dataset.id;
+    const b  = document.createElement('button');
+    b.type = 'button';
+    b.textContent = LABELS[id] || id;
+    b.className = 'vis-pill' + (hidden[id] ? ' is-hidden' : '');
+    b.addEventListener('click', () => {
+      hidden[id] = !hidden[id];
+      b.classList.toggle('is-hidden', !!hidden[id]);
+      applyHidden(el, id);
+      try { localStorage.setItem(LS_KEY, JSON.stringify({layout, hidden})); } catch(e) {}
+    }, {passive:false});
+    row.appendChild(b);
+  });
+}
+configToggle.addEventListener('click', () => { setConfigMode(!configMode); }, {passive:false});
+
+(function(){
+  const sl  = document.getElementById('gap-slider');
+  const val = document.getElementById('gap-val');
+  sl.addEventListener('input', () => {
+    applyFcLayout(+sl.value);
+    val.textContent = sl.value;
+  }, {passive:true});
+  sl.addEventListener('pointerdown', e => e.stopPropagation(), {capture:true});
+})();
+
+document.getElementById('cfg-reset').addEventListener('click', () => {
+  layout = Object.assign({}, DEFAULT_LAYOUT);
+  hidden = {};
+  try { localStorage.removeItem(LS_KEY); } catch(e) {}
+  draggables.forEach(el => {
+    el.classList.remove('gc-hidden');
+    const p = layout[el.dataset.id];
+    if (p) applyPos(el, p); else clearPos(el);
+  });
+  requestAnimationFrame(() => applyFcLayout(fcGap));
+  buildVisRow();
+}, {passive:false});
+
+// ══════════════════════════════════════════
+//  SNAP GUIDES
+// ══════════════════════════════════════════
+const SNAP_PX  = 8;
+const guideH   = [document.getElementById('guide-h1'), document.getElementById('guide-h2')];
+const guideV   = [document.getElementById('guide-v1'), document.getElementById('guide-v2')];
+let   usedH    = 0, usedV = 0;
+
+function hideGuides() {
+  [...guideH, ...guideV].forEach(g => g.classList.remove('active'));
+  usedH = 0; usedV = 0;
+}
+function showGuideH(px) {
+  const g = guideH[usedH % guideH.length];
+  g.style.top = px + 'px';
+  g.classList.add('active');
+  usedH++;
+}
+function showGuideV(px) {
+  const g = guideV[usedV % guideV.length];
+  g.style.left = px + 'px';
+  g.classList.add('active');
+  usedV++;
+}
+function getSnapLines(excludeEl) {
+  const hLines = new Set();
+  const vLines = new Set();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  hLines.add(vh / 2);
+  vLines.add(vw / 2);
+  draggables.forEach(other => {
+    if (other === excludeEl || other.classList.contains('gc-hidden')) return;
+    const r = other.getBoundingClientRect();
+    if (r.width === 0) return;
+    const cx = r.left + r.width  / 2;
+    const cy = r.top  + r.height / 2;
+    hLines.add(r.top); hLines.add(cy); hLines.add(r.bottom);
+    vLines.add(r.left); vLines.add(cx); vLines.add(r.right);
+  });
+  return { hLines: [...hLines], vLines: [...vLines] };
+}
+function snapPosition(el, x, y, elW, elH) {
+  hideGuides();
+  const { hLines, vLines } = getSnapLines(el);
+  let snappedX = x, snappedY = y;
+  const elCY = y + elH / 2, elB = y + elH;
+  const elCX = x + elW / 2, elR = x + elW;
+  const hCandidates = [
+    { val: y,    apply: (d) => { snappedY = d;           showGuideH(d); } },
+    { val: elCY, apply: (d) => { snappedY = d - elH / 2; showGuideH(d); } },
+    { val: elB,  apply: (d) => { snappedY = d - elH;     showGuideH(d); } },
+  ];
+  for (const line of hLines) {
+    for (const c of hCandidates) {
+      if (Math.abs(c.val - line) <= SNAP_PX) { c.apply(line); break; }
+    }
+  }
+  const vCandidates = [
+    { val: x,    apply: (d) => { snappedX = d;           showGuideV(d); } },
+    { val: elCX, apply: (d) => { snappedX = d - elW / 2; showGuideV(d); } },
+    { val: elR,  apply: (d) => { snappedX = d - elW;     showGuideV(d); } },
+  ];
+  for (const line of vLines) {
+    for (const c of vCandidates) {
+      if (Math.abs(c.val - line) <= SNAP_PX) { c.apply(line); break; }
+    }
+  }
+  return { x: snappedX, y: snappedY };
+}
+
+// ══════════════════════════════════════════
+//  DRAG (move)
+// ══════════════════════════════════════════
+document.addEventListener('pointerdown', e => {
+  if (!configMode) return;
+  if (e.target.classList.contains('rh')) return;
+  if (e.target.classList.contains('ctrl-label')) return;
+  if (e.target.classList.contains('stick-thumb')) return;
+  if (e.target.closest('#gap-pill')) return;
+  const el = e.target.closest('.gc-draggable');
   if (!el) return;
   e.preventDefault(); e.stopPropagation();
   startDrag(el, e);
-}, { capture: true });
+}, {capture:true, passive:false});
 
-function startDrag(el, downEvent) {
-  const pid = downEvent.pointerId;
+function startDrag(el, e0) {
+  const pid=e0.pointerId;
   el.setPointerCapture(pid);
   el.classList.add('dragging');
-  const move = e => {
-    if (e.pointerId !== pid) return;
-    const prev = customLayout[el.dataset.draggable];
-    applyPosition(el, e.clientX / window.innerWidth, e.clientY / window.innerHeight, prev && prev.w, prev && prev.h);
-  };
-  const end = e => {
-    if (e.pointerId !== pid) return;
-    el.classList.remove('dragging');
-    el.removeEventListener('pointermove', move);
-    el.removeEventListener('pointerup', end);
-    el.removeEventListener('pointercancel', end);
-    el.removeEventListener('lostpointercapture', end);
-    const r = el.getBoundingClientRect();
-    const prev = customLayout[el.dataset.draggable];
-    customLayout[el.dataset.draggable] = {
-      x: (r.left + r.width / 2) / window.innerWidth,
-      y: (r.top + r.height / 2) / window.innerHeight,
-      ...(prev && typeof prev.w === 'number' ? { w: prev.w, h: prev.h } : {}),
-    };
-    saveLayout();
-  };
-  el.addEventListener('pointermove', move);
-  el.addEventListener('pointerup', end);
-  el.addEventListener('pointercancel', end);
-  el.addEventListener('lostpointercapture', end);
-  move(downEvent);
-}
-
-function startResize(el, handle, downEvent) {
-  const pid = downEvent.pointerId;
-  handle.setPointerCapture(pid);
-  el.classList.add('dragging');
-  const r0 = el.getBoundingClientRect();
-  const ratio = r0.width / r0.height;
-  const fixL = r0.left, fixT = r0.top;
-  const MIN = 20;
-  const vw = window.innerWidth, vh = window.innerHeight;
-  el.style.position = 'fixed';
-  el.style.left = (fixL / vw * 100) + '%';
-  el.style.top = (fixT / vh * 100) + '%';
-  el.style.right = 'auto'; el.style.bottom = 'auto';
-  el.style.transform = 'none';
-  const move = e => {
-    if (e.pointerId !== pid) return;
-    const dw = Math.max(MIN, e.clientX - fixL);
-    const dh = Math.max(MIN, e.clientY - fixT);
-    let nw, nh;
-    if (dw / ratio >= dh) { nw = dw; nh = dw / ratio; }
-    else { nh = dh; nw = dh * ratio; }
-    el.style.width = (nw / vw * 100) + '%';
-    el.style.height = (nh / vh * 100) + '%';
-  };
-  const end = e => {
-    if (e.pointerId !== pid) return;
-    el.classList.remove('dragging');
-    handle.removeEventListener('pointermove', move);
-    handle.removeEventListener('pointerup', end);
-    handle.removeEventListener('pointercancel', end);
-    handle.removeEventListener('lostpointercapture', end);
-    const r = el.getBoundingClientRect();
-    const x = (r.left + r.width / 2) / vw;
-    const y = (r.top + r.height / 2) / vh;
-    const w = r.width / vw;
-    const h = r.height / vh;
-    applyPosition(el, x, y, w, h);
-    customLayout[el.dataset.draggable] = { x, y, w, h };
-    saveLayout();
-  };
-  handle.addEventListener('pointermove', move);
-  handle.addEventListener('pointerup', end);
-  handle.addEventListener('pointercancel', end);
-  handle.addEventListener('lostpointercapture', end);
-}
-
-// ═══════════════════════════════════════════
-//  BOTÕES FACE + CENTRO + GATILHOS
-// ═══════════════════════════════════════════
-document.querySelectorAll('.btn, .cbtn').forEach(el => {
-  if (el.id === 'btn-fn' || el.id === 'btn-select') return; // segurar dispara um gesto (sair/save state) — wiring proprio logo abaixo
-  let pid = null;
-  function release() {
-    if (pid === null) return;
-    pid = null;
-    if (layoutEditMode) return;
-    el.classList.remove('pressed'); sendButton(el.dataset.key, false);
+  const r=el.getBoundingClientRect();
+  const ox=e0.clientX-r.left, oy=e0.clientY-r.top;
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const vm=Math.min(vw,vh);
+  const isShoulder=el.classList.contains('shoulder');
+  el.style.position='fixed';
+  el.style.right='auto'; el.style.bottom='auto';
+  el.style.transform='none'; el.style.aspectRatio='unset';
+  if (isShoulder) {
+    el.style.width =(r.width /vw*100)+'vw';
+    el.style.height=(r.height/vh*100)+'vh';
+  } else {
+    const vmPct=(r.width/vm*100)+'vmin';
+    el.style.width =vmPct;
+    el.style.height=vmPct;
   }
+  const mv=e=>{
+    if(e.pointerId!==pid)return;
+    let x = e.clientX - ox;
+    let y = e.clientY - oy;
+    const elW = el.getBoundingClientRect().width;
+    const elH = el.getBoundingClientRect().height;
+    const snapped = snapPosition(el, x, y, elW, elH);
+    x = snapped.x; y = snapped.y;
+    el.style.left=(x/vw*100)+'vw';
+    el.style.top=(y/vh*100)+'vh';
+    if (el.id==='face-cluster' && configMode) positionGapPill();
+  };
+  const up=e=>{
+    if(e.pointerId!==pid)return;
+    el.classList.remove('dragging');
+    el.removeEventListener('pointermove',mv);
+    el.removeEventListener('pointerup',up);
+    el.removeEventListener('pointercancel',up);
+    el.removeEventListener('lostpointercapture',up);
+    hideGuides();
+    layout[el.dataset.id]=readPos(el);
+    try{localStorage.setItem(LS_KEY,JSON.stringify({layout,hidden}));}catch(e){}
+    if (el.id === 'face-cluster' && configMode) positionGapPill();
+  };
+  el.addEventListener('pointermove',mv);
+  el.addEventListener('pointerup',up);
+  el.addEventListener('pointercancel',up);
+  el.addEventListener('lostpointercapture',up);
+  mv(e0);
+}
+
+// ══════════════════════════════════════════
+//  RESIZE — proportional lock, grupos sincronizados
+// ══════════════════════════════════════════
+const SYNC_GROUPS = [
+  ['btn-fn', 'btn-select', 'btn-start'],
+  ['stick-l', 'stick-r'],
+  ['btn-l',  'btn-r'],
+  ['btn-l2', 'btn-r2'],
+];
+function getSyncPeers(id) {
+  const g = SYNC_GROUPS.find(g => g.includes(id));
+  return g ? g.filter(i => i !== id) : [];
+}
+const _peerCenters = {};
+function snapshotPeerCenters() {
+  draggables.forEach(el => {
+    const r = el.getBoundingClientRect();
+    _peerCenters[el.dataset.id] = {
+      cx: r.left + r.width  / 2,
+      cy: r.top  + r.height / 2,
+    };
+  });
+}
+function syncSize(sourceEl, vmPct, srcW_px, srcH_px) {
+  const peers = getSyncPeers(sourceEl.dataset.id);
+  if (!peers.length) return;
+  const vm  = Math.min(window.innerWidth, window.innerHeight);
+  const vw  = window.innerWidth, vh = window.innerHeight;
+  const isSrcShoulder = sourceEl.classList.contains('shoulder');
+  peers.forEach(peerId => {
+    const peer = document.getElementById(peerId);
+    if (!peer) return;
+    const isPeerShoulder = peer.classList.contains('shoulder');
+    const snap   = _peerCenters[peerId];
+    const cx     = snap ? snap.cx : (peer.getBoundingClientRect().left + peer.getBoundingClientRect().width  / 2);
+    const cy     = snap ? snap.cy : (peer.getBoundingClientRect().top  + peer.getBoundingClientRect().height / 2);
+    peer.style.position    = 'fixed';
+    peer.style.right       = 'auto';
+    peer.style.bottom      = 'auto';
+    peer.style.transform   = 'none';
+    peer.style.aspectRatio = 'unset';
+    if (isPeerShoulder && isSrcShoulder && srcW_px != null) {
+      const nw = srcW_px, nh = srcH_px;
+      peer.style.width        = (nw / vw * 100) + 'vw';
+      peer.style.height       = (nh / vh * 100) + 'vh';
+      peer.style.borderRadius = '10px';
+      peer.style.left         = ((cx - nw / 2) / vw * 100) + 'vw';
+      peer.style.top          = ((cy - nh / 2) / vh * 100) + 'vh';
+    } else {
+      const pxSize = vmPct / 100 * vm;
+      peer.style.width        = vmPct + 'vmin';
+      peer.style.height       = vmPct + 'vmin';
+      peer.style.borderRadius = '50%';
+      peer.style.left         = ((cx - pxSize / 2) / vw * 100) + 'vw';
+      peer.style.top          = ((cy - pxSize / 2) / vh * 100) + 'vh';
+    }
+    layout[peerId] = readPos(peer);
+  });
+}
+
+document.querySelectorAll('.rh').forEach(handle => {
+  handle.addEventListener('pointerdown', e => {
+    if (!configMode) return;
+    e.preventDefault(); e.stopPropagation();
+    const el=handle.closest('.gc-draggable');
+    if(!el)return;
+    const pid=e.pointerId;
+    handle.setPointerCapture(pid);
+    const r=el.getBoundingClientRect();
+    const ratio=r.width/r.height;
+    const fixL=r.left, fixT=r.top;
+    const vw=window.innerWidth, vh=window.innerHeight;
+    const vm=Math.min(vw,vh);
+    const MIN=20;
+    const isShoulder = el.classList.contains('shoulder');
+    snapshotPeerCenters();
+    el.style.position='fixed';
+    el.style.left=(fixL/vw*100)+'vw';
+    el.style.top=(fixT/vh*100)+'vh';
+    el.style.right='auto'; el.style.bottom='auto';
+    el.style.transform='none'; el.style.aspectRatio='unset';
+    const mv=e=>{
+      if(e.pointerId!==pid)return;
+      const dw=Math.max(MIN,e.clientX-fixL);
+      const dh=Math.max(MIN,e.clientY-fixT);
+      let nw,nh;
+      if(dw/ratio>=dh){ nw=dw; nh=dw/ratio; }
+      else             { nh=dh; nw=dh*ratio; }
+      if (isShoulder) {
+        el.style.width        = (nw/vw*100)+'vw';
+        el.style.height       = (nh/vh*100)+'vh';
+        el.style.borderRadius = '10px';
+        syncSize(el, 0, nw, nh);
+      } else {
+        const vmPct = nw/vm*100;
+        el.style.width        = vmPct+'vmin';
+        el.style.height       = vmPct+'vmin';
+        el.style.borderRadius = '50%';
+        syncSize(el, vmPct, null, null);
+      }
+      if (el.id === 'face-cluster') applyFcLayout(fcGap);
+    };
+    const up=e=>{
+      if(e.pointerId!==pid)return;
+      handle.removeEventListener('pointermove',mv);
+      handle.removeEventListener('pointerup',up);
+      handle.removeEventListener('pointercancel',up);
+      handle.removeEventListener('lostpointercapture',up);
+      layout[el.dataset.id]=readPos(el);
+      if (isShoulder) {
+        const r2 = el.getBoundingClientRect();
+        syncSize(el, 0, r2.width, r2.height);
+      } else {
+        syncSize(el, parseFloat(el.style.width));
+      }
+      try{localStorage.setItem(LS_KEY,JSON.stringify({layout,hidden}));}catch(e){}
+      if (el.id === 'face-cluster') requestAnimationFrame(fcLayoutAfterResize);
+    };
+    handle.addEventListener('pointermove',mv);
+    handle.addEventListener('pointerup',up);
+    handle.addEventListener('pointercancel',up);
+    handle.addEventListener('lostpointercapture',up);
+  },{passive:false});
+});
+
+// ══════════════════════════════════════════
+//  FACE BUTTONS (inside cluster)
+// ══════════════════════════════════════════
+document.querySelectorAll('.facebtn').forEach(el => {
+  let pid=null;
+  const release=()=>{ if(pid===null)return; pid=null; el.classList.remove('pressed'); sendKey(el.dataset.key,'up'); };
+  activeReleasers.push(release);
+  el.addEventListener('pointerdown', e=>{
+    e.preventDefault(); e.stopPropagation(); if(configMode)return;
+    pid=e.pointerId; el.setPointerCapture(pid);
+    el.classList.add('pressed'); sendKey(el.dataset.key,'down');
+  });
+  ['pointerup','pointercancel'].forEach(ev=>window.addEventListener(ev,e=>{if(e.pointerId===pid)release();}));
+  el.addEventListener('pointerleave',release);
+  el.addEventListener('lostpointercapture',release);
+});
+
+// ══════════════════════════════════════════
+//  D-PAD — chaves ja' batem com o que nostalgist.pressDown/pressUp
+//  espera (up/down/left/right), sem tradução pra tecla (diferente do
+//  GameScreen.html, que manda postMessage pro game-wrapper.ts).
+// ══════════════════════════════════════════
+document.querySelectorAll('.dp').forEach(el => {
+  const key = el.dataset.dir;
+  let pid = null;
+  const release = () => { if(pid===null)return; pid=null; el.classList.remove('pressed'); sendKey(key,'up'); };
   activeReleasers.push(release);
   el.addEventListener('pointerdown', e => {
-    if (layoutEditMode) return;
-    e.preventDefault();
-    pid = e.pointerId; el.setPointerCapture(pid);
-    el.classList.add('pressed'); haptic(); sendButton(el.dataset.key, true);
+    e.preventDefault(); e.stopPropagation();
+    if(configMode)return;
+    pid=e.pointerId; el.setPointerCapture(pid);
+    el.classList.add('pressed'); sendKey(key,'down');
   });
-  ['pointerup', 'pointercancel'].forEach(ev =>
-    window.addEventListener(ev, e => { if (e.pointerId === pid) release(); }));
+  ['pointerup','pointercancel'].forEach(ev =>
+    window.addEventListener(ev, e => { if(e.pointerId===pid) release(); }));
   el.addEventListener('pointerleave', release);
   el.addEventListener('lostpointercapture', release);
 });
 
-// FN (sair) e SEL (menu de save state) nao mandam pressDown/pressUp pro
-// jogo — disparam um GESTO discreto ao segurar, igual o L2/Select fisico
-// ja fazem em useGamepadPlayer (ver frontend/src/pages/Player.tsx):
-// segurar FN por FN_HOLD_MS manda {type:'exit'}, segurar SEL por
-// SELECT_HOLD_MS manda {type:'toggleSaveMenu'} — MESMOS tempos que o
-// gamepad fisico usa no desktop, pro gesto sentir igual venha de onde vier.
+(function(){
+  const dpad = document.getElementById('dpad');
+  let activeDir=null; const DEAD=6;
+  function dirFrom(dx,dy){
+    if(Math.abs(dx)<DEAD&&Math.abs(dy)<DEAD) return null;
+    const a=Math.atan2(dy,dx)*180/Math.PI;
+    if(a>-45 &&a<=45)  return 'right';
+    if(a>45  &&a<=135) return 'down';
+    if(a>135 ||a<=-135)return 'left';
+    return 'up';
+  }
+  function setDir(dir){
+    if(dir===activeDir)return;
+    if(activeDir){ sendKey(activeDir,'up'); const e=document.getElementById('dp-'+activeDir); if(e)e.classList.remove('pressed'); }
+    activeDir=dir;
+    if(dir){ sendKey(dir,'down'); const e=document.getElementById('dp-'+dir); if(e)e.classList.add('pressed'); }
+  }
+  let dpPid=null;
+  activeReleasers.push(()=>{dpPid=null;setDir(null);});
+  dpad.addEventListener('pointerdown',e=>{
+    e.preventDefault(); if(configMode)return;
+    dpPid=e.pointerId; dpad.setPointerCapture(dpPid);
+    const r=dpad.getBoundingClientRect();
+    setDir(dirFrom(e.clientX-(r.left+r.width/2), e.clientY-(r.top+r.height/2)));
+  });
+  window.addEventListener('pointermove',e=>{
+    if(e.pointerId!==dpPid)return;
+    const r=dpad.getBoundingClientRect();
+    setDir(dirFrom(e.clientX-(r.left+r.width/2), e.clientY-(r.top+r.height/2)));
+  });
+  ['pointerup','pointercancel'].forEach(ev=>
+    window.addEventListener(ev,e=>{if(e.pointerId===dpPid){dpPid=null;setDir(null);}}));
+  dpad.addEventListener('lostpointercapture',()=>{dpPid=null;setDir(null);});
+})();
+
+// ══════════════════════════════════════════
+//  ANALOG STICKS
+// ══════════════════════════════════════════
+document.querySelectorAll('.stick-zone').forEach(stick=>{
+  const thumb=stick.querySelector('.stick-thumb');
+  const MAX=40;
+  let pid=null,ox=0,oy=0;
+  const release=()=>{ if(pid===null)return; pid=null; stick.classList.remove('active'); thumb.style.transform='translate(-50%,-50%)'; };
+  activeReleasers.push(release);
+  stick.addEventListener('pointerdown',e=>{
+    e.preventDefault(); if(configMode)return;
+    pid=e.pointerId; stick.setPointerCapture(pid); stick.classList.add('active');
+    const r=stick.getBoundingClientRect(); ox=r.left+r.width/2; oy=r.top+r.height/2;
+  });
+  window.addEventListener('pointermove',e=>{
+    if(e.pointerId!==pid)return;
+    const dx=e.clientX-ox,dy=e.clientY-oy,d=Math.hypot(dx,dy),s=d>MAX?MAX/d:1;
+    thumb.style.transform=`translate(calc(-50% + ${dx*s}px),calc(-50% + ${dy*s}px))`;
+  });
+  ['pointerup','pointercancel'].forEach(ev=>window.addEventListener(ev,e=>{if(e.pointerId===pid)release();}));
+  stick.addEventListener('lostpointercapture',release);
+});
+
+// ══════════════════════════════════════════
+//  CC BUTTONS (start, shoulders) — FN/SEL NAO entram aqui, ver secao
+//  logo abaixo (segurar dispara um gesto, nao manda pressDown/pressUp).
+// ══════════════════════════════════════════
+function wireSimpleBtn(el) {
+  if (!el) return;
+  let pid=null;
+  const release=()=>{ if(pid===null)return; pid=null; el.classList.remove('pressed'); sendKey(el.dataset.key,'up'); };
+  activeReleasers.push(release);
+  el.addEventListener('pointerdown',e=>{
+    e.preventDefault(); if(configMode)return;
+    pid=e.pointerId; el.setPointerCapture(pid);
+    el.classList.add('pressed'); sendKey(el.dataset.key,'down');
+  });
+  ['pointerup','pointercancel'].forEach(ev=>window.addEventListener(ev,e=>{if(e.pointerId===pid)release();}));
+  el.addEventListener('pointerleave',release);
+  el.addEventListener('lostpointercapture',release);
+}
+['btn-start','btn-l','btn-r','btn-l2','btn-r2'].forEach(id=>wireSimpleBtn(document.getElementById(id)));
+
+// ══════════════════════════════════════════
+//  FN (segurar 700ms = sair) / SEL (segurar 350ms = menu de save state)
+//  — mesmos gestos/tempos que o controle fisico e o GameScreen.html
+//  local ja usam (ver useGamepadPlayer em Player.tsx); disparam um
+//  {type:'exit'}/{type:'toggleSaveMenu'} discreto em vez de pressDown/
+//  pressUp normal, ver useRemoteControl do lado do desktop.
+// ══════════════════════════════════════════
 function wireHoldGesture(id, holdMs, message) {
   const el = document.getElementById(id);
   let pid = null;
@@ -461,13 +1113,13 @@ function wireHoldGesture(id, holdMs, message) {
   function release() {
     if (pid === null) return;
     pid = null; clear();
-    if (layoutEditMode) return;
+    if (configMode) return;
     el.classList.remove('pressed');
   }
   activeReleasers.push(release);
   el.addEventListener('pointerdown', e => {
-    if (layoutEditMode) return;
     e.preventDefault();
+    if (configMode) return;
     pid = e.pointerId; el.setPointerCapture(pid);
     el.classList.add('pressed'); haptic();
     clear();
@@ -484,87 +1136,36 @@ function wireHoldGesture(id, holdMs, message) {
 wireHoldGesture('btn-fn', 700, { type: 'exit' });
 wireHoldGesture('btn-select', 350, { type: 'toggleSaveMenu' });
 
-// ═══════════════════════════════════════════
-//  D-PAD — mesma logica de deteccao por angulo do GameScreen.html
-// ═══════════════════════════════════════════
-(function () {
-  const dpad = document.getElementById('dpad');
-  let activeDir = null;
-  const DEAD = 6;
-  function dirFrom(dx, dy) {
-    if (Math.abs(dx) < DEAD && Math.abs(dy) < DEAD) return null;
-    const a = Math.atan2(dy, dx) * 180 / Math.PI;
-    if (a > -45 && a <= 45) return 'right';
-    if (a > 45 && a <= 135) return 'down';
-    if (a > 135 || a <= -135) return 'left';
-    return 'up';
+// ══════════════════════════════════════════
+//  GAMEPAD FÍSICO (pareado no proprio celular, opcional)
+// ══════════════════════════════════════════
+const GP_MAP={12:'up',13:'down',14:'left',15:'right',
+  0:'b',1:'a',2:'y',3:'x',4:'l',5:'r',9:'start'};
+const gpActive={};let gpRaf=null;
+function pollGP(){
+  for(const gp of (navigator.getGamepads?navigator.getGamepads():[])){
+    if(!gp)continue;
+    gp.buttons.forEach((b,i)=>{
+      const k=GP_MAP[i];if(!k)return;
+      if(b.pressed&&!gpActive[i]){gpActive[i]=true;sendKey(k,'down',gp.index===1?2:1);}
+      else if(!b.pressed&&gpActive[i]){gpActive[i]=false;sendKey(k,'up',gp.index===1?2:1);}
+    });
   }
-  // Nomes de direcao ja batem com o que nostalgist.pressDown/pressUp
-  // espera (up/down/left/right) — sem tradução pra tecla, diferente do
-  // GameScreen.html (que manda pro game-wrapper.ts via postMessage, ai
-  // sim precisando de ArrowUp/ArrowDown/etc).
-  function setDir(dir) {
-    if (dir === activeDir) return;
-    if (activeDir) {
-      sendButton(activeDir, false);
-      const e = document.getElementById('dp-' + activeDir); if (e) e.classList.remove('pressed');
-    }
-    activeDir = dir;
-    if (dir) {
-      sendButton(dir, true);
-      const e = document.getElementById('dp-' + dir); if (e) e.classList.add('pressed');
-    }
-  }
-  let dpPid = null;
-  activeReleasers.push(() => { dpPid = null; setDir(null); });
-  dpad.addEventListener('pointerdown', e => {
-    if (layoutEditMode) return;
-    e.preventDefault();
-    dpPid = e.pointerId; dpad.setPointerCapture(dpPid);
-    haptic();
-    const r = dpad.getBoundingClientRect();
-    setDir(dirFrom(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)));
-  });
-  window.addEventListener('pointermove', e => {
-    if (e.pointerId !== dpPid) return;
-    const r = dpad.getBoundingClientRect();
-    setDir(dirFrom(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)));
-  });
-  ['pointerup', 'pointercancel'].forEach(ev =>
-    window.addEventListener(ev, e => { if (e.pointerId === dpPid) { dpPid = null; setDir(null); } }));
-  dpad.addEventListener('lostpointercapture', () => { dpPid = null; setDir(null); });
-})();
+  gpRaf=requestAnimationFrame(pollGP);
+}
+const gpToast=document.getElementById('gamepad-toast');
+let gpToastT=null;
+function showToast(m){gpToast.textContent=m;gpToast.classList.add('show');clearTimeout(gpToastT);gpToastT=setTimeout(()=>gpToast.classList.remove('show'),2500);}
+window.addEventListener('gamepadconnected',e=>{showToast(`🎮 ${e.gamepad.id.slice(0,30)} conectado`);if(!gpRaf)gpRaf=requestAnimationFrame(pollGP);});
+window.addEventListener('gamepaddisconnected',()=>showToast('🎮 Controle desconectado'));
 
-// ═══════════════════════════════════════════
-//  ANALÓGICOS
-// ═══════════════════════════════════════════
-document.querySelectorAll('.stick-zone').forEach(stick => {
-  const thumb = stick.querySelector('.stick-thumb');
-  const MAX = 32;
-  let pid = null, ox = 0, oy = 0;
-  const release = () => {
-    if (pid === null) return;
-    pid = null;
-    stick.classList.remove('active');
-    thumb.style.transform = 'translate(-50%,-50%)';
-  };
-  activeReleasers.push(release);
-  stick.addEventListener('pointerdown', e => {
-    if (layoutEditMode) return;
-    e.preventDefault();
-    pid = e.pointerId; stick.setPointerCapture(pid); stick.classList.add('active');
-    haptic();
-    const r = stick.getBoundingClientRect(); ox = r.left + r.width / 2; oy = r.top + r.height / 2;
-  });
-  window.addEventListener('pointermove', e => {
-    if (e.pointerId !== pid) return;
-    const dx = e.clientX - ox, dy = e.clientY - oy, d = Math.hypot(dx, dy), s = d > MAX ? MAX / d : 1;
-    thumb.style.transform = `translate(calc(-50% + ${dx * s}px),calc(-50% + ${dy * s}px))`;
-  });
-  ['pointerup', 'pointercancel'].forEach(ev =>
-    window.addEventListener(ev, e => { if (e.pointerId === pid) release(); }));
-  stick.addEventListener('lostpointercapture', release);
-});
+// ══════════════════════════════════════════
+//  ORIENTATION / RESIZE HANDLER
+// ══════════════════════════════════════════
+window.addEventListener('resize', () => {
+  if (Object.keys(layout).length) applyAll();
+  requestAnimationFrame(() => applyFcLayout(fcGap));
+}, {passive: true});
 </script>
 </body>
 </html>
