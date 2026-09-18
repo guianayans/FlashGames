@@ -207,7 +207,15 @@ export default function Library() {
   overlayFocusedKeyRef.current = overlayFocusedKey;
   const alphaOpenRef = useRef(alphaOpen);
   alphaOpenRef.current = alphaOpen;
-  const keyboardMode = gamepadActive && bigPictureOn;
+  // Antes era derivado de "gamepadActive && bigPictureOn" — isso fazia o
+  // botao A-Z virar SEMPRE teclado de digitar quando o modo controle
+  // estava ligado, mesmo clicando nele normalmente (deveria continuar
+  // sendo o filtro por letra de sempre, pedido explicito). Agora e'
+  // estado de verdade, setado explicitamente por QUEM abre o overlay:
+  // busca (campo ou o atalho Select) abre em modo teclado, A-Z (botao ou
+  // foco do controle nele) abre no filtro por letra normal — ver os 3
+  // pontos que chamam setAlphaOpen(true)/setKeyboardMode mais abaixo.
+  const [keyboardMode, setKeyboardMode] = useState(false);
   const keyboardModeRef = useRef(keyboardMode);
   keyboardModeRef.current = keyboardMode;
   const queryRef = useRef(query);
@@ -775,10 +783,18 @@ export default function Library() {
       navigate(`/play/${slugFromCardId(id)}`);
       return;
     }
-    // Busca e o trigger A-Z levam pro mesmo lugar: o overlay A-Z e' o
-    // "teclado" do modo controle (ver keyboardMode) — nao da pra digitar
-    // com o cursor do gamepad num <input> sem teclado fisico.
-    if (id === "search" || id === "alpha-trigger") {
+    // Busca abre o overlay em modo TECLADO (digitar com o cursor do
+    // gamepad, ja' que nao tem teclado fisico) — A-Z abre o mesmo overlay
+    // no filtro por letra NORMAL (pedido explicito: A-Z tem que
+    // continuar sendo A-Z, igual clicar nele com mouse, mesmo com o
+    // modo controle ligado).
+    if (id === "search") {
+      setKeyboardMode(true);
+      setAlphaOpen(true);
+      return;
+    }
+    if (id === "alpha-trigger") {
+      setKeyboardMode(false);
       setAlphaOpen(true);
       return;
     }
@@ -1125,6 +1141,7 @@ export default function Library() {
         if (pressedNow(9) && !btnState[9]) confirmFocused();
         if (pressedNow(8) && !btnState[8]) {
           if (!bigPictureOnRef.current) setBigPictureOn(true);
+          setKeyboardMode(true);
           setAlphaOpen(true);
         }
         [0, 1, 2, 4, 5, 6, 7, 8, 9].forEach((idx) => {
@@ -1242,6 +1259,7 @@ export default function Library() {
         if (msg.type === "selectTap" && msg.player === activePhonePlayerRef.current && !pairingModalOpenRef.current) {
           if (!bigPictureOnRef.current) setBigPictureOn(true);
           if (!gamepadActiveRef.current) { setGamepadActive(true); setGamepadName("Celular (controle remoto)"); }
+          setKeyboardMode(true);
           setAlphaOpen((v) => !v);
         }
         return;
@@ -1636,7 +1654,10 @@ export default function Library() {
           type="button"
           data-bp-id="alpha-trigger"
           className={`library-alpha-trigger${letter ? " active" : ""}${focusVisible && focusedId === "alpha-trigger" ? " bp-focused" : ""}`}
-          onClick={() => setAlphaOpen(true)}
+          onClick={() => {
+            setKeyboardMode(false);
+            setAlphaOpen(true);
+          }}
           aria-label="Filtrar por letra"
         >
           {letter || "A–Z"}
