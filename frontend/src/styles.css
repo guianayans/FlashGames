@@ -1505,6 +1505,18 @@ a {
   cursor: none;
 }
 
+/* Mesma ideia na Biblioteca (ver Library.tsx, bigPictureOn) — ligou o
+   "modo controle" (Big Picture), a setinha do mouse some tambem, mesmo
+   com busca/filtro ativo (nao e' condicional a isso — some sempre que
+   bigPictureOn liga, volta ao mexer o mouse, que ja desliga bigPictureOn
+   sozinho). "*" pra vencer os "cursor:pointer" dos botoes/chips por
+   baixo, que senao ganhariam por especificidade de elemento vs so' essa
+   classe no container. */
+.library-page.gamepad-cursor-hidden,
+.library-page.gamepad-cursor-hidden * {
+  cursor: none !important;
+}
+
 /* Menu de save state (Select no controle ou F10 no teclado, ver
    SaveStateMenu em Player.tsx) — mesmo padrao visual do overlay/card
    A-Z da biblioteca (.alpha-overlay/.alpha-card), so que restrito ao

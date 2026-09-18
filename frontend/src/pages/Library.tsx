@@ -313,10 +313,22 @@ export default function Library() {
   // isso, um updateFilters/goToPage disparado pelo controle reconstruiria
   // a URL a partir do searchParams "congelado" da primeira renderizacao,
   // desfazendo qualquer filtro mudado depois.
+  // NAO usa o "prev" que o proprio setSearchParams entrega pro updater —
+  // funcoes chamadas de dentro de um useEffect(fn, []) que nunca
+  // reexecuta (ver poll() do controle fisico e o subscribe do remoto,
+  // mais abaixo) ficam presas num "prev" da MONTAGEM do componente
+  // (search vazio, de antes de qualquer filtro/busca existir), nao no
+  // estado de URL atual — resultado: trocar de filtro OU pagina pelo
+  // controle (fisico ou celular) apagava a busca/outros filtros ativos
+  // (bug relatado: buscar "mario" e trocar de filtro com L/R limpava a
+  // busca, mas clicar no chip com mouse preservava — so' o mouse chama
+  // isso de uma closure fresca do render atual). searchParamsRef.current
+  // (ja existe, sincronizado a cada render — ver logo acima) sempre
+  // reflete a URL de verdade, imune a esse problema.
   function updateFilters(patch: Record<string, string | null>) {
     setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
+      () => {
+        const next = new URLSearchParams(searchParamsRef.current);
         for (const [key, value] of Object.entries(patch)) {
           if (value === null) next.delete(key);
           else next.set(key, value);
@@ -330,8 +342,8 @@ export default function Library() {
 
   function goToPage(p: number) {
     setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
+      () => {
+        const next = new URLSearchParams(searchParamsRef.current);
         if (p <= 1) next.delete("page");
         else next.set("page", String(p));
         return next;
@@ -1055,9 +1067,9 @@ export default function Library() {
         // sempre foi); Quadrado so' SELECIONA ela como filtro de letra
         // inicial (sem digitar, fecha o overlay — o mesmo que clicar nela
         // com mouse/toque faria); Bola fecha o teclado sem mexer em nada
-        // (like B/Start); Triangulo apaga tudo que foi digitado ate agora
-        // de uma vez, de qualquer chip focado (atalho pro que a chip
-        // "Apagar tudo" ja faz, sem precisar navegar ate ela).
+        // (like B/Start); Triangulo apaga so' o ULTIMO caractere digitado
+        // (backspace, pedido explicito — apagar tudo de uma vez continua
+        // dando pra fazer navegando ate' a chip "Apagar tudo").
         if (alphaOpenRef.current && keyboardModeRef.current) {
           handleDir("left", left, now, moveOverlayFocus);
           handleDir("right", right, now, moveOverlayFocus);
@@ -1065,7 +1077,7 @@ export default function Library() {
           handleDir("down", down, now, moveOverlayFocus);
           if (pressedNow(0) && !btnState[0]) confirmOverlayFocus();
           if (pressedNow(2) && !btnState[2]) confirmOverlaySelectFilter();
-          if (pressedNow(3) && !btnState[3]) updateFilters({ q: null });
+          if (pressedNow(3) && !btnState[3]) backspaceQuery();
           // Bola (1) ou Start (9): fecha o teclado (termina de digitar).
           if ((pressedNow(1) && !btnState[1]) || (pressedNow(9) && !btnState[9])) setAlphaOpen(false);
           [0, 1, 2, 3, 9].forEach((idx) => {
@@ -1262,7 +1274,7 @@ export default function Library() {
             break;
           case "b": confirmOverlayFocus(); break;
           case "y": confirmOverlaySelectFilter(); break;
-          case "x": updateFilters({ q: null }); break;
+          case "x": backspaceQuery(); break;
           case "a": case "start": setAlphaOpen(false); break;
         }
         return;
@@ -1392,6 +1404,16 @@ export default function Library() {
   function selectLetterFilter(l: string | null) {
     updateFilters({ letter: l });
     setAlphaOpen(false);
+  }
+
+  // Apaga so' o ULTIMO caractere digitado (Triangulo no modo controle,
+  // ver poll() e o handler do remoto) — pedido explicito: antes so'
+  // existia apagar TUDO de uma vez (chip "Todos"/atalho antigo do
+  // Triangulo), sem jeito de corrigir so' o ultimo caractere sem reiniciar
+  // a busca inteira.
+  function backspaceQuery() {
+    const q = queryRef.current || "";
+    updateFilters({ q: q.length > 1 ? q.slice(0, -1) : null });
   }
 
   function pickLetter(l: string | null) {
@@ -1555,7 +1577,7 @@ export default function Library() {
   ];
 
   return (
-    <div className="library-page" ref={pageRef}>
+    <div className={`library-page${bigPictureOn ? " gamepad-cursor-hidden" : ""}`} ref={pageRef}>
       {pullActive && (
         <div className="pull-refresh" style={{ height: refreshing ? PULL_THRESHOLD : pullDistance }}>
           <div
