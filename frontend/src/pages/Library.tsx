@@ -118,6 +118,14 @@ export default function Library() {
   // routes/preferences.js), pra continuar valendo em qualquer aparelho
   // que ele entrar, nao so localStorage deste navegador.
   const [originalCovers, setOriginalCovers] = useState(false);
+  // Le' dentro do loop de poll do gamepad (mesmo motivo dos outros refs
+  // deste arquivo, ver comentario mais abaixo) — sem isso,
+  // toggleOriginalCovers() chamado pelo controle sempre calculava "next"
+  // a partir do valor CONGELADO da primeira renderizacao (poll() so'
+  // monta uma vez), entao so' ligava, nunca desligava de novo (bug
+  // relatado: "so' ativa com o controle, nao tem como desativar").
+  const originalCoversRef = useRef(originalCovers);
+  originalCoversRef.current = originalCovers;
 
   // Busca, sistema, favoritos e pagina vivem na URL (searchParams) em vez de
   // useState puro — assim, ao abrir um jogo (navigate) e voltar
@@ -403,7 +411,7 @@ export default function Library() {
   }, []);
 
   async function toggleOriginalCovers() {
-    const next = !originalCovers;
+    const next = !originalCoversRef.current;
     setOriginalCovers(next);
     try {
       await api.updatePreferences(next);
