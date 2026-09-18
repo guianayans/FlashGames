@@ -48,6 +48,7 @@ interface RemoteControlContextValue {
   subscribe: (handler: RemoteHandler) => () => void;
   reservePhysicalSlots: (taken: Set<number>) => void;
   notifySlotVacated: (vacatedPlayer: number) => void;
+  assignPhysicalSlot: () => number | null;
 }
 
 const RemoteControlContext = createContext<RemoteControlContextValue | null>(null);
@@ -145,29 +146,69 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
     return null;
   }
 
-  // Renumeracao (pedido explicito): quando um celular sai de PROPOSITO
-  // ("Desconectar", ver phone-left explicit=true), o numero que ele
-  // deixava vago NAO fica pulado — todo celular com numero MAIOR desce
-  // um (quem era P2 vira P1 e assume o direito de mexer no menu/HUD,
-  // etc), sempre ficando 1,2,3... sem buraco. So' entra aqui em leave
-  // EXPLICITO — uma queda de wifi (explicit=false) mantem o numero
-  // antigo intacto de proposito, pro celular voltar pro MESMO slot sem
-  // atropelar quem ja' foi promovido nesse meio tempo (ver
-  // reconexao/estavel mais abaixo). Devolve os "saltos" (old->new) pra
-  // quem escuta (ver useRemoteControlForPlayer em Player.tsx) soltar
-  // qualquer botao que estivesse preso no numero ANTIGO — sem isso um
-  // botao que o celular estava segurando bem na hora da renumeracao
-  // ficaria preso pra sempre no emulador (o "solta" dele chegaria com o
-  // numero NOVO, nunca liberando o antigo).
-  function renumberAfterExplicitLeave(vacatedPlayer: number): { oldPlayer: number; newPlayer: number }[] {
+  // Mesmo criterio do assignPlayerSlot acima, so' que pro controle
+  // FISICO da Biblioteca (Library.tsx, que so' rastreia UM fisico por
+  // vez) — quem chega PRIMEIRO pega o menor numero livre, seja fisico ou
+  // celular (pedido explicito: "quem conecta primeiro pega o primeiro
+  // lugar, independente se for celular ou fisico" — antes o fisico
+  // sempre reservava o 1 na marra, o que atropelava um celular que
+  // tivesse conectado antes dele). null = sala cheia.
+  function assignPhysicalSlot(): number | null {
+    const used = new Set<number>(reservedPhysicalRef.current);
+    phoneSlotsRef.current.forEach((n) => used.add(n));
+    for (let n = 1; n <= MAX_PLAYERS; n++) {
+      if (!used.has(n)) {
+        reservedPhysicalRef.current = new Set([n]);
+        return n;
+      }
+    }
+    return null;
+  }
+
+  // Renumeracao: quando UM SLOT QUALQUER vaga — celular saindo de
+  // PROPOSITO ("Desconectar", ver phone-left explicit=true) OU controle
+  // fisico desconectando (ver Library.tsx, notifySlotVacated) — o numero
+  // que ficou vago NAO fica pulado — todo mundo com numero MAIOR desce
+  // um, celular OU fisico (pedido explicito: "quem conecta primeiro
+  // pega o primeiro lugar, independente se for celular ou fisico... se
+  // o P menor sair todos os proximos descem uma casa, independente do
+  // tipo"). So' entra aqui em leave EXPLICITO — uma queda de wifi
+  // (explicit=false) mantem o numero antigo intacto de proposito, pro
+  // celular voltar pro MESMO slot sem atropelar quem ja' foi promovido
+  // nesse meio tempo (ver reconexao/estavel mais abaixo). Devolve os
+  // "saltos" (old->new) pra quem escuta (Player.tsx solta botao preso no
+  // numero ANTIGO de um celular; Library.tsx acompanha o numero do
+  // fisico, ver physicalPlayerRef) reagir.
+  //
+  // reservedPhysicalRef tambem e' usado por Player.tsx (useGamepadPlayer,
+  // MULTIPLOS fisicos durante o jogo) — mexer nele aqui e' seguro mesmo
+  // assim porque o poll() fisico de la' chama reportReservedSlots() a
+  // CADA frame (~60fps), sobrescrevendo com o valor de verdade quase
+  // instantaneamente se esse ajuste "generico" daqui discordar da
+  // realidade (unico dono de verdade continua sendo o poll() fisico).
+  function renumberAfterVacate(vacatedPlayer: number): { oldPlayer: number; newPlayer: number }[] {
     const shifts: { oldPlayer: number; newPlayer: number }[] = [];
-    const entries = Array.from(phoneSlotsRef.current.entries()).sort((a, b) => a[1] - b[1]);
-    for (const [clientId, player] of entries) {
+    const phoneEntries = Array.from(phoneSlotsRef.current.entries()).sort((a, b) => a[1] - b[1]);
+    for (const [clientId, player] of phoneEntries) {
       if (player > vacatedPlayer) {
         const newPlayer = player - 1;
         phoneSlotsRef.current.set(clientId, newPlayer);
         shifts.push({ oldPlayer: player, newPlayer });
       }
+    }
+    if (reservedPhysicalRef.current.size > 0) {
+      const physicalEntries = Array.from(reservedPhysicalRef.current).sort((a, b) => a - b);
+      const newPhysical = new Set<number>();
+      for (const player of physicalEntries) {
+        if (player > vacatedPlayer) {
+          const newPlayer = player - 1;
+          newPhysical.add(newPlayer);
+          shifts.push({ oldPlayer: player, newPlayer });
+        } else {
+          newPhysical.add(player);
+        }
+      }
+      reservedPhysicalRef.current = newPhysical;
     }
     return shifts;
   }
@@ -295,10 +336,10 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
           // Leave de PROPOSITO libera o slot de vez (diferente da queda
           // de wifi, que mantem a entrada estavel pra' reconectar no
           // mesmo numero) e promove quem tiver numero maior — ver
-          // renumberAfterExplicitLeave acima.
+          // renumberAfterVacate acima.
           const vacatedPlayer = phoneSlotsRef.current.get(d.clientId);
           phoneSlotsRef.current.delete(d.clientId);
-          if (typeof vacatedPlayer === "number") shifts = renumberAfterExplicitLeave(vacatedPlayer);
+          if (typeof vacatedPlayer === "number") shifts = renumberAfterVacate(vacatedPlayer);
         }
         syncPhonesState();
         handlerRef.current?.({ type: "phoneLeft", clientId: d.clientId, explicit });
@@ -381,17 +422,12 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
     reservedPhysicalRef.current = taken;
   }
 
-  // Igual ao renumberAfterExplicitLeave acima, mas pra quem NAO e' celular
-  // — ver Library.tsx, onde um controle FISICO desconectando tambem tem
-  // que promover os celulares com numero maior (pedido explicito: "quem
-  // conectou primeiro pega o P menor, e se o P menor sair todos os
-  // proximos descem uma casa" vale pro fisico tambem, nao so' entre
-  // celulares). A Biblioteca so' rastreia UM fisico por vez (sempre
-  // considerado player 1 quando conectado — ver reservePhysicalSlots la'
-  // sendo chamado com {1}), entao vacatedPlayer aqui e' sempre 1 na
-  // pratica, mas a funcao aceita qualquer numero por generalidade.
+  // Chamado por Library.tsx quando o controle FISICO desconecta (ver
+  // assignPhysicalSlot acima pra' como ele pega o numero em primeiro
+  // lugar) — mesma renumeracao unificada de renumberAfterVacate,
+  // exposta aqui pra quem nao e' celular disparar.
   function notifySlotVacated(vacatedPlayer: number) {
-    const shifts = renumberAfterExplicitLeave(vacatedPlayer);
+    const shifts = renumberAfterVacate(vacatedPlayer);
     if (shifts.length === 0) return;
     syncPhonesState();
     for (const s of shifts) {
@@ -419,7 +455,7 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <RemoteControlContext.Provider value={{ status, remoteUrl, phones, start, stop, subscribe, reservePhysicalSlots, notifySlotVacated }}>
+    <RemoteControlContext.Provider value={{ status, remoteUrl, phones, start, stop, subscribe, reservePhysicalSlots, notifySlotVacated, assignPhysicalSlot }}>
       {children}
     </RemoteControlContext.Provider>
   );

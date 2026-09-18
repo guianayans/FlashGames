@@ -166,21 +166,27 @@ export default function Library() {
   // codigo do controle remoto) porque o poll() do controle FISICO
   // (efeito logo abaixo) tambem precisa saber quem manda na biblioteca
   // agora pra' so' deixar UM dispositivo controlar por vez (ver
-  // activePhonePlayerRef) — controle e celular mandando comando ao mesmo
-  // tempo bagunçava a navegacao.
+  // activeControllerPlayerRef) — controle e celular mandando comando ao
+  // mesmo tempo bagunçava a navegacao.
   //
-  // "Quem manda" e' DINAMICO, nao so' "player 1 fixo": e' o MENOR numero
-  // entre os celulares CONECTADOS agora (physical so' assume quando
-  // NENHUM celular esta conectado) — se o player 1 desconectar, o player
-  // 2 (se ainda conectado) assume sozinho; se o player 1 voltar, ele
-  // retoma (pedido explicito). Fisico nao tem numero proprio aqui (a
-  // biblioteca so' rastreia UM controle fisico, sem multiplayer de
-  // verdade) — so' entra quando nenhum celular concorre.
+  // "Quem manda" e' DINAMICO: e' o MENOR numero entre TODO MUNDO
+  // conectado agora, fisico OU celular (pedido explicito — quem chega
+  // PRIMEIRO pega o numero menor e manda, independente do tipo; se ele
+  // sair, o proximo numero assume sozinho, tambem independente do tipo).
+  // Fisico nao tem numero fixo (a biblioteca so' rastreia UM controle
+  // fisico, sem multiplayer de verdade) — o numero dele vem de
+  // physicalPlayerRef, atribuido dinamicamente por
+  // remoteControl.assignPhysicalSlot() ao conectar (ver poll() logo
+  // abaixo) e mantido em dia pelas renumeracoes (ver "playerRenumbered"
+  // no subscribe mais abaixo).
   const remoteControl = useRemoteControlContext();
-  const activePhonePlayerRef = useRef<number | null>(null);
+  const physicalPlayerRef = useRef<number | null>(null);
+  const activeControllerPlayerRef = useRef<number | null>(null);
   {
     const connectedPhoneNumbers = remoteControl.phones.filter((p) => p.connected).map((p) => p.player);
-    activePhonePlayerRef.current = connectedPhoneNumbers.length > 0 ? Math.min(...connectedPhoneNumbers) : null;
+    const candidates = [...connectedPhoneNumbers];
+    if (physicalPlayerRef.current !== null) candidates.push(physicalPlayerRef.current);
+    activeControllerPlayerRef.current = candidates.length > 0 ? Math.min(...candidates) : null;
   }
   // Espelhos pra ler estado sempre atual de dentro do loop de poll do
   // gamepad (aquele efeito so roda uma vez — ver comentario mais abaixo —
@@ -937,28 +943,27 @@ export default function Library() {
     // marca que precisa resincronizar sem agir no primeiro frame livre.
     let wasGatedByConfirm = false;
 
-    // Reserva o player 1 assim que o fisico conecta (Biblioteca so'
-    // rastreia UM fisico por vez, sempre considerado player 1 quando
-    // presente — ver controllerSlots mais abaixo) — sem isso, um celular
-    // que escaneasse o QR DEPOIS do fisico ja conectado achava o player 1
-    // "livre" (RemoteControlContext nao sabia que o fisico ja' tava
-    // usando) e roubava o numero que devia ser do fisico (pedido
-    // explicito: quem conecta primeiro pega o menor numero). Ao
-    // desconectar, libera o 1 E promove quem tiver numero maior (mesmo
-    // criterio de quando um celular sai, ver notifySlotVacated).
+    // Pega o proximo numero LIVRE assim que o fisico conecta (nao mais
+    // fixo em 1 — pedido explicito: quem chega primeiro pega o menor
+    // numero, seja fisico ou celular; se um celular ja' estava conectado
+    // antes, o fisico pega o proximo depois dele). Ao desconectar, libera
+    // o numero E promove quem tiver numero maior (mesmo criterio de
+    // quando um celular sai, ver notifySlotVacated).
     function onConnected(e: GamepadEvent) {
       gpIndex = e.gamepad.index;
       setGamepadActive(true);
       setGamepadName(e.gamepad.id || "Controle");
-      remoteControl.reservePhysicalSlots(new Set([1]));
+      physicalPlayerRef.current = remoteControl.assignPhysicalSlot();
     }
     function onDisconnected(e: GamepadEvent) {
       if (e.gamepad.index !== gpIndex) return;
       gpIndex = null;
       setGamepadActive(false);
       setGamepadName(null);
+      const vacated = physicalPlayerRef.current;
+      physicalPlayerRef.current = null;
       remoteControl.reservePhysicalSlots(new Set());
-      remoteControl.notifySlotVacated(1);
+      if (vacated !== null) remoteControl.notifySlotVacated(vacated);
     }
     window.addEventListener("gamepadconnected", onConnected);
     window.addEventListener("gamepaddisconnected", onDisconnected);
@@ -995,7 +1000,7 @@ export default function Library() {
             gpIndex = gp!.index;
             setGamepadActive(true);
             setGamepadName(gp!.id || "Controle");
-            remoteControl.reservePhysicalSlots(new Set([1]));
+            physicalPlayerRef.current = remoteControl.assignPhysicalSlot();
             break;
           }
         }
@@ -1004,11 +1009,13 @@ export default function Library() {
         // So' UM dispositivo controla a biblioteca por vez — com controle
         // fisico E celular conectados ao mesmo tempo, os dois mandando
         // comando pra grade simultaneamente bagunçava a navegacao (pedido
-        // explicito). Fisico so' manda quando NENHUM celular esta
-        // conectado agora (ver activePhonePlayerRef) — se um celular
-        // conectar, ele assume; se todos os celulares desconectarem, o
-        // fisico volta a mandar sozinho.
-        if (activePhonePlayerRef.current !== null) {
+        // explicito). Fisico so' manda quando E' ele quem tem o MENOR
+        // numero entre todo mundo conectado agora (ver
+        // activeControllerPlayerRef) — nao mais "so' quando nenhum
+        // celular esta conectado": se o fisico chegou primeiro (numero
+        // menor que qualquer celular), continua mandando mesmo com
+        // celular conectado depois dele.
+        if (activeControllerPlayerRef.current !== physicalPlayerRef.current) {
           raf = requestAnimationFrame(poll);
           return;
         }
@@ -1265,6 +1272,17 @@ export default function Library() {
 
     const unsubscribe = remoteControl.subscribe((msg) => {
       if ("type" in msg) {
+        // Um celular saiu de proposito e a renumeracao (ver
+        // notifySlotVacated/renumberAfterVacate no
+        // RemoteControlContext) empurrou numeros pra baixo — se o numero
+        // ANTIGO batia com o do fisico, o fisico tambem foi promovido,
+        // entao atualiza physicalPlayerRef (e a reserva no context) pra
+        // acompanhar. Sem isso o fisico ficava "preso" no numero antigo
+        // pra sempre depois de uma renumeracao causada por um celular.
+        if (msg.type === "playerRenumbered" && msg.oldPlayer === physicalPlayerRef.current) {
+          physicalPlayerRef.current = msg.newPlayer;
+          remoteControl.reservePhysicalSlots(new Set([msg.newPlayer]));
+        }
         // "selectTap" (toque INSTANTANEO no SEL do celular, sem segurar —
         // ver RemoteController.html) na Biblioteca abre DIRETO o overlay
         // A-Z normal (pedido explicito, trocou de lugar com o Start — ver
@@ -1277,7 +1295,7 @@ export default function Library() {
         // instantaneo, fecha de novo pelo hold), um toggle duplo confuso.
         // exit/toggleFullscreen/toggleSaveMenu continuam sem sentido na
         // Biblioteca, ignorados.
-        if (msg.type === "selectTap" && msg.player === activePhonePlayerRef.current && !pairingModalOpenRef.current) {
+        if (msg.type === "selectTap" && msg.player === activeControllerPlayerRef.current && !pairingModalOpenRef.current) {
           if (!bigPictureOnRef.current) setBigPictureOn(true);
           if (!gamepadActiveRef.current) { setGamepadActive(true); setGamepadName("Celular (controle remoto)"); }
           setKeyboardMode(false);
@@ -1285,12 +1303,12 @@ export default function Library() {
         }
         return;
       }
-      // So' UM celular controla a biblioteca por vez — o de MENOR numero
-      // entre os CONECTADOS agora (ver activePhonePlayerRef la' em cima):
-      // se o player 1 desconectar, o player 2 assume sozinho; se o
-      // player 1 voltar, retoma o comando (pedido explicito, mesmo
-      // criterio do poll() fisico).
-      if (msg.player !== activePhonePlayerRef.current) return;
+      // So' UM dispositivo controla a biblioteca por vez — o de MENOR
+      // numero entre TODO MUNDO conectado agora, fisico ou celular (ver
+      // activeControllerPlayerRef la' em cima): se quem manda sair, o
+      // proximo numero assume sozinho, independente do tipo (pedido
+      // explicito, mesmo criterio do poll() fisico).
+      if (msg.player !== activeControllerPlayerRef.current) return;
 
       // Modal do QR code (parear/gerenciar celular) aberto: o celular
       // vira dele, senao apertar um botao continuava mexendo na grade
@@ -1647,13 +1665,14 @@ export default function Library() {
   const pullProgress = Math.min(1, pullDistance / PULL_THRESHOLD);
 
   // Biblioteca so' rastreia UM controle fisico por vez (sem multiplayer
-  // aqui) — mostra ele como P1 so' quando realmente e' quem manda (nenhum
-  // celular conectado agora, ver activePhonePlayerRef); "Celular (controle
-  // remoto)" e' o nome sentinela que o proprio handler do remoto usa pra
-  // ligar gamepadActive, nao um controle fisico de verdade.
+  // aqui) — mostra ele sempre que conectado, com o numero DINAMICO que
+  // recebeu de assignPhysicalSlot() (nao mais fixo em P1, ver
+  // physicalPlayerRef); "Celular (controle remoto)" e' o nome sentinela
+  // que o proprio handler do remoto usa pra ligar gamepadActive, nao um
+  // controle fisico de verdade.
   const controllerSlots: ControllerSlot[] = [
-    ...(gamepadActive && gamepadName !== "Celular (controle remoto)" && activePhonePlayerRef.current === null
-      ? [{ player: 1, kind: "gamepad" as const }]
+    ...(gamepadActive && gamepadName !== "Celular (controle remoto)" && physicalPlayerRef.current !== null
+      ? [{ player: physicalPlayerRef.current, kind: "gamepad" as const }]
       : []),
     ...remoteControl.phones.filter((p) => p.connected).map((p) => ({ player: p.player, kind: "phone" as const })),
   ];

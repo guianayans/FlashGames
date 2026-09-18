@@ -46,6 +46,12 @@ html, body { position: fixed; inset: 0; overflow: hidden; background: #000; }
 #rotate-hint .icon { font-size: 48px; animation: rotate-pulse 1.6s ease-in-out infinite; }
 @keyframes rotate-pulse { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(90deg); } }
 #rotate-hint p { color: rgba(255,255,255,.7); font-size: 14px; max-width: 280px; }
+#rotate-hint-disconnect {
+  margin-top: 6px; padding: 11px 20px; border-radius: 10px;
+  border: 1px solid rgba(255,80,80,.35); background: rgba(255,60,60,.14);
+  color: #ffb4b4; font: 600 13px/1 system-ui, sans-serif;
+  cursor: pointer; touch-action: manipulation;
+}
 body.landscape #rotate-hint { display: none; }
 body:not(.landscape) #shell-controls { display: none; }
 
@@ -551,6 +557,12 @@ body.config-mode .gc-hidden { opacity: .25; pointer-events: auto !important; }
 <div id="rotate-hint">
   <div class="icon">📱</div>
   <p>Gire o celular na horizontal pra usar como controle.</p>
+  <!-- Antes so' dava pra desconectar depois de girar pra paisagem (onde
+       fica o #status-bar) — pedido explicito: deixa desistir/desconectar
+       direto daqui tambem, sem precisar girar so' pra isso. Abre o MESMO
+       dialogo de confirmar (#disconnect-confirm), ja' existe e funciona
+       em qualquer orientacao (nao e' bloqueado por "body.landscape"). -->
+  <button type="button" id="rotate-hint-disconnect">Desconectar controle</button>
 </div>
 
 <div id="status-bar"><span id="status-dot"></span><span id="status-text">Conectando...</span></div>
@@ -794,6 +806,12 @@ if (!IS_STANDALONE) {
   // desconectar nao faz sentido ficar solto aqui).
   var disconnectConfirm = document.getElementById('disconnect-confirm');
   statusBar.addEventListener('click', () => {
+    disconnectConfirm.classList.add('show');
+  });
+  // Mesmo dialogo, so' que acessivel direto da tela de "gire o celular"
+  // (retrato) — antes so' dava pra desconectar depois de girar pra
+  // paisagem (pedido explicito).
+  document.getElementById('rotate-hint-disconnect').addEventListener('click', () => {
     disconnectConfirm.classList.add('show');
   });
   document.getElementById('disconnect-confirm-cancel').addEventListener('click', () => {

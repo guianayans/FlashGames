@@ -355,7 +355,7 @@ function useGamepadPlayer(
     }
 
     // Renumeracao (pedido explicito, mesmo criterio do celular — ver
-    // renumberAfterExplicitLeave em RemoteControlContext.tsx): quando um
+    // renumberAfterVacate em RemoteControlContext.tsx): quando um
     // controle fisico desconecta, os controles fisicos com numero MAIOR
     // descem um, sem deixar buraco (quem era P2 fisico vira P1 fisico).
     // So' desloca ENTRE controles fisicos — um celular ja' conectado como
@@ -592,7 +592,7 @@ function useRemoteControlForPlayer(
         // querer.
         if (msg.type === "playerRenumbered") {
           // Celular foi promovido (P2 virou P1, etc — ver
-          // renumberAfterExplicitLeave em RemoteControlContext.tsx). A
+          // renumberAfterVacate em RemoteControlContext.tsx). A
           // partir de agora ele ja' manda os botoes com o numero NOVO
           // (lido fresco do phoneSlotsRef a cada mensagem), mas se
           // estivesse segurando algum botao bem na hora da troca, o
