@@ -152,6 +152,13 @@ body {
   background: transparent;
   cursor: pointer; touch-action: none;
   transition: background 50ms;
+  /* Letra (X/Y/A/B) sem cor nenhuma setada aqui herdava o preto padrao
+     do texto — visivel em cima do retrato (pedido explicito: no retrato
+     o shell de verdade ja' tem a letra impressa fisicamente por baixo,
+     nao precisa de outra por cima). So' isso, sem afetar a paisagem —
+     la' cada #btn-x/y/a/b tem cor propria com especificidade de ID
+     (ver mais abaixo), que sempre vence essa regra generica aqui. */
+  color: transparent;
 }
 .btn.pressed { background: rgba(255,255,255,.22); }
 .btn.listening, .cbtn.listening {
@@ -1916,8 +1923,17 @@ function syncOrientation() {
       // instante fica menor/errado, e o calculo do diamante sai
       // errado (botoes gigantes/fora do lugar, precisava "resetar" pra
       // corrigir). Recalcula de novo um pouco depois, quando o
-      // viewport ja' estabilizou, se autocorrigindo sozinho.
-      setTimeout(() => applyFcLayout(fcGap), 250);
+      // viewport ja' estabilizou, se autocorrigindo sozinho. Confere
+      // "ainda esta em paisagem" na hora de disparar — sem essa trava,
+      // um flip-flop rapido de orientacao logo no carregamento (comum
+      // no boot de uma PWA, a barra de status/endereco ainda mexendo)
+      // podia fazer esse timer atrasado disparar DEPOIS da pagina ja
+      // ter voltado pro retrato, aplicando estilo inline de paisagem
+      // por cima (bug relatado: botoes iniciavam errados no retrato,
+      // so' um giro manual pra paisagem-e-volta corrigia).
+      setTimeout(() => {
+        if (document.body.classList.contains('landscape')) applyFcLayout(fcGap);
+      }, 250);
     }
     // Girou pra paisagem com um controle fisico ja conectado — esconde os
     // botoes de toque direto (ver hideControlsForGamepad, secao CONTROLE

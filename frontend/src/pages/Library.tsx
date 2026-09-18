@@ -1078,9 +1078,12 @@ export default function Library() {
           if (pressedNow(0) && !btnState[0]) confirmOverlayFocus();
           if (pressedNow(2) && !btnState[2]) confirmOverlaySelectFilter();
           if (pressedNow(3) && !btnState[3]) backspaceQuery();
-          // Bola (1) ou Start (9): fecha o teclado (termina de digitar).
-          if ((pressedNow(1) && !btnState[1]) || (pressedNow(9) && !btnState[9])) setAlphaOpen(false);
-          [0, 1, 2, 3, 9].forEach((idx) => {
+          // Bola (1), Start (9) ou Select (8): fecha o teclado (termina de
+          // digitar) — Select fecha tambem pra virar toggle junto com o
+          // "abre" dele la embaixo (pedido explicito: apertar Select de
+          // novo com o teclado ja aberto fecha, igual um liga/desliga).
+          if ((pressedNow(1) && !btnState[1]) || (pressedNow(9) && !btnState[9]) || (pressedNow(8) && !btnState[8])) setAlphaOpen(false);
+          [0, 1, 2, 3, 8, 9].forEach((idx) => {
             btnState[idx] = pressedNow(idx);
           });
           raf = requestAnimationFrame(poll);
@@ -1102,7 +1105,13 @@ export default function Library() {
         // L1/R1: alternam entre os filtros (Todos/Recentes/Favoritos/Top
         // Games/cada sistema), na ordem em que os chips aparecem — ver
         // cycleChip. L2/R2: pagina anterior/proxima. Start: abre o
-        // filtro por letra (vira teclado sozinho, ver keyboardMode).
+        // filtro por letra (fica no filtro por letra normal, a nao ser
+        // que o modo controle ja esteja ligado — ver keyboardMode).
+        // Select: abre DIRETO no teclado de digitar (pedido explicito) —
+        // liga o modo controle sozinho se ainda nao tava ligado (mesmo
+        // criterio do resto do poll, ver "if (!bigPictureOnRef.current)"
+        // no handler do remoto mais abaixo), senao a primeira aberta
+        // cairia no filtro por letra normal em vez do teclado.
         if (pressedNow(0) && !btnState[0]) confirmFocused();
         if (pressedNow(1) && !btnState[1]) {
           const id = focusedIdRef.current;
@@ -1114,7 +1123,11 @@ export default function Library() {
         if (pressedNow(6) && !btnState[6]) goToPage(pageSafeRef.current - 1);
         if (pressedNow(7) && !btnState[7]) goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
         if (pressedNow(9) && !btnState[9]) setAlphaOpen(true);
-        [0, 1, 2, 4, 5, 6, 7, 9].forEach((idx) => {
+        if (pressedNow(8) && !btnState[8]) {
+          if (!bigPictureOnRef.current) setBigPictureOn(true);
+          setAlphaOpen(true);
+        }
+        [0, 1, 2, 4, 5, 6, 7, 8, 9].forEach((idx) => {
           btnState[idx] = pressedNow(idx);
         });
       }
@@ -1215,7 +1228,21 @@ export default function Library() {
     }
 
     const unsubscribe = remoteControl.subscribe((msg) => {
-      if ("type" in msg) return; // exit/toggleSaveMenu/toggleFullscreen nao fazem sentido fora de um jogo
+      if ("type" in msg) {
+        // "toggleSaveMenu" (segurar SEL no celular, ver RemoteController.html)
+        // na Biblioteca vira o Select do controle fisico: abre DIRETO no
+        // teclado de digitar, ou fecha se ja' estava aberto (pedido
+        // explicito) — mesmo gesto que no jogo abre o menu de save
+        // state, so' que faz sentido DIFERENTE aqui fora do jogo.
+        // exit/toggleFullscreen continuam sem sentido na Biblioteca,
+        // ignorados.
+        if (msg.type === "toggleSaveMenu" && msg.player === activePhonePlayerRef.current && !pairingModalOpenRef.current) {
+          if (!bigPictureOnRef.current) setBigPictureOn(true);
+          if (!gamepadActiveRef.current) { setGamepadActive(true); setGamepadName("Celular (controle remoto)"); }
+          setAlphaOpen((v) => !v);
+        }
+        return;
+      }
       // So' UM celular controla a biblioteca por vez — o de MENOR numero
       // entre os CONECTADOS agora (ver activePhonePlayerRef la' em cima):
       // se o player 1 desconectar, o player 2 assume sozinho; se o
