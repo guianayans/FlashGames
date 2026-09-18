@@ -2186,9 +2186,22 @@ syncControlsVisibility();
 const SQRT2 = Math.sqrt(2);
 function applyFcLayout(v) {
   fcGap = v;
+  // Blindagem: SE alguma chamada (timer atrasado, corrida entre o fetch
+  // do layout salvo e uma troca de orientacao rapida, etc) disparar isso
+  // fora da paisagem por engano, LIMPA em vez de so' nao fazer nada —
+  // antes so' tinha "if (!S) return" (assumindo que o cluster mede 0 no
+  // retrato, o que normalmente e' verdade), mas qualquer furo nessa
+  // suposicao deixava os botoes "presos" com posicao de paisagem no
+  // retrato (bug relatado varias vezes: so' um giro manual corrigia).
+  // Assim, mesmo que a suposicao falhe algum dia, o pior caso vira
+  // autocorrecao em vez de poluicao permanente.
+  if (!document.body.classList.contains('landscape')) {
+    if (typeof clearFcButtonPositions === 'function') clearFcButtonPositions();
+    return;
+  }
   const r = faceCluster.getBoundingClientRect();
   const S = r.width;
-  if (!S) return; // cluster ainda sem layout (ex.: retrato) — nada a fazer
+  if (!S) return; // cluster ainda sem layout — nada a fazer
   const BASE = S * 0.34;
   const MIN = S * 0.12;
   let btnSize, offset;
