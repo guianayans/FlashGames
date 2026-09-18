@@ -47,6 +47,7 @@ interface RemoteControlContextValue {
   stop: () => void;
   subscribe: (handler: RemoteHandler) => () => void;
   reservePhysicalSlots: (taken: Set<number>) => void;
+  notifySlotVacated: (vacatedPlayer: number) => void;
 }
 
 const RemoteControlContext = createContext<RemoteControlContextValue | null>(null);
@@ -380,6 +381,24 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
     reservedPhysicalRef.current = taken;
   }
 
+  // Igual ao renumberAfterExplicitLeave acima, mas pra quem NAO e' celular
+  // — ver Library.tsx, onde um controle FISICO desconectando tambem tem
+  // que promover os celulares com numero maior (pedido explicito: "quem
+  // conectou primeiro pega o P menor, e se o P menor sair todos os
+  // proximos descem uma casa" vale pro fisico tambem, nao so' entre
+  // celulares). A Biblioteca so' rastreia UM fisico por vez (sempre
+  // considerado player 1 quando conectado — ver reservePhysicalSlots la'
+  // sendo chamado com {1}), entao vacatedPlayer aqui e' sempre 1 na
+  // pratica, mas a funcao aceita qualquer numero por generalidade.
+  function notifySlotVacated(vacatedPlayer: number) {
+    const shifts = renumberAfterExplicitLeave(vacatedPlayer);
+    if (shifts.length === 0) return;
+    syncPhonesState();
+    for (const s of shifts) {
+      handlerRef.current?.({ type: "playerRenumbered", oldPlayer: s.oldPlayer, newPlayer: s.newPlayer });
+    }
+  }
+
   // Restaura uma sessao ainda viva depois de um F5/refresh (o relay
   // mantem o pareamento de pe' enquanto QUALQUER lado — desktop ou algum
   // celular — continuar conectado, ver remoteRelay.js) — reconecta direto
@@ -400,7 +419,7 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <RemoteControlContext.Provider value={{ status, remoteUrl, phones, start, stop, subscribe, reservePhysicalSlots }}>
+    <RemoteControlContext.Provider value={{ status, remoteUrl, phones, start, stop, subscribe, reservePhysicalSlots, notifySlotVacated }}>
       {children}
     </RemoteControlContext.Provider>
   );

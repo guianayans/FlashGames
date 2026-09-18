@@ -937,16 +937,28 @@ export default function Library() {
     // marca que precisa resincronizar sem agir no primeiro frame livre.
     let wasGatedByConfirm = false;
 
+    // Reserva o player 1 assim que o fisico conecta (Biblioteca so'
+    // rastreia UM fisico por vez, sempre considerado player 1 quando
+    // presente — ver controllerSlots mais abaixo) — sem isso, um celular
+    // que escaneasse o QR DEPOIS do fisico ja conectado achava o player 1
+    // "livre" (RemoteControlContext nao sabia que o fisico ja' tava
+    // usando) e roubava o numero que devia ser do fisico (pedido
+    // explicito: quem conecta primeiro pega o menor numero). Ao
+    // desconectar, libera o 1 E promove quem tiver numero maior (mesmo
+    // criterio de quando um celular sai, ver notifySlotVacated).
     function onConnected(e: GamepadEvent) {
       gpIndex = e.gamepad.index;
       setGamepadActive(true);
       setGamepadName(e.gamepad.id || "Controle");
+      remoteControl.reservePhysicalSlots(new Set([1]));
     }
     function onDisconnected(e: GamepadEvent) {
       if (e.gamepad.index !== gpIndex) return;
       gpIndex = null;
       setGamepadActive(false);
       setGamepadName(null);
+      remoteControl.reservePhysicalSlots(new Set());
+      remoteControl.notifySlotVacated(1);
     }
     window.addEventListener("gamepadconnected", onConnected);
     window.addEventListener("gamepaddisconnected", onDisconnected);
@@ -983,6 +995,7 @@ export default function Library() {
             gpIndex = gp!.index;
             setGamepadActive(true);
             setGamepadName(gp!.id || "Controle");
+            remoteControl.reservePhysicalSlots(new Set([1]));
             break;
           }
         }
