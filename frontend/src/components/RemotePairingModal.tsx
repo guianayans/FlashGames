@@ -26,12 +26,14 @@ export default function RemotePairingModal({
   phones,
   onClose,
   onDisconnect,
+  onKickPhone,
 }: {
   status: RemoteControlStatus;
   remoteUrl: string | null;
   phones: RemotePhone[];
   onClose: () => void;
   onDisconnect: () => void;
+  onKickPhone: (clientId: string) => void;
 }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const roomFull = phones.length >= MAX_PLAYERS;
@@ -66,7 +68,25 @@ export default function RemotePairingModal({
           <ul className="remote-pairing-players">
             {phones.map((p) => (
               <li key={p.clientId} className={p.connected ? "connected" : "disconnected"}>
-                🎮 P{p.player} {p.connected ? "" : "(desconectado)"}
+                <span>
+                  🎮 P{p.player} {p.connected ? "" : "(desconectado)"}
+                </span>
+                {/* So' faz sentido desconectar quem esta' conectado de
+                    verdade agora — uma entrada "(desconectado)" e' so'
+                    a fila que reconecta sozinha, nao tem WS pra kickar
+                    (pedido explicito: "x" por celular pra desconectar
+                    so' um, sem derrubar os outros — ver kickPhone). */}
+                {p.connected && (
+                  <button
+                    type="button"
+                    className="remote-pairing-kick"
+                    onClick={() => onKickPhone(p.clientId)}
+                    aria-label={`Desconectar P${p.player}`}
+                    title={`Desconectar P${p.player}`}
+                  >
+                    ×
+                  </button>
+                )}
               </li>
             ))}
           </ul>

@@ -784,6 +784,11 @@ if (!IS_STANDALONE) {
       else if (data.type === 'peer-disconnected') { setStatus('disconnected', 'Desktop desconectou'); setPlayerBadge(null); }
       else if (data.type === 'assignSlot') setPlayerBadge(data.player);
       else if (data.type === 'roomFull') { gaveUp = true; setStatus('disconnected', 'Sala cheia (4/4 jogadores)'); setPlayerBadge(null); }
+      // Desktop apertou o "x" desse celular especifico no modal de
+      // pareamento (pedido explicito, ver kickPhone em
+      // RemoteControlContext.tsx) — desconecta na hora, sem pedir
+      // confirmacao de novo (ja' foi confirmado do lado de quem mandou).
+      else if (data.type === 'kicked') doDisconnect();
     });
     ws.addEventListener('close', () => {
       if (gaveUp) return;
@@ -817,7 +822,11 @@ if (!IS_STANDALONE) {
   document.getElementById('disconnect-confirm-cancel').addEventListener('click', () => {
     disconnectConfirm.classList.remove('show');
   });
-  document.getElementById('disconnect-confirm-yes').addEventListener('click', () => {
+  // Compartilhada entre "Desconectar" local (botao, com confirmacao) e o
+  // "kicked" remoto (desktop desconectando esse celular pelo "x" no
+  // modal de pareamento, sem confirmacao — ja' foi confirmado do outro
+  // lado).
+  function doDisconnect() {
     gaveUp = true;
     clearTimeout(reconnectTimer);
     // Avisa o relay que essa saida e' de PROPOSITO (ver remoteRelay.js,
@@ -827,7 +836,8 @@ if (!IS_STANDALONE) {
     if (ws && ws.readyState === WebSocket.OPEN) { try { ws.send(JSON.stringify({ type: 'leaving' })); } catch(e) {} }
     if (ws) { try { ws.close(); } catch(e) {} }
     location.href = '/';
-  });
+  }
+  document.getElementById('disconnect-confirm-yes').addEventListener('click', doDisconnect);
 }
 
 // ══════════════════════════════════════════

@@ -1354,11 +1354,19 @@ function DesktopPlayer({ slug }: { slug: string }) {
             status={remoteControl.status}
             remoteUrl={remoteControl.remoteUrl}
             phones={remoteControl.phones}
-            onClose={() => setPairingModalOpen(false)}
+            onClose={() => {
+              setPairingModalOpen(false);
+              // Fechar sem NUNCA ter parecido ninguem (pedido explicito) e'
+              // igual desconectar — senao a sessao ficava viva escondida e
+              // o indicador continuava preso em "Aguardando celular..."
+              // mesmo com o modal ja' fechado (mesmo criterio de Library.tsx).
+              if (!remoteControl.phones.some((p) => p.connected)) remoteControl.stop();
+            }}
             onDisconnect={() => {
               setPairingModalOpen(false);
               remoteControl.stop();
             }}
+            onKickPhone={(clientId) => remoteControl.kickPhone(clientId)}
           />
         )}
       </div>

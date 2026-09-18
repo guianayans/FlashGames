@@ -1815,11 +1815,22 @@ export default function Library() {
           status={remoteControl.status}
           remoteUrl={remoteControl.remoteUrl}
           phones={remoteControl.phones}
-          onClose={() => setPairingModalOpen(false)}
+          onClose={() => {
+            setPairingModalOpen(false);
+            // Fechar sem NUNCA ter parecido ninguem (pedido explicito) e'
+            // igual desconectar — senao a sessao ficava viva escondida
+            // (WS aberto, esperando um celular que talvez nunca escaneie),
+            // e o indicador no topo continuava preso em "Aguardando
+            // celular..." mesmo com o modal ja' fechado. So' fecha "de
+            // mentirinha" (mantem a sessao) quando pelo menos um celular
+            // JA' esta conectado de verdade.
+            if (!remoteControl.phones.some((p) => p.connected)) remoteControl.stop();
+          }}
           onDisconnect={() => {
             setPairingModalOpen(false);
             remoteControl.stop();
           }}
+          onKickPhone={(clientId) => remoteControl.kickPhone(clientId)}
         />
       )}
       {qrScannerOpen && <QrScannerModal onClose={() => setQrScannerOpen(false)} />}

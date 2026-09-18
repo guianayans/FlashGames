@@ -45,6 +45,7 @@ interface RemoteControlContextValue {
   phones: RemotePhone[];
   start: () => void;
   stop: () => void;
+  kickPhone: (clientId: string) => void;
   subscribe: (handler: RemoteHandler) => () => void;
   reservePhysicalSlots: (taken: Set<number>) => void;
   notifySlotVacated: (vacatedPlayer: number) => void;
@@ -398,6 +399,19 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
     setPhones([]);
   }
 
+  // Desconecta UM celular especifico pelo desktop (pedido explicito: "x"
+  // por celular no modal de pareamento, ver RemotePairingModal) — manda
+  // um "kicked" so' pra ESSE clientId (relay ja' suporta enderecar
+  // {to: clientId, ...}, ver attachRemoteWebSocket). O celular reage
+  // EXATAMENTE como se tivesse apertado "Desconectar" nele mesmo (ver
+  // RemoteController.html, data.type === 'kicked'): manda "leaving",
+  // fecha o proprio WS — o resto (phone-left explicit=true, renumeracao
+  // dos que sobraram, tudo isso) ja' acontece sozinho pelo caminho
+  // normal, sem precisar duplicar nada aqui.
+  function kickPhone(clientId: string) {
+    sendRaw({ to: clientId, type: "kicked" });
+  }
+
   async function start() {
     stop();
     stoppedRef.current = false;
@@ -465,7 +479,7 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <RemoteControlContext.Provider value={{ status, remoteUrl, phones, start, stop, subscribe, reservePhysicalSlots, notifySlotVacated, assignPhysicalSlot }}>
+    <RemoteControlContext.Provider value={{ status, remoteUrl, phones, start, stop, kickPhone, subscribe, reservePhysicalSlots, notifySlotVacated, assignPhysicalSlot }}>
       {children}
     </RemoteControlContext.Provider>
   );
