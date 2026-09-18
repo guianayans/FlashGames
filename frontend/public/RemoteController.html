@@ -1621,6 +1621,23 @@ wireHoldGesture('btn-select', 350, { type: 'toggleSaveMenu' });
 wireHoldGesture('btn-l2', 700, { type: 'exit' });
 wireHoldGesture('btn-r2', 700, { type: 'toggleFullscreen' });
 
+// Select TAMBEM manda um sinal INSTANTANEO (sem segurar) — pedido
+// explicito pra abrir o teclado de busca da Biblioteca sem atraso. O
+// hold de 350ms ACIMA continua existindo do MESMO jeito, exclusivo pro
+// menu de save state dentro do jogo (evita abrir sem querer no meio de
+// um combo de botoes); a Biblioteca ignora "toggleSaveMenu" e so' reage
+// a "selectTap", o Player ignora "selectTap" e so' reage a
+// "toggleSaveMenu" — cada lado usa so' o sinal que faz sentido pra ele,
+// sem toggle duplo se o usuario segurar por engano (os dois dispersam
+// do MESMO toque, mas cada tela so' escuta um).
+(function () {
+  const el = document.getElementById('btn-select');
+  el.addEventListener('pointerdown', () => {
+    if (configMode) return;
+    if (ws && ws.readyState === WebSocket.OPEN) { try { ws.send(JSON.stringify({ type: 'selectTap' })); } catch (e) {} }
+  });
+})();
+
 // ══════════════════════════════════════════
 //  GAMEPAD FÍSICO (pareado no proprio celular, opcional)
 // ══════════════════════════════════════════

@@ -26,6 +26,7 @@ export type RemoteMessage =
   | { type: "exit"; player: number }
   | { type: "toggleSaveMenu"; player: number }
   | { type: "toggleFullscreen"; player: number }
+  | { type: "selectTap"; player: number }
   | { type: "phoneJoined"; clientId: string; player: number }
   | { type: "phoneLeft"; clientId: string; explicit?: boolean }
   | { type: "phoneRejected"; clientId: string }
@@ -314,7 +315,7 @@ export function RemoteControlProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
-      if (d.type === "exit" || d.type === "toggleSaveMenu" || d.type === "toggleFullscreen") {
+      if (d.type === "exit" || d.type === "toggleSaveMenu" || d.type === "toggleFullscreen" || d.type === "selectTap") {
         const clientId = typeof d.clientId === "string" ? d.clientId : null;
         const player = clientId ? phoneSlotsRef.current.get(clientId) : undefined;
         if (!player) return; // mensagem de um celular ainda sem slot atribuido (corrida rara) — ignora

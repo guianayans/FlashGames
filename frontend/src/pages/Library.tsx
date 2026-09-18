@@ -1104,14 +1104,14 @@ export default function Library() {
         // precisar voltar ate o cabeçalho — ver toggleFocusedCardGroup.
         // L1/R1: alternam entre os filtros (Todos/Recentes/Favoritos/Top
         // Games/cada sistema), na ordem em que os chips aparecem — ver
-        // cycleChip. L2/R2: pagina anterior/proxima. Start: abre o
-        // filtro por letra (fica no filtro por letra normal, a nao ser
-        // que o modo controle ja esteja ligado — ver keyboardMode).
-        // Select: abre DIRETO no teclado de digitar (pedido explicito) —
-        // liga o modo controle sozinho se ainda nao tava ligado (mesmo
-        // criterio do resto do poll, ver "if (!bigPictureOnRef.current)"
-        // no handler do remoto mais abaixo), senao a primeira aberta
-        // cairia no filtro por letra normal em vez do teclado.
+        // cycleChip. L2/R2: pagina anterior/proxima. Start: mesma coisa
+        // que o X (confirma/abre o jogo focado) — antes abria o filtro
+        // por letra, mas isso virou funcao do Select (pedido explicito).
+        // Select: abre DIRETO no teclado de digitar — liga o modo
+        // controle sozinho se ainda nao tava ligado (mesmo criterio do
+        // resto do poll, ver "if (!bigPictureOnRef.current)" no handler
+        // do remoto mais abaixo), senao a primeira aberta cairia no
+        // filtro por letra normal em vez do teclado.
         if (pressedNow(0) && !btnState[0]) confirmFocused();
         if (pressedNow(1) && !btnState[1]) {
           const id = focusedIdRef.current;
@@ -1122,7 +1122,7 @@ export default function Library() {
         if (pressedNow(5) && !btnState[5]) cycleChip(1);
         if (pressedNow(6) && !btnState[6]) goToPage(pageSafeRef.current - 1);
         if (pressedNow(7) && !btnState[7]) goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
-        if (pressedNow(9) && !btnState[9]) setAlphaOpen(true);
+        if (pressedNow(9) && !btnState[9]) confirmFocused();
         if (pressedNow(8) && !btnState[8]) {
           if (!bigPictureOnRef.current) setBigPictureOn(true);
           setAlphaOpen(true);
@@ -1229,14 +1229,17 @@ export default function Library() {
 
     const unsubscribe = remoteControl.subscribe((msg) => {
       if ("type" in msg) {
-        // "toggleSaveMenu" (segurar SEL no celular, ver RemoteController.html)
-        // na Biblioteca vira o Select do controle fisico: abre DIRETO no
-        // teclado de digitar, ou fecha se ja' estava aberto (pedido
-        // explicito) — mesmo gesto que no jogo abre o menu de save
-        // state, so' que faz sentido DIFERENTE aqui fora do jogo.
-        // exit/toggleFullscreen continuam sem sentido na Biblioteca,
-        // ignorados.
-        if (msg.type === "toggleSaveMenu" && msg.player === activePhonePlayerRef.current && !pairingModalOpenRef.current) {
+        // "selectTap" (toque INSTANTANEO no SEL do celular, sem segurar —
+        // ver RemoteController.html) na Biblioteca abre DIRETO no teclado
+        // de digitar, ou fecha se ja' estava aberto (toggle). Sinal
+        // separado do "toggleSaveMenu" (esse continua so' pro menu de
+        // save state DENTRO do jogo, com o hold de 350ms) de proposito —
+        // se os dois lados reagissem ao mesmo sinal, segurar o botao na
+        // Biblioteca por 350ms+ desencadearia os dois em sequencia
+        // (abre pelo tap instantaneo, fecha de novo pelo hold), um
+        // toggle duplo confuso. exit/toggleFullscreen/toggleSaveMenu
+        // continuam sem sentido na Biblioteca, ignorados.
+        if (msg.type === "selectTap" && msg.player === activePhonePlayerRef.current && !pairingModalOpenRef.current) {
           if (!bigPictureOnRef.current) setBigPictureOn(true);
           if (!gamepadActiveRef.current) { setGamepadActive(true); setGamepadName("Celular (controle remoto)"); }
           setAlphaOpen((v) => !v);
@@ -1324,7 +1327,10 @@ export default function Library() {
         case "r": cycleChip(1); break;
         case "l2": goToPage(pageSafeRef.current - 1); break;
         case "r2": goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1)); break;
-        case "start": setAlphaOpen(true); break;
+        // Start = mesma coisa que "b" (confirma/abre o jogo focado) —
+        // antes abria o filtro por letra, virou funcao do Select
+        // (pedido explicito, ver "selectTap" no subscribe mais abaixo).
+        case "start": confirmFocused(); break;
       }
     });
 
@@ -1764,20 +1770,10 @@ export default function Library() {
               </button>
             </div>
             {keyboardMode && (
-              <p className="alpha-hint">✕ digita · ▢ so' seleciona · ○ fecha · △ apaga último</p>
+              <p className="alpha-hint">✕ Digita · ▢ Seleciona · ○ Fecha · △ Apaga último</p>
             )}
             {keyboardMode ? (
               <div className="alpha-grid keyboard-rows">
-                <div className="keyboard-row">
-                  <button
-                    type="button"
-                    data-letter="__ALL__"
-                    className={`alpha-chip alpha-chip-all${overlayFocusedKey === "__ALL__" ? " gamepad-focused" : ""}`}
-                    onClick={() => pickLetter(null)}
-                  >
-                    Apagar tudo
-                  </button>
-                </div>
                 {QWERTY_ROWS.map((row, i) => (
                   <div className="keyboard-row" key={i}>
                     {row.split("").map((l) => (
@@ -1791,6 +1787,20 @@ export default function Library() {
                         {l}
                       </button>
                     ))}
+                    {/* Backspace na ULTIMA linha (ZXCVBNM), a direita do M —
+                        pedido explicito, antes ficava numa linha propria com
+                        o Espaço. */}
+                    {i === QWERTY_ROWS.length - 1 && (
+                      <button
+                        type="button"
+                        data-letter="__BACKSPACE__"
+                        className={`alpha-chip alpha-chip-backspace${overlayFocusedKey === "__BACKSPACE__" ? " gamepad-focused" : ""}`}
+                        onClick={() => backspaceQuery()}
+                        aria-label="Apagar último caractere"
+                      >
+                        ⌫
+                      </button>
+                    )}
                   </div>
                 ))}
                 <div className="keyboard-row">
@@ -1802,14 +1812,15 @@ export default function Library() {
                   >
                     Espaço
                   </button>
+                </div>
+                <div className="keyboard-row">
                   <button
                     type="button"
-                    data-letter="__BACKSPACE__"
-                    className={`alpha-chip alpha-chip-backspace${overlayFocusedKey === "__BACKSPACE__" ? " gamepad-focused" : ""}`}
-                    onClick={() => backspaceQuery()}
-                    aria-label="Apagar último caractere"
+                    data-letter="__ALL__"
+                    className={`alpha-chip alpha-chip-all${overlayFocusedKey === "__ALL__" ? " gamepad-focused" : ""}`}
+                    onClick={() => pickLetter(null)}
                   >
-                    ⌫
+                    Apagar tudo
                   </button>
                 </div>
               </div>

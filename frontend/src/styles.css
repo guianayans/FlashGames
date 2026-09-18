@@ -626,11 +626,23 @@ a {
   min-width: 0;
 }
 
-.keyboard-row .alpha-chip-all,
-.keyboard-row .alpha-chip-space,
-.keyboard-row .alpha-chip-backspace {
+/* Espaço e Apagar tudo agora ficam cada um na sua PROPRIA linha, abaixo
+   do teclado (pedido explicito) — Espaço um pouco mais alto que antes
+   (padding maior), Apagar tudo do tamanho que o Espaço tinha ANTES
+   dessa mudança (padding baixo, vencendo o padding:10px da regra
+   generica .alpha-chip-all usada no filtro por letra sem controle).
+   Backspace NAO entra mais aqui — foi pra dentro da linha ZXCVBNM,
+   mesmo tamanho quadrado das outras teclas (ver .keyboard-row
+   .alpha-chip acima). */
+.keyboard-row .alpha-chip-space {
   flex: 1 1 auto;
   aspect-ratio: auto;
+  padding: 12px;
+}
+.keyboard-row .alpha-chip-all {
+  flex: 1 1 auto;
+  aspect-ratio: auto;
+  padding: 4px;
 }
 
 .library-search {
