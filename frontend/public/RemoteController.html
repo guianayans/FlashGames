@@ -31,50 +31,48 @@ html, body { position: fixed; inset: 0; overflow: hidden; background: #000; }
 body.landscape #rotate-hint { display: none; }
 body:not(.landscape) #shell-controls { display: none; }
 
-/* ── INSTALAR O APP (PWA) — so' aparece no aviso de girar (retrato, o
-   momento calmo antes de comecar a jogar), nunca em cima dos controles
-   na paisagem. NAO da pra forcar o navegador a abrir o link do QR ja'
-   dentro do app instalado (o iOS Safari em particular nao oferece
-   NENHUMA forma programatica pra isso — so' o toque manual no icone da
-   Tela de Inicio abre em modo standalone) — isso aqui e' so' um atalho
-   pra instalar rapido, nao uma solucao pro QR abrir direto no app. ── */
-#install-banner {
+/* ── PRECISA INSTALAR O APP — abrir o link do QR direto pelo navegador
+   (ex.: camera nativa do celular, que NUNCA abre um app ja' instalado,
+   so' o navegador — grave principalmente no iOS, que nao tem NENHUMA
+   API pra isso) nao da pra usar como controle de verdade: o navegador
+   fecha a aba sozinho ao trocar de app, perde o WebSocket, ocupa tela
+   com a barra de endereco. Em vez de deixar tentar e falhar de um jeito
+   confuso, essa tela BLOQUEIA o controle inteiro (nem tenta parear) e
+   so' explica como instalar — pra usar de verdade, precisa ler o QR de
+   DENTRO do app ja' instalado (ver botao "Ler QR Code" na Biblioteca)
+   ou abrir esse link depois de instalado. Cobre a tela INTEIRA, nas
+   duas orientacoes (diferente do #rotate-hint, que so' e' sobre girar
+   — aqui nem depende de orientacao, e' bloqueio de verdade, sem jeito
+   de "usar mesmo assim"). ── */
+#install-required {
+  position: fixed; inset: 0; z-index: 400;
   display: none;
-  margin-top: 4px;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 28px; text-align: center;
+  background: #000; color: #fff;
+}
+#install-required.show { display: flex; }
+#install-required .icon { font-size: 44px; }
+#install-required h1 {
+  font: 700 16px/1.3 system-ui, sans-serif;
   max-width: 300px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(0,229,255,.25);
-  touch-action: auto;
 }
-#install-banner.show { display: block; }
-#install-banner p {
-  color: rgba(255,255,255,.75);
-  font-size: 12px;
+#install-required p {
+  color: rgba(255,255,255,.65);
+  font-size: 13px;
   line-height: 1.5;
-  margin-bottom: 8px;
+  max-width: 300px;
 }
-#install-banner .row { display: flex; gap: 8px; justify-content: center; }
-#install-btn {
-  padding: 7px 16px;
+#install-required-btn {
+  padding: 10px 22px;
   border-radius: 999px;
   border: 1px solid rgba(0,229,255,.5);
-  background: rgba(0,229,255,.12);
+  background: rgba(0,229,255,.14);
   color: #00e5ff;
-  font: 600 12px/1 system-ui, sans-serif;
+  font: 700 13px/1 system-ui, sans-serif;
   cursor: pointer;
   touch-action: manipulation;
-}
-#install-dismiss {
-  padding: 7px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.15);
-  background: transparent;
-  color: rgba(255,255,255,.5);
-  font: 500 12px/1 system-ui, sans-serif;
-  cursor: pointer;
-  touch-action: manipulation;
+  display: none;
 }
 
 /* ── STATUS DE CONEXAO ── */
@@ -373,16 +371,16 @@ body.config-mode .gc-hidden { opacity: .25; pointer-events: auto !important; }
 </head>
 <body>
 
+<div id="install-required">
+  <div class="icon">📲</div>
+  <h1>Instale o app pra usar como controle</h1>
+  <p id="install-required-text">Abrir esse link pelo navegador não funciona como controle de verdade. Instale o FlashGames e leia o QR code de dentro do app.</p>
+  <button id="install-required-btn" type="button">📲 Instalar agora</button>
+</div>
+
 <div id="rotate-hint">
   <div class="icon">📱</div>
   <p>Gire o celular na horizontal pra usar como controle.</p>
-  <div id="install-banner">
-    <p id="install-text">Instale o app pra abrir mais rápido da próxima vez.</p>
-    <div class="row">
-      <button id="install-btn" type="button" style="display:none;">📲 Instalar</button>
-      <button id="install-dismiss" type="button">Agora não</button>
-    </div>
-  </div>
 </div>
 
 <div id="status-bar"><span id="status-dot"></span><span id="status-text">Conectando...</span></div>
@@ -473,44 +471,74 @@ body.config-mode .gc-hidden { opacity: .25; pointer-events: auto !important; }
 
 <script>
 // ══════════════════════════════════════════
-//  CONEXAO — le o token da URL (/remote/<token>), abre o WebSocket do
-//  relay (ver backend/src/remoteRelay.js) e reconecta sozinho se cair.
-//  Sem login: o token do QR e' o unico segredo (mesmo modelo do
-//  Chromecast/AirPlay) — ver useRemoteControl em frontend/src/pages/
-//  Player.tsx do lado do desktop.
+//  PRECISA ESTAR INSTALADO — ver #install-required no CSS/HTML pro
+//  porque. Roda ANTES de tudo (nem tenta abrir WebSocket nenhum se nao
+//  estiver rodando como PWA instalado) — abrir esse link pelo navegador
+//  (ex.: camera nativa do celular escaneando o QR) so' mostra como
+//  instalar, sem deixar usar o controle de um jeito que ia falhar/
+//  confundir de qualquer forma (aba fecha sozinha ao trocar de app,
+//  perde o WebSocket, ocupa tela com barra de endereco).
 // ══════════════════════════════════════════
-const TOKEN = location.pathname.split('/').filter(Boolean)[1] || '';
-const statusBar = document.getElementById('status-bar');
-const statusText = document.getElementById('status-text');
+const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
-function setStatus(state, text) {
-  statusBar.className = state;
-  statusText.textContent = text;
+if (!IS_STANDALONE) {
+  (function () {
+    const screen = document.getElementById('install-required');
+    const btn = document.getElementById('install-required-btn');
+    const text = document.getElementById('install-required-text');
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    screen.classList.add('show');
+    if (isIOS) {
+      text.textContent = 'Abrir esse link pelo navegador não funciona como controle de verdade. Toque em Compartilhar (⬆️) e depois em "Adicionar à Tela de Início" — depois de instalado, use o botão "Ler QR Code" dentro do app.';
+    } else {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        btn.style.display = 'inline-block';
+        btn.addEventListener('click', () => { e.prompt(); }, { passive: false });
+      });
+    }
+  })();
+} else {
+  // ══════════════════════════════════════════
+  //  CONEXAO — le o token da URL (/remote/<token>), abre o WebSocket do
+  //  relay (ver backend/src/remoteRelay.js) e reconecta sozinho se cair.
+  //  Sem login: o token do QR e' o unico segredo (mesmo modelo do
+  //  Chromecast/AirPlay) — ver useRemoteControl em frontend/src/pages/
+  //  Player.tsx do lado do desktop.
+  // ══════════════════════════════════════════
+  var TOKEN = location.pathname.split('/').filter(Boolean)[1] || '';
+  var statusBar = document.getElementById('status-bar');
+  var statusText = document.getElementById('status-text');
+
+  var setStatus = function (state, text) {
+    statusBar.className = state;
+    statusText.textContent = text;
+  };
+
+  var ws = null;
+  var reconnectTimer = null;
+
+  var connect = function () {
+    if (!TOKEN) { setStatus('disconnected', 'Link invalido'); return; }
+    setStatus('', 'Conectando...');
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${proto}//${location.host}/ws/remote?token=${encodeURIComponent(TOKEN)}&role=phone`);
+    ws.addEventListener('open', () => setStatus('', 'Aguardando o desktop...'));
+    ws.addEventListener('message', e => {
+      let data;
+      try { data = JSON.parse(e.data); } catch { return; }
+      if (data.type === 'paired') setStatus('connected', 'Conectado');
+      else if (data.type === 'peer-disconnected') setStatus('disconnected', 'Desktop desconectou');
+    });
+    ws.addEventListener('close', () => {
+      setStatus('disconnected', 'Reconectando...');
+      clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connect, 1500);
+    });
+    ws.addEventListener('error', () => {});
+  };
+  connect();
 }
-
-let ws = null;
-let reconnectTimer = null;
-
-function connect() {
-  if (!TOKEN) { setStatus('disconnected', 'Link invalido'); return; }
-  setStatus('', 'Conectando...');
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${proto}//${location.host}/ws/remote?token=${encodeURIComponent(TOKEN)}&role=phone`);
-  ws.addEventListener('open', () => setStatus('', 'Aguardando o desktop...'));
-  ws.addEventListener('message', e => {
-    let data;
-    try { data = JSON.parse(e.data); } catch { return; }
-    if (data.type === 'paired') setStatus('connected', 'Conectado');
-    else if (data.type === 'peer-disconnected') setStatus('disconnected', 'Desktop desconectou');
-  });
-  ws.addEventListener('close', () => {
-    setStatus('disconnected', 'Reconectando...');
-    clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(connect, 1500);
-  });
-  ws.addEventListener('error', () => {});
-}
-connect();
 
 // ══════════════════════════════════════════
 //  ELEMENTS
