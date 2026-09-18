@@ -1723,8 +1723,13 @@ a {
   font-size: 0.78rem;
   line-height: 1.4;
 }
-.remote-pairing-close {
+.remote-pairing-actions {
   margin-top: 4px;
+  display: flex;
+  gap: 10px;
+}
+.remote-pairing-close,
+.remote-pairing-disconnect {
   min-width: 96px;
   padding: 9px 18px;
   border-radius: var(--radius-sm);
@@ -1737,9 +1742,51 @@ a {
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 .remote-pairing-close:hover {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+.remote-pairing-disconnect:hover {
   border-color: var(--magenta);
   color: var(--text);
 }
+
+/* Indicador flutuante e PERSISTENTE (ver RemoteControlBadge) — sempre
+   por cima (position:fixed), nunca some sozinho enquanto uma sessao
+   remota existir. Canto superior-direito, fora do fluxo do topbar (que
+   podia ficar cheio de badges de controle fisico ja). */
+.remote-badge {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: 10px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(10, 7, 20, 0.92);
+  border: 1px solid var(--border-soft);
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.remote-badge:hover {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+.remote-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffb020;
+  flex-shrink: 0;
+}
+.remote-badge.connected .remote-badge-dot { background: #39ff8f; }
+.remote-badge.error .remote-badge-dot { background: #ff5050; }
 
 .player-description {
   color: var(--text-dim);

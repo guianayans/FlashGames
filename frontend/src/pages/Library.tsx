@@ -6,6 +6,9 @@ import type { GameSummary } from "../types";
 import { useAuth } from "../auth/AuthContext";
 import { systemMeta } from "../categories";
 import ConfirmDialog from "../components/ConfirmDialog";
+import RemotePairingModal from "../components/RemotePairingModal";
+import RemoteControlBadge from "../components/RemoteControlBadge";
+import { useRemoteControlContext } from "../remoteControl/RemoteControlContext";
 
 // Tela pequena (mesmo corte de 700px usado no resto do CSS pra layout
 // mobile) — cards expansiveis (Favoritos/Top Games/Recentes) comecam
@@ -142,6 +145,8 @@ export default function Library() {
   const gridRef = useRef<HTMLDivElement>(null);
   const bigPictureOnRef = useRef(bigPictureOn);
   bigPictureOnRef.current = bigPictureOn;
+  const gamepadActiveRef = useRef(gamepadActive);
+  gamepadActiveRef.current = gamepadActive;
   const focusedIdRef = useRef<string | null>(null);
   focusedIdRef.current = focusedId;
   // Espelhos pra ler estado sempre atual de dentro do loop de poll do
@@ -1035,6 +1040,66 @@ export default function Library() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Controle remoto via QR code (ver RemoteControlContext) — celular vira
+  // controle da BIBLIOTECA tambem, nao so' do jogo (pedido explicito:
+  // "conectar nao so' na tela de jogo, mas na tela inicial"). A conexao
+  // em si vive no context (sobrevive navegar daqui pra um jogo); aqui so'
+  // traduz cada botao pro equivalente do controle fisico (ver poll() logo
+  // acima) — mesmo mapeamento, so' que disparado por mensagem em vez de
+  // getGamepads(). Sem D-pad/analogico continuo (o celular manda toque
+  // discreto), entao cada seta so' anda UMA casa por toque, sem segurar-
+  // pra-repetir.
+  const remoteControl = useRemoteControlContext();
+  const [pairingModalOpen, setPairingModalOpen] = useState(false);
+  // Assim que parear, fecha o modal grande sozinho — sobra so' o
+  // indicador pequeno (RemoteControlBadge, sempre visivel), sem tampar a
+  // biblioteca. Mesmo criterio do Player.tsx.
+  const remoteStatusRef = useRef(remoteControl.status);
+  useEffect(() => {
+    if (remoteControl.status === "connected" && remoteStatusRef.current !== "connected") {
+      setPairingModalOpen(false);
+    }
+    remoteStatusRef.current = remoteControl.status;
+  }, [remoteControl.status]);
+  useEffect(() => {
+    return remoteControl.subscribe((msg) => {
+      if ("type" in msg) return; // exit/toggleSaveMenu nao fazem sentido fora de um jogo
+      if (!msg.down) return; // so' reage no toque (down), igual botao fisico faz na borda de subida
+      if (!bigPictureOnRef.current) setBigPictureOn(true);
+      if (!gamepadActiveRef.current) { setGamepadActive(true); setGamepadName("Celular (controle remoto)"); }
+      switch (msg.button) {
+        case "up": case "down": case "left": case "right":
+          moveFocus(msg.button);
+          break;
+        case "b": confirmFocused(); break;
+        case "a": {
+          const id = focusedIdRef.current;
+          if (id?.startsWith("card:")) requestToggleFavorite(slugFromCardId(id));
+          break;
+        }
+        case "y": toggleFocusedCardGroup(); break;
+        case "l": cycleChip(-1); break;
+        case "r": cycleChip(1); break;
+        case "l2": goToPage(pageSafeRef.current - 1); break;
+        case "r2": goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1)); break;
+        case "start": setAlphaOpen(true); break;
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ao desconectar o remoto, tira o badge/foco que ELE ligou — mas so' se
+  // foi ele mesmo quem ligou (gamepadName especifico), pra nao apagar o
+  // badge de um controle FISICO de verdade que porventura esteja
+  // conectado ao mesmo tempo.
+  useEffect(() => {
+    if (remoteControl.status !== "connected" && gamepadName === "Celular (controle remoto)") {
+      setGamepadActive(false);
+      setGamepadName(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remoteControl.status]);
+
   // Digitar no teclado ou mexer o mouse desliga o Big Picture na hora,
   // voltando pro modo normal (mouse/toque) — o poll do gamepad acima
   // religa sozinho assim que o controle for usado de novo.
@@ -1332,6 +1397,18 @@ export default function Library() {
 
         <div className="library-user">
           {gamepadActive && <span className="gamepad-badge">🎮 {gamepadName}</span>}
+          {remoteControl.status === "idle" && (
+            <button
+              type="button"
+              className="remote-connect-btn"
+              onClick={() => {
+                setPairingModalOpen(true);
+                remoteControl.start();
+              }}
+            >
+              📱 Conectar controle
+            </button>
+          )}
           <button
             type="button"
             className={`library-covers-toggle${originalCovers ? " active" : ""}`}
@@ -1362,6 +1439,22 @@ export default function Library() {
           <button onClick={() => logout()}>Sair</button>
         </div>
       </header>
+
+      {/* Fixo na tela, fora do header (que pode ficar atras da busca ao
+          rolar, ver .library-header sticky) — nunca some sozinho enquanto
+          uma sessao remota existir. Tocar reabre o modal do QR. */}
+      <RemoteControlBadge status={remoteControl.status} onClick={() => setPairingModalOpen(true)} />
+      {pairingModalOpen && (
+        <RemotePairingModal
+          status={remoteControl.status}
+          remoteUrl={remoteControl.remoteUrl}
+          onClose={() => setPairingModalOpen(false)}
+          onDisconnect={() => {
+            setPairingModalOpen(false);
+            remoteControl.stop();
+          }}
+        />
+      )}
 
       {alphaOpen && (
         <div className="alpha-overlay" role="dialog" aria-modal="true" aria-label="Filtrar por letra" onClick={() => setAlphaOpen(false)}>

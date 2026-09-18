@@ -31,6 +31,52 @@ html, body { position: fixed; inset: 0; overflow: hidden; background: #000; }
 body.landscape #rotate-hint { display: none; }
 body:not(.landscape) #shell-controls { display: none; }
 
+/* ── INSTALAR O APP (PWA) — so' aparece no aviso de girar (retrato, o
+   momento calmo antes de comecar a jogar), nunca em cima dos controles
+   na paisagem. NAO da pra forcar o navegador a abrir o link do QR ja'
+   dentro do app instalado (o iOS Safari em particular nao oferece
+   NENHUMA forma programatica pra isso — so' o toque manual no icone da
+   Tela de Inicio abre em modo standalone) — isso aqui e' so' um atalho
+   pra instalar rapido, nao uma solucao pro QR abrir direto no app. ── */
+#install-banner {
+  display: none;
+  margin-top: 4px;
+  max-width: 300px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(0,229,255,.25);
+  touch-action: auto;
+}
+#install-banner.show { display: block; }
+#install-banner p {
+  color: rgba(255,255,255,.75);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+#install-banner .row { display: flex; gap: 8px; justify-content: center; }
+#install-btn {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,229,255,.5);
+  background: rgba(0,229,255,.12);
+  color: #00e5ff;
+  font: 600 12px/1 system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+#install-dismiss {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.15);
+  background: transparent;
+  color: rgba(255,255,255,.5);
+  font: 500 12px/1 system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
 /* ── STATUS DE CONEXAO ── */
 #status-bar {
   position: fixed; top: calc(env(safe-area-inset-top,0px) + 10px); left: 50%;
@@ -330,6 +376,13 @@ body.config-mode .gc-hidden { opacity: .25; pointer-events: auto !important; }
 <div id="rotate-hint">
   <div class="icon">📱</div>
   <p>Gire o celular na horizontal pra usar como controle.</p>
+  <div id="install-banner">
+    <p id="install-text">Instale o app pra abrir mais rápido da próxima vez.</p>
+    <div class="row">
+      <button id="install-btn" type="button" style="display:none;">📲 Instalar</button>
+      <button id="install-dismiss" type="button">Agora não</button>
+    </div>
+  </div>
 </div>
 
 <div id="status-bar"><span id="status-dot"></span><span id="status-text">Conectando...</span></div>
@@ -494,6 +547,54 @@ function syncOrientation() {
 }
 mqLandscape.addEventListener('change', syncOrientation);
 syncOrientation();
+
+// ══════════════════════════════════════════
+//  INSTALAR O APP (PWA) — so' no aviso de girar (retrato), nunca em cima
+//  dos controles. Android: captura beforeinstallprompt e instala com UM
+//  toque no botao. iOS Safari NAO dispara esse evento (a Apple nao
+//  oferece instalacao programatica) — o unico jeito e' manual (Compartilhar
+//  -> Adicionar a Tela de Inicio), entao so' mostra o texto explicando,
+//  sem botao. Ja' rodando como PWA instalado (display-mode:standalone no
+//  Android, navigator.standalone no iOS) no banner nenhum.
+// ══════════════════════════════════════════
+(function () {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isStandalone) return;
+  try { if (localStorage.getItem('fg_remote_install_dismissed') === '1') return; } catch (e) {}
+
+  const banner = document.getElementById('install-banner');
+  const installBtn = document.getElementById('install-btn');
+  const installText = document.getElementById('install-text');
+  const dismissBtn = document.getElementById('install-dismiss');
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+  function dismiss() {
+    banner.classList.remove('show');
+    try { localStorage.setItem('fg_remote_install_dismissed', '1'); } catch (e) {}
+  }
+  dismissBtn.addEventListener('click', dismiss, { passive: false });
+
+  if (isIOS) {
+    installText.textContent = 'Toque em Compartilhar (⬆️) e depois em "Adicionar à Tela de Início" pra abrir direto da próxima vez.';
+    banner.classList.add('show');
+    return;
+  }
+
+  // Android/Chrome: so' mostra o banner (com botao) quando o navegador
+  // realmente oferece a instalacao — sem esse evento, nao tem como
+  // instalar com um toque (e a maioria dos outros navegadores/desktop
+  // nem dispara isso), entao fica quieto em vez de mostrar um botao que
+  // nao funcionaria.
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    installBtn.style.display = '';
+    banner.classList.add('show');
+    installBtn.addEventListener('click', () => {
+      e.prompt();
+      e.userChoice.finally(dismiss);
+    }, { passive: false });
+  });
+})();
 
 // ══════════════════════════════════════════
 //  LAYOUT PERSISTENCE — localStorage (sem conta, ver cabecalho)
