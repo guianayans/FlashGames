@@ -1090,27 +1090,30 @@ export default function Library() {
           scrollHoldSign = 0;
         }
 
-        // Overlay A-Z aberto E em modo teclado: D-pad navega, e os 4
-        // botoes da carcaça fazem cada um a sua coisa no chip focado
-        // (referencia DualShock 4): X digita a letra na busca (como
-        // sempre foi); Quadrado so' SELECIONA ela como filtro de letra
-        // inicial (sem digitar, fecha o overlay — o mesmo que clicar nela
-        // com mouse/toque faria); Bola fecha o teclado sem mexer em nada
-        // (like B/Start); Triangulo apaga so' o ULTIMO caractere digitado
-        // (backspace, pedido explicito — apagar tudo de uma vez continua
-        // dando pra fazer navegando ate' a chip "Apagar tudo").
-        if (alphaOpenRef.current && keyboardModeRef.current) {
+        // Overlay A-Z aberto (qualquer um dos dois: filtro normal OU
+        // teclado de digitar, ver keyboardMode): D-pad SEMPRE navega o
+        // overlay, senao o controle continuava mexendo na grade por TRAS
+        // dele (bug relatado: overlay "nao respeitava" o controle). Os 4
+        // botoes da carcaça (referencia DualShock 4): X confirma o chip
+        // focado (digita se for modo teclado, ou seleciona-e-fecha se for
+        // filtro normal — confirmOverlayFocus/pickLetter ja' fazem essa
+        // distincao sozinhos); Quadrado sempre SELECIONA-e-fecha (o mesmo
+        // que clicar com mouse/toque faria, nos dois modos); Bola fecha
+        // sem mexer em nada; Triangulo apaga o ULTIMO caractere digitado,
+        // so' faz sentido no modo teclado (backspace de texto nao existe
+        // no filtro normal).
+        if (alphaOpenRef.current) {
           handleDir("left", left, now, moveOverlayFocus);
           handleDir("right", right, now, moveOverlayFocus);
           handleDir("up", up, now, moveOverlayFocus);
           handleDir("down", down, now, moveOverlayFocus);
           if (pressedNow(0) && !btnState[0]) confirmOverlayFocus();
           if (pressedNow(2) && !btnState[2]) confirmOverlaySelectFilter();
-          if (pressedNow(3) && !btnState[3]) backspaceQuery();
-          // Bola (1), Start (9) ou Select (8): fecha o teclado (termina de
-          // digitar) — Select fecha tambem pra virar toggle junto com o
-          // "abre" dele la embaixo (pedido explicito: apertar Select de
-          // novo com o teclado ja aberto fecha, igual um liga/desliga).
+          if (keyboardModeRef.current && pressedNow(3) && !btnState[3]) backspaceQuery();
+          // Bola (1), Start (9) ou Select (8): fecha o overlay — Select
+          // fecha tambem pra virar toggle junto com o "abre" dele la
+          // embaixo (pedido explicito: apertar Select de novo com o
+          // overlay ja aberto fecha, igual um liga/desliga).
           if ((pressedNow(1) && !btnState[1]) || (pressedNow(9) && !btnState[9]) || (pressedNow(8) && !btnState[8])) setAlphaOpen(false);
           [0, 1, 2, 3, 8, 9].forEach((idx) => {
             btnState[idx] = pressedNow(idx);
@@ -1133,14 +1136,13 @@ export default function Library() {
         // precisar voltar ate o cabeçalho — ver toggleFocusedCardGroup.
         // L1/R1: alternam entre os filtros (Todos/Recentes/Favoritos/Top
         // Games/cada sistema), na ordem em que os chips aparecem — ver
-        // cycleChip. L2/R2: pagina anterior/proxima. Start: mesma coisa
-        // que o X (confirma/abre o jogo focado) — antes abria o filtro
-        // por letra, mas isso virou funcao do Select (pedido explicito).
-        // Select: abre DIRETO no teclado de digitar — liga o modo
-        // controle sozinho se ainda nao tava ligado (mesmo criterio do
-        // resto do poll, ver "if (!bigPictureOnRef.current)" no handler
-        // do remoto mais abaixo), senao a primeira aberta cairia no
-        // filtro por letra normal em vez do teclado.
+        // cycleChip. L2/R2: pagina anterior/proxima. Start: abre DIRETO
+        // no teclado de digitar (pedido explicito, volta a ser a funcao
+        // original do Start). Select: abre o overlay A-Z NORMAL, igual
+        // clicar nele com mouse (pedido explicito, trocou de lugar com o
+        // Start). Os dois ligam o modo controle sozinhos se ainda nao
+        // tava ligado (mesmo criterio do handler do remoto mais abaixo),
+        // senao a primeira aberta cairia sem o modo controle direito.
         if (pressedNow(0) && !btnState[0]) confirmFocused();
         if (pressedNow(1) && !btnState[1]) {
           const id = focusedIdRef.current;
@@ -1151,10 +1153,14 @@ export default function Library() {
         if (pressedNow(5) && !btnState[5]) cycleChip(1);
         if (pressedNow(6) && !btnState[6]) goToPage(pageSafeRef.current - 1);
         if (pressedNow(7) && !btnState[7]) goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1));
-        if (pressedNow(9) && !btnState[9]) confirmFocused();
-        if (pressedNow(8) && !btnState[8]) {
+        if (pressedNow(9) && !btnState[9]) {
           if (!bigPictureOnRef.current) setBigPictureOn(true);
           setKeyboardMode(true);
+          setAlphaOpen(true);
+        }
+        if (pressedNow(8) && !btnState[8]) {
+          if (!bigPictureOnRef.current) setBigPictureOn(true);
+          setKeyboardMode(false);
           setAlphaOpen(true);
         }
         [0, 1, 2, 4, 5, 6, 7, 8, 9].forEach((idx) => {
@@ -1260,19 +1266,21 @@ export default function Library() {
     const unsubscribe = remoteControl.subscribe((msg) => {
       if ("type" in msg) {
         // "selectTap" (toque INSTANTANEO no SEL do celular, sem segurar —
-        // ver RemoteController.html) na Biblioteca abre DIRETO no teclado
-        // de digitar, ou fecha se ja' estava aberto (toggle). Sinal
-        // separado do "toggleSaveMenu" (esse continua so' pro menu de
-        // save state DENTRO do jogo, com o hold de 350ms) de proposito —
-        // se os dois lados reagissem ao mesmo sinal, segurar o botao na
-        // Biblioteca por 350ms+ desencadearia os dois em sequencia
-        // (abre pelo tap instantaneo, fecha de novo pelo hold), um
-        // toggle duplo confuso. exit/toggleFullscreen/toggleSaveMenu
-        // continuam sem sentido na Biblioteca, ignorados.
+        // ver RemoteController.html) na Biblioteca abre DIRETO o overlay
+        // A-Z normal (pedido explicito, trocou de lugar com o Start — ver
+        // "start" no switch mais abaixo, que agora abre o teclado), ou
+        // fecha se ja' estava aberto (toggle). Sinal separado do
+        // "toggleSaveMenu" (esse continua so' pro menu de save state
+        // DENTRO do jogo, com o hold de 350ms) de proposito — se os dois
+        // lados reagissem ao mesmo sinal, segurar o botao na Biblioteca
+        // por 350ms+ desencadearia os dois em sequencia (abre pelo tap
+        // instantaneo, fecha de novo pelo hold), um toggle duplo confuso.
+        // exit/toggleFullscreen/toggleSaveMenu continuam sem sentido na
+        // Biblioteca, ignorados.
         if (msg.type === "selectTap" && msg.player === activePhonePlayerRef.current && !pairingModalOpenRef.current) {
           if (!bigPictureOnRef.current) setBigPictureOn(true);
           if (!gamepadActiveRef.current) { setGamepadActive(true); setGamepadName("Celular (controle remoto)"); }
-          setKeyboardMode(true);
+          setKeyboardMode(false);
           setAlphaOpen((v) => !v);
         }
         return;
@@ -1324,10 +1332,9 @@ export default function Library() {
         return;
       }
 
-      // Overlay A-Z aberto: mesmo gate/mapeamento do poll() do controle
-      // fisico (ver "alphaOpenRef.current && keyboardModeRef.current" la'
-      // em cima) — sem isso, navegar no overlay pelo celular continuava
-      // mexendo na grade de jogos atras dele.
+      // Overlay A-Z aberto (filtro normal OU teclado, mesmo criterio do
+      // poll() fisico la' em cima): sem esse gate, navegar no overlay
+      // pelo celular continuava mexendo na grade de jogos atras dele.
       if (alphaOpenRef.current) {
         switch (msg.button) {
           case "up": case "down": case "left": case "right":
@@ -1335,7 +1342,7 @@ export default function Library() {
             break;
           case "b": confirmOverlayFocus(); break;
           case "y": confirmOverlaySelectFilter(); break;
-          case "x": backspaceQuery(); break;
+          case "x": if (keyboardModeRef.current) backspaceQuery(); break;
           case "a": case "start": setAlphaOpen(false); break;
         }
         return;
@@ -1358,10 +1365,15 @@ export default function Library() {
         case "r": cycleChip(1); break;
         case "l2": goToPage(pageSafeRef.current - 1); break;
         case "r2": goToPage(Math.min(pageCountRef.current, pageSafeRef.current + 1)); break;
-        // Start = mesma coisa que "b" (confirma/abre o jogo focado) —
-        // antes abria o filtro por letra, virou funcao do Select
-        // (pedido explicito, ver "selectTap" no subscribe mais abaixo).
-        case "start": confirmFocused(); break;
+        // Start abre DIRETO no teclado de digitar (pedido explicito,
+        // trocou de lugar com o Select — ver "selectTap" no subscribe
+        // mais abaixo, que agora abre o overlay A-Z normal).
+        case "start": {
+          if (!bigPictureOnRef.current) setBigPictureOn(true);
+          setKeyboardMode(true);
+          setAlphaOpen(true);
+          break;
+        }
       }
     });
 
@@ -1388,14 +1400,13 @@ export default function Library() {
   // Digitar no teclado ou mexer o mouse desliga o Big Picture na hora,
   // voltando pro modo normal (mouse/toque) — o poll do gamepad acima
   // religa sozinho assim que o controle for usado de novo.
-  // EXCETO enquanto o overlay A-Z esta aberto em modo teclado (digitando
-  // com o proprio controle) — sem essa excecao, um evento de mouse/
-  // teclado espurio (ou so a mao encostando perto do mouse) desligava o
-  // Big Picture bem na hora que o overlay abria, e o controle continuava
-  // mexendo na grade por TRAS do overlay em vez de digitar nele.
+  // EXCETO enquanto o overlay A-Z esta aberto pelo controle (filtro
+  // normal OU teclado) — sem essa excecao, um evento de mouse/teclado
+  // espurio (ou so a mao encostando perto do mouse) desligava o Big
+  // Picture bem na hora que o overlay abria.
   useEffect(() => {
     function onUserInput() {
-      if (alphaOpenRef.current && keyboardModeRef.current) return;
+      if (alphaOpenRef.current) return;
       if (bigPictureOnRef.current) setBigPictureOn(false);
     }
     window.addEventListener("keydown", onUserInput);
