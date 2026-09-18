@@ -12,6 +12,8 @@ container (bind mount) — dá pra adicionar ROM nova sem rebuildar a imagem:
   os outros). Dentro de cada pasta, o scanner escolhe sozinho o arquivo
   "principal" (`.m3u` > `.cue` > `.chd` > `.pbp` > `.ccd`, e só cai pro
   `.bin`/`.iso`/`.img` solto se não achar nenhum desses).
+- `MASTERSYSTEM/` — Sega Master System (`.sms`, `.zip`)
+- `ATARI/` — Atari 2600 (`.bin`, `.a26`, `.zip`)
 
 ## PS1: BIOS obrigatória
 

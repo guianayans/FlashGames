@@ -23,6 +23,8 @@ games/**/*.swf
 /GENESIS/
 /GBA/
 /PS1/
+/MASTERSYSTEM/
+/ATARI/
 
 # Dump(s) de BIOS de console (ex: PS1) - mesmo motivo acima, e' firmware
 # do proprio aparelho, nao nosso pra redistribuir (mesmo em repo privado,

@@ -21,7 +21,7 @@ RUN npm install --omit=dev
 COPY backend/src ./src
 COPY --from=frontend-build /app/frontend/dist ./public
 
-RUN mkdir -p /app/data /app/roms/SNES /app/roms/NES /app/roms/GENESIS /app/roms/GBA
+RUN mkdir -p /app/data /app/roms/SNES /app/roms/NES /app/roms/GENESIS /app/roms/GBA /app/roms/MASTERSYSTEM /app/roms/ATARI
 
 EXPOSE 4070
 

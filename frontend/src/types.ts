@@ -1,4 +1,4 @@
-export type SystemKey = "SNES" | "NES" | "GENESIS" | "GBA" | "PS1";
+export type SystemKey = "SNES" | "NES" | "GENESIS" | "GBA" | "PS1" | "MASTERSYSTEM" | "ATARI";
 
 export interface GameSummary {
   slug: string;
@@ -11,7 +11,7 @@ export interface GameSummary {
   top: boolean;
 }
 
-export type SystemLauncher = "snes" | "nes" | "megadrive" | "gba" | "psx";
+export type SystemLauncher = "snes" | "nes" | "megadrive" | "gba" | "psx" | "mastersystem" | "atari2600";
 
 export interface GameDetail extends GameSummary {
   launcher: SystemLauncher;

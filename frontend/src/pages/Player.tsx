@@ -19,6 +19,8 @@ const SYSTEM_ASPECT_RATIO: Record<SystemLauncher, number> = {
   megadrive: 4 / 3,
   gba: 3 / 2,
   psx: 4 / 3,
+  mastersystem: 4 / 3,
+  atari2600: 4 / 3,
 };
 import { loadEmulator } from "../loadEmulatorScript";
 import type { Nostalgist } from "nostalgist";

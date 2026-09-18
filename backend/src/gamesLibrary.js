@@ -19,6 +19,16 @@ export const SYSTEMS = {
   // ver loadEmulatorScript.ts. Escaneado por PASTA (scanPs1), nao por
   // extensao solta como os outros — ver comentario la embaixo do porque.
   PS1: { launcher: "psx", label: "PlayStation", extensions: [] },
+  // MASTERSYSTEM/ATARI tambem nao tem metodo de conveniencia no
+  // Nostalgist (so snes/nes/megadrive/gba/gb/gbc tem) — o frontend chama
+  // Nostalgist.launch({ core: 'genesis_plus_gx'/'tia', ... }) na mao,
+  // mesmo padrao do PS1 (ver loadEmulatorScript.ts). genesis_plus_gx e' o
+  // MESMO core do Genesis — ele emula toda a familia Sega de 8-bit
+  // (Master System/Game Gear/SG-1000) alem do Mega Drive. O core "tia" do
+  // Atari 2600 nem existe no CDN de cores padrao do Nostalgist — vem
+  // hospedado no proprio projeto (ver frontend/public/cores/).
+  MASTERSYSTEM: { launcher: "mastersystem", label: "Master System", extensions: [".sms", ".zip"] },
+  ATARI: { launcher: "atari2600", label: "Atari 2600", extensions: [".bin", ".a26", ".zip"] },
 };
 
 const ROMS_DIR = process.env.ROMS_DIR || "/app/roms";

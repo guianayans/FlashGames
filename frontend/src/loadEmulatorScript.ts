@@ -143,6 +143,27 @@ function multiplayerRetroarchConfig(): Record<string, string> {
 // genesis_plus_gx/mgba). Chamados via `Nostalgist.xxx(...)` diretamente (e
 // nao guardados numa tabela de funcoes soltas) pra preservar o `this`
 // interno da classe.
+// Core do Atari 2600 ("tia") na' existe no repositorio de cores padrao do
+// Nostalgist (arianrhodsandlot/retroarch-emscripten-build so' publica ~90
+// cores "populares" — nenhum core de Atari 2600, nem "stella" nem "tia",
+// em NENHUMA versao ja' testada) — sem isso, Nostalgist.launch({core:
+// 'tia',...}) 404 direto no passo de baixar o core. Hospedamos o .js/.wasm
+// dele proprios em /cores/ (extraidos NA MAO de um build nightly oficial
+// do RetroArch pro emscripten, https://buildbot.libretro.com/nightly/
+// emscripten/ — o pacote e' um .7z gigante com TODOS os cores juntos, sem
+// jeito de baixar so' um; extraido uma vez e comitado aqui). "tia" e' o
+// core oficial de Atari 2600 desse build (nao tem "stella" nele — foi
+// substituido/nao builda pro emscripten nessa leva), ver retroarch/
+// core_list.js do proprio pacote: "tia": "Atari - 2600 (Tia)". Apontamos
+// resolveCoreJs/resolveCoreWasm pra' esses arquivos locais SO' quando o
+// core pedido for "tia" — os outros sistemas continuam usando o
+// mecanismo padrao do Nostalgist (cache automatico incluso).
+async function resolveTiaCoreFile(kind: "js" | "wasm"): Promise<Blob> {
+  const res = await fetch(`/cores/tia_libretro.${kind}`);
+  if (!res.ok) throw new Error(`Falha ao baixar core tia (${kind}): ${res.status}`);
+  return res.blob();
+}
+
 export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> {
   const rom =
     config.romExtras && config.romExtras.length > 0 ? [config.romUrl, ...config.romExtras] : config.romUrl;
@@ -156,6 +177,27 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
       return Nostalgist.megadrive(opts);
     case "gba":
       return Nostalgist.gba(opts);
+    // Sem metodo de conveniencia pro Master System/Atari 2600 (so
+    // snes/nes/megadrive/gba/gb/gbc tem, ver systemCoreMap do Nostalgist)
+    // — core na mao, mesmo padrao do PS1 logo abaixo. genesis_plus_gx e'
+    // o MESMO core ja usado pro Genesis (Nostalgist.megadrive acima) —
+    // ele emula toda a familia Sega de 8-bit junto com o Mega Drive,
+    // entao nao precisa de um core novo pra rodar Master System.
+    // rom precisa virar URL ABSOLUTA aqui (mesmo motivo do PSX abaixo):
+    // Nostalgist.launch() (diferente dos metodos de conveniencia acima)
+    // tenta "adivinhar" uma URL de ROM homebrew num CDN externo pra
+    // caminho relativo com extensao conhecida (.bin bate direto pro
+    // Atari) — resolvendo pra absoluta isso desliga esse atalho.
+    case "mastersystem":
+      return Nostalgist.launch({ core: "genesis_plus_gx", ...opts, rom: toAbsoluteUrl(config.romUrl) });
+    case "atari2600":
+      return Nostalgist.launch({
+        core: "tia",
+        ...opts,
+        rom: toAbsoluteUrl(config.romUrl),
+        resolveCoreJs: () => resolveTiaCoreFile("js"),
+        resolveCoreWasm: () => resolveTiaCoreFile("wasm"),
+      });
     case "psx": {
       // Sem metodo de conveniencia pro PS1 (Nostalgist.psx nao existe) —
       // core na mao. pcsx_rearmed e' o core PS1 mais leve/rapido pra rodar
