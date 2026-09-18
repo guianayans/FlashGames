@@ -102,6 +102,7 @@ body,
 
 body {
   margin: 0;
+  overflow-x: hidden;
   color: var(--text);
   font-family: var(--font-body);
   -webkit-tap-highlight-color: transparent;
@@ -1956,6 +1957,16 @@ a {
   .library-header {
     padding: 12px 14px;
     gap: 12px;
+  }
+  /* Ficou apertado demais no celular depois que "Ler QR Code" (e, antes
+     de remover, o botao temporario de teste) entraram nessa fileira —
+     white-space:nowrap sem quebra empurrava a largura total pra alem da
+     viewport, criando rolagem horizontal na pagina inteira (nunca
+     acontecia antes). Deixa quebrar linha em vez de estourar. */
+  .library-user {
+    flex-wrap: wrap;
+    white-space: normal;
+    row-gap: 8px;
   }
 }
 

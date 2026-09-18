@@ -162,6 +162,15 @@ export default function Library() {
   gamepadActiveRef.current = gamepadActive;
   const focusedIdRef = useRef<string | null>(null);
   focusedIdRef.current = focusedId;
+  // Movido pra cima (era declarado so' la' embaixo, perto do resto do
+  // codigo do controle remoto) porque o poll() do controle FISICO
+  // (efeito logo abaixo) tambem precisa saber quem e' o player 1 pra' so'
+  // deixar UM dispositivo controlar a biblioteca por vez (ver
+  // remotePlayerOneIsPhoneRef) — controle e celular mandando comando ao
+  // mesmo tempo bagunçava a navegacao.
+  const remoteControl = useRemoteControlContext();
+  const remotePlayerOneIsPhoneRef = useRef(false);
+  remotePlayerOneIsPhoneRef.current = remoteControl.phones.some((p) => p.connected && p.player === 1);
   // Espelhos pra ler estado sempre atual de dentro do loop de poll do
   // gamepad (aquele efeito so roda uma vez — ver comentario mais abaixo —
   // entao closures que leem estado direto ficariam presas no valor da
@@ -210,6 +219,11 @@ export default function Library() {
       if (target?.isContentEditable) return;
       if (!/^[a-zA-Z0-9]$/.test(e.key)) return;
       e.preventDefault();
+      // Rolado pra baixo (vendo a grade) e comeca a digitar: a busca fica
+      // la' em cima, fora de vista — sem isso, os resultados iam trocar
+      // sem o usuario ver o campo mudando nem ter como saber o que ja'
+      // digitou.
+      if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: "smooth" });
       searchInputRef.current?.focus();
       updateFilters({ q: (queryRef.current || "") + e.key });
     }
@@ -868,6 +882,12 @@ export default function Library() {
       right: { held: false, nextAt: 0 },
     };
     const btnState: Record<number, boolean> = {};
+    // Segurar o analogico direito pra rolar (ver poll() mais abaixo):
+    // comeca devagar e acelera exponencialmente quanto mais tempo fica
+    // segurado numa MESMA direcao (scrollHoldStart guarda quando a
+    // direcao atual comecou; zera se soltar ou trocar de sentido).
+    let scrollHoldStart: number | null = null;
+    let scrollHoldSign = 0;
     // Enquanto o dialogo de confirmar desfavoritar esta aberto, o poll
     // abaixo retorna cedo (ver confirmUnfavoriteRef) sem NUNCA atualizar
     // btnState — se o botao que confirmou la dentro (X/Sim) ainda
@@ -929,6 +949,18 @@ export default function Library() {
         }
       }
       if (gp) {
+        // So' o player 1 controla a biblioteca — com controle fisico E
+        // celular conectados ao mesmo tempo, os dois mandando comando pra
+        // grade simultaneamente bagunçava a navegacao (pedido explicito).
+        // "player 1" aqui e' definido pelo RemoteControlContext (mesmo
+        // criterio do jogo, ver reservePhysicalSlots em Player.tsx): a
+        // biblioteca so' precisa saber se algum celular JA' e' o player 1;
+        // se nenhum e', o controle fisico assume sozinho (comportamento
+        // de sempre, sem ninguem disputando).
+        if (remotePlayerOneIsPhoneRef.current) {
+          raf = requestAnimationFrame(poll);
+          return;
+        }
         const pressedNow = (idx: number) => !!gp!.buttons[idx]?.pressed;
 
         // Qualquer botao ou analogico religa o Big Picture sozinho, mesmo
@@ -976,12 +1008,28 @@ export default function Library() {
         // (D-pad/analogico esquerdo pulam de card em card e ja arrastam a
         // tela pro foco ficar visivel — isso aqui e' pra passar o olho
         // pela lista toda direto, sem trocar o que esta focado). So faz
-        // sentido fora do overlay A-Z (ele cobre a tela inteira).
+        // sentido fora do overlay A-Z (ele cobre a tela inteira). Comeca
+        // devagar e acelera EXPONENCIALMENTE quanto mais tempo fica
+        // segurado numa mesma direcao (scrollHoldStart), multiplicado
+        // ainda pela deflexao (empurrar mais fundo tambem comeca mais
+        // rapido) — pedido explicito, antes so' escalava com a deflexao.
         const SCROLL_DEAD = 0.15;
-        const SCROLL_MAX_PX = 22; // por frame, na deflexao maxima do analogico
+        const SCROLL_BASE_PX = 3;
+        const SCROLL_MAX_PX = 60;
+        const SCROLL_RAMP_MS = 350; // dobra de velocidade a cada 350ms segurando
         if (!alphaOpenRef.current && typeof ry === "number" && Math.abs(ry) > SCROLL_DEAD) {
+          const sign = Math.sign(ry);
+          if (scrollHoldSign !== sign) {
+            scrollHoldStart = now;
+            scrollHoldSign = sign;
+          }
           const magnitude = (Math.abs(ry) - SCROLL_DEAD) / (1 - SCROLL_DEAD);
-          window.scrollBy(0, Math.sign(ry) * magnitude * SCROLL_MAX_PX);
+          const elapsed = now - (scrollHoldStart ?? now);
+          const speed = Math.min(SCROLL_BASE_PX * 2 ** (elapsed / SCROLL_RAMP_MS), SCROLL_MAX_PX) * magnitude;
+          window.scrollBy(0, sign * speed);
+        } else {
+          scrollHoldStart = null;
+          scrollHoldSign = 0;
         }
 
         // Overlay A-Z aberto E em modo teclado: D-pad navega, e os 4
@@ -1056,13 +1104,10 @@ export default function Library() {
   // Controle remoto via QR code (ver RemoteControlContext) — celular vira
   // controle da BIBLIOTECA tambem, nao so' do jogo (pedido explicito:
   // "conectar nao so' na tela de jogo, mas na tela inicial"). A conexao
-  // em si vive no context (sobrevive navegar daqui pra um jogo); aqui so'
-  // traduz cada botao pro equivalente do controle fisico (ver poll() logo
-  // acima) — mesmo mapeamento, so' que disparado por mensagem em vez de
-  // getGamepads(). Sem D-pad/analogico continuo (o celular manda toque
-  // discreto), entao cada seta so' anda UMA casa por toque, sem segurar-
-  // pra-repetir.
-  const remoteControl = useRemoteControlContext();
+  // em si vive no context (sobrevive navegar daqui pra um jogo, ver
+  // remoteControl declarado la' em cima); aqui so' traduz cada botao pro
+  // equivalente do controle fisico (ver poll() logo acima) — mesmo
+  // mapeamento, so' que disparado por mensagem em vez de getGamepads().
   const [pairingModalOpen, setPairingModalOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [pointerCoarse] = useState(detectPointerCoarse);
@@ -1077,9 +1122,87 @@ export default function Library() {
     remoteStatusRef.current = remoteControl.status;
   }, [remoteControl.status]);
   useEffect(() => {
-    return remoteControl.subscribe((msg) => {
+    // D-pad/analogico esquerdo do celular mandam so' um toque discreto
+    // (down/up) por evento — sem isso, segurar a direcao so' andava UMA
+    // casa e parava, diferente do controle fisico (handleDir/poll() la'
+    // em cima, que repete sozinho por reler o gamepad a cada frame). Re-
+    // implementa o mesmo padrao de "segura pra repetir" aqui: no down,
+    // dispara na hora e agenda repeticoes (mesmos tempos do fisico); no
+    // up correspondente, cancela. moverForDir decide moveFocus/
+    // moveOverlayFocus A CADA repeticao (nao so' na primeira), pra se
+    // adaptar sozinho caso o overlay A-Z abra/feche no meio do gesto.
+    const REPEAT_DELAY_MS = 320;
+    const REPEAT_RATE_MS = 140;
+    const repeatTimers: Partial<Record<"up" | "down" | "left" | "right", ReturnType<typeof setTimeout>>> = {};
+    function moverForDir(dir: "up" | "down" | "left" | "right") {
+      return alphaOpenRef.current ? moveOverlayFocus : moveFocus;
+    }
+    function stopRepeat(dir: "up" | "down" | "left" | "right") {
+      const t = repeatTimers[dir];
+      if (t !== undefined) {
+        clearTimeout(t);
+        delete repeatTimers[dir];
+      }
+    }
+    function startRepeat(dir: "up" | "down" | "left" | "right") {
+      stopRepeat(dir);
+      moverForDir(dir)(dir);
+      const tick = (delay: number) => {
+        repeatTimers[dir] = setTimeout(() => {
+          moverForDir(dir)(dir);
+          tick(REPEAT_RATE_MS);
+        }, delay);
+      };
+      tick(REPEAT_DELAY_MS);
+    }
+
+    // Analogico direito do celular manda "scroll-up"/"scroll-down" (ver
+    // RemoteController.html — nome diferente do d-pad de proposito, senao
+    // nao daria pra distinguir "segurar pra navegar a grade" de "segurar
+    // pra rolar a pagina"). Mesma formula de aceleracao exponencial do
+    // controle fisico (ver poll() acima, SCROLL_RAMP_MS) — sem deflexao
+    // continua aqui (o celular so' manda um toque digital), entao so' o
+    // tempo segurado acelera.
+    const SCROLL_BASE_PX = 3;
+    const SCROLL_MAX_PX = 60;
+    const SCROLL_RAMP_MS = 350;
+    let scrollTimer: ReturnType<typeof setInterval> | null = null;
+    function stopScroll() {
+      if (scrollTimer !== null) {
+        clearInterval(scrollTimer);
+        scrollTimer = null;
+      }
+    }
+    function startScroll(sign: 1 | -1) {
+      stopScroll();
+      const start = performance.now();
+      scrollTimer = setInterval(() => {
+        const elapsed = performance.now() - start;
+        const speed = Math.min(SCROLL_BASE_PX * 2 ** (elapsed / SCROLL_RAMP_MS), SCROLL_MAX_PX);
+        window.scrollBy(0, sign * speed);
+      }, 16);
+    }
+
+    const unsubscribe = remoteControl.subscribe((msg) => {
       if ("type" in msg) return; // exit/toggleSaveMenu nao fazem sentido fora de um jogo
-      if (!msg.down) return; // so' reage no toque (down), igual botao fisico faz na borda de subida
+      // So' o player 1 controla a biblioteca — com controle fisico E
+      // celular conectados ao mesmo tempo, os dois mandando comando
+      // simultaneamente bagunçava a navegacao (pedido explicito, mesmo
+      // criterio do poll() fisico la' em cima).
+      if (msg.player !== 1) return;
+
+      // Direcoes e o analogico direito precisam saber do "solta" (down
+      // false) pra CANCELAR a repeticao/rolagem, entao tratam antes do
+      // "so' reage no toque" generico logo abaixo (que e' pra o resto dos
+      // botoes, sempre foi so' borda de descida).
+      if (msg.button === "up" || msg.button === "down" || msg.button === "left" || msg.button === "right") {
+        if (!msg.down) { stopRepeat(msg.button); return; }
+      } else if (msg.button === "scroll-up" || msg.button === "scroll-down") {
+        if (!msg.down) { stopScroll(); return; }
+      } else if (!msg.down) {
+        return;
+      }
+
       if (!bigPictureOnRef.current) setBigPictureOn(true);
       if (!gamepadActiveRef.current) { setGamepadActive(true); setGamepadName("Celular (controle remoto)"); }
 
@@ -1106,7 +1229,7 @@ export default function Library() {
       if (alphaOpenRef.current) {
         switch (msg.button) {
           case "up": case "down": case "left": case "right":
-            moveOverlayFocus(msg.button);
+            startRepeat(msg.button);
             break;
           case "b": confirmOverlayFocus(); break;
           case "y": confirmOverlaySelectFilter(); break;
@@ -1118,8 +1241,10 @@ export default function Library() {
 
       switch (msg.button) {
         case "up": case "down": case "left": case "right":
-          moveFocus(msg.button);
+          startRepeat(msg.button);
           break;
+        case "scroll-up": startScroll(-1); break;
+        case "scroll-down": startScroll(1); break;
         case "b": confirmFocused(); break;
         case "a": {
           const id = focusedIdRef.current;
@@ -1134,6 +1259,12 @@ export default function Library() {
         case "start": setAlphaOpen(true); break;
       }
     });
+
+    return () => {
+      unsubscribe();
+      (["up", "down", "left", "right"] as const).forEach(stopRepeat);
+      stopScroll();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1416,7 +1547,10 @@ export default function Library() {
           <input
             ref={searchInputRef}
             value={query}
-            onChange={(e) => updateFilters({ q: e.target.value || null })}
+            onChange={(e) => {
+              if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: "smooth" });
+              updateFilters({ q: e.target.value || null });
+            }}
             onKeyDown={(e) => {
               // Esc tira o foco de verdade do campo (o guard do atalho de
               // setas/Enter/Espaco ignora INPUT/TEXTAREA de proposito, pra
@@ -1466,20 +1600,6 @@ export default function Library() {
           {pointerCoarse && (
             <button type="button" className="remote-connect-btn" onClick={() => setQrScannerOpen(true)}>
               📷 Ler QR Code
-            </button>
-          )}
-          {/* TEMPORARIO — so' pra abrir a tela do gamepad direto no
-              celular e ajustar os botoes pelo inspecionar do navegador,
-              sem precisar parear de verdade. REMOVER depois. */}
-          {pointerCoarse && (
-            <button
-              type="button"
-              className="remote-connect-btn"
-              onClick={() => {
-                window.location.href = "/remote/teste";
-              }}
-            >
-              🧪 Abrir gamepad (teste)
             </button>
           )}
           <button
@@ -1689,6 +1809,32 @@ export default function Library() {
         </p>
       )}
 
+      {!error && pageCount > 1 && (
+        <div className="pagination">
+          <button
+            type="button"
+            data-bp-id="page:prev"
+            className={focusVisible && focusedId === "page:prev" ? "bp-focused" : ""}
+            disabled={pageSafe <= 1}
+            onClick={() => goToPage(pageSafe - 1)}
+          >
+            ← Anterior
+          </button>
+          <span className="pagination-status">
+            Pagina {pageSafe} de {pageCount}
+          </span>
+          <button
+            type="button"
+            data-bp-id="page:next"
+            className={focusVisible && focusedId === "page:next" ? "bp-focused" : ""}
+            disabled={pageSafe >= pageCount}
+            onClick={() => goToPage(pageSafe + 1)}
+          >
+            Proxima →
+          </button>
+        </div>
+      )}
+
       {showRecentCards ? (
         <div className="console-groups">
           {recentCards.map((card) => {
@@ -1759,32 +1905,6 @@ export default function Library() {
       ) : (
         <div className={`game-grid${originalCovers ? " original-covers" : ""}`} ref={gridRef}>
           {paged.map((g) => renderGameCard(g))}
-        </div>
-      )}
-
-      {!error && pageCount > 1 && (
-        <div className="pagination">
-          <button
-            type="button"
-            data-bp-id="page:prev"
-            className={focusVisible && focusedId === "page:prev" ? "bp-focused" : ""}
-            disabled={pageSafe <= 1}
-            onClick={() => goToPage(pageSafe - 1)}
-          >
-            ← Anterior
-          </button>
-          <span className="pagination-status">
-            Pagina {pageSafe} de {pageCount}
-          </span>
-          <button
-            type="button"
-            data-bp-id="page:next"
-            className={focusVisible && focusedId === "page:next" ? "bp-focused" : ""}
-            disabled={pageSafe >= pageCount}
-            onClick={() => goToPage(pageSafe + 1)}
-          >
-            Proxima →
-          </button>
         </div>
       )}
 

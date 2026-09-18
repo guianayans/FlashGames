@@ -476,12 +476,30 @@ body.landscape #dpad {
   position: fixed;
   left: 28.9373vw; top: 53.402vh; width: 34.9325vmin; height: 34.9325vmin;
   right: auto; bottom: auto; transform: none; aspect-ratio: unset;
-  background: rgba(255,255,255,.08);
-  border-radius: 10px;
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.08);
+  background: transparent;
+  touch-action: none; cursor: pointer;
+}
+/* Cruz decorativa + botoes invisiveis por cima — visual identico ao
+   RemoteController.html (pedido explicito: nao so' posicao/tamanho, cor
+   solida igual tambem, mesmo cobrindo mais o jogo por baixo). */
+body.landscape .dp-h, body.landscape .dp-v {
+  position: absolute;
+  background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.18) 0%, rgba(70,70,90,.8) 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(120,120,180,.25), inset 0 1px 0 rgba(255,255,255,.14);
+}
+body.landscape .dp-h { top: 33.3%; left: 0; width: 100%; height: 33.3%; }
+body.landscape .dp-v { top: 0; left: 33.3%; width: 33.3%; height: 100%; }
+body.landscape .dp-center {
+  position: absolute;
+  top: 33.3%; left: 33.3%; width: 33.3%; height: 33.3%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.15), rgba(50,50,70,.9));
+  pointer-events: none;
 }
 body.landscape .dp { background: transparent; }
-body.landscape .dp.pressed { background: rgba(255,255,255,.22); }
+body.landscape .dp.pressed + .dp-h,
+body.landscape .dp.pressed + .dp-v { filter: brightness(1.8); }
 
 /* ── FACE CLUSTER (XYAB) — container arrasta/redimensiona como uma peca
    so'; a posicao INTERNA de cada botao (o "diamante") e' calculada em JS
@@ -496,14 +514,34 @@ body.landscape #face-cluster {
 body.landscape .facebtn {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255,255,255,.08);
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
-  color: rgba(255,255,255,.55);
+  width: 40%; height: 40%;
   display: flex; align-items: center; justify-content: center;
-  font: 700 3vmin/1 system-ui, sans-serif;
-  transition: background 50ms;
+  font: 700 3.2vmin/1 system-ui, sans-serif;
+  cursor: pointer;
+  transition: filter 60ms, transform 60ms;
+  border: none; outline: none;
 }
-body.landscape .facebtn.pressed { background: rgba(255,255,255,.3); }
+body.landscape .facebtn.pressed { filter: brightness(1.6); }
+body.landscape #btn-x {
+  background: radial-gradient(circle at 38% 32%, #8ec0ff 0%, #2563eb 55%, #1a3a7a 100%);
+  box-shadow: 0 0 2vmin .4vmin rgba(59,130,246,.6), inset 0 1px 0 rgba(255,255,255,.25);
+  color: #c8dcff; text-shadow: 0 1px 6px rgba(30,64,175,.8);
+}
+body.landscape #btn-y {
+  background: radial-gradient(circle at 38% 32%, #f9a8d4 0%, #db2777 55%, #831843 100%);
+  box-shadow: 0 0 2vmin .4vmin rgba(219,39,119,.6), inset 0 1px 0 rgba(255,255,255,.25);
+  color: #fde8f0; text-shadow: 0 1px 6px rgba(157,23,77,.8);
+}
+body.landscape #btn-a {
+  background: radial-gradient(circle at 38% 32%, #fca5a5 0%, #dc2626 55%, #7f1d1d 100%);
+  box-shadow: 0 0 2vmin .4vmin rgba(220,38,38,.6), inset 0 1px 0 rgba(255,255,255,.25);
+  color: #fee2e2; text-shadow: 0 1px 6px rgba(153,27,27,.8);
+}
+body.landscape #btn-b {
+  background: radial-gradient(circle at 38% 32%, #6ee7b7 0%, #059669 55%, #064e3b 100%);
+  box-shadow: 0 0 2vmin .4vmin rgba(16,185,129,.6), inset 0 1px 0 rgba(255,255,255,.25);
+  color: #d1fae5; text-shadow: 0 1px 6px rgba(6,78,59,.8);
+}
 
 /* Painel que aparece embaixo do cluster ABXY no modo de configurar —
    espacamento (slider), esconder/mostrar cada controle e resetar. Filho
@@ -552,26 +590,50 @@ body.landscape.layout-edit #gap-pill.visible { display: flex; }
 body.landscape .stick-zone {
   position: fixed;
   width: 38.8vmin; height: 38.8vmin; aspect-ratio: unset;
-  background: rgba(255,255,255,.08);
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
+  border-radius: 50%;
+  touch-action: none; cursor: pointer;
+  background: radial-gradient(circle at 38% 32%, rgba(255,255,255,.10) 0%, rgba(30,30,50,.92) 60%, #080814 100%);
+  box-shadow: 0 0 3vmin 1vmin rgba(100,100,255,.12),
+              inset 0 2px 0 rgba(255,255,255,.10),
+              inset 0 -2px 4px rgba(0,0,0,.6);
 }
 body.landscape #stick-l { left: 3.4911vw; top: 11.3352vh; }
 body.landscape #stick-r { left: 57.4693vw; top: 51.4666vh; }
-body.landscape #stick-l .stick-thumb,
-body.landscape #stick-r .stick-thumb { background: rgba(255,255,255,.18); }
+body.landscape .stick-thumb {
+  position: absolute; width: 50%; height: 50%; border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, rgba(255,255,255,.22), rgba(40,40,60,.92));
+  box-shadow: 0 2px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.2);
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  pointer-events: none; will-change: transform;
+}
 body.landscape #stick-l.active .stick-thumb,
-body.landscape #stick-r.active .stick-thumb { background: rgba(255,255,255,.34); }
+body.landscape #stick-r.active .stick-thumb {
+  background: radial-gradient(circle at 38% 32%, rgba(255,255,255,.36), rgba(60,60,100,.92));
+}
 
 /* ── CENTRO (FN/SEL/START) ── */
 body.landscape .cbtn {
   position: fixed;
   border-radius: 50%;
-  background: rgba(255,255,255,.08);
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 38% 32%, rgba(255,255,255,.14) 0%, rgba(35,35,55,.97) 70%);
+  box-shadow: 0 0 6px rgba(255,255,255,.07),
+              inset 0 1px 0 rgba(255,255,255,.14),
+              inset 0 -1px 3px rgba(0,0,0,.5);
+  border: 1px solid rgba(255,255,255,.10);
   color: rgba(255,255,255,.55);
-  font: 700 1.6vmin/1 system-ui, sans-serif;
+  font: 700 1.8vmin/1 system-ui, sans-serif;
+  transition: filter 60ms, transform 60ms;
 }
-body.landscape .cbtn.pressed { background: rgba(255,255,255,.3); }
+body.landscape .cbtn.pressed { transform: scale(.84) !important; filter: brightness(1.8); }
+/* No retrato #btn-fn/select/start ficam sem texto de proposito (hotspot
+   transparente por cima da propria arte do shell, que ja desenha os
+   botoes) — so' na paisagem (sem shell nenhuma por baixo) precisam de
+   texto visivel, igual RemoteController.html. Pseudo-elemento (nao texto
+   solto no HTML) pra nao vazar pro retrato sem precisar de outra regra. */
+body.landscape #btn-fn::after { content: "FN"; pointer-events: none; }
+body.landscape #btn-select::after { content: "SEL"; pointer-events: none; }
+body.landscape #btn-start::after { content: "STA"; pointer-events: none; }
 body.landscape #btn-fn     { left: 47.0139vw; top: 14.5526vh; width: 12.9759vmin; height: 12.9759vmin; aspect-ratio: unset; }
 body.landscape #btn-select { left: 36.977vw;  top: 27.5284vh; width: 12.9759vmin; height: 12.9759vmin; aspect-ratio: unset; }
 body.landscape #btn-start  { left: 56.134vw;  top: 27.5284vh; width: 12.9759vmin; height: 12.9759vmin; aspect-ratio: unset; }
@@ -581,12 +643,17 @@ body.landscape #btn-start  { left: 56.134vw;  top: 27.5284vh; width: 12.9759vmin
    1 selector cada) — como .shoulder vem DEPOIS no arquivo, ganha por
    ordem de fonte, voltando a ficar retangular/pilula em vez de circulo. */
 body.landscape .shoulder {
-  border-radius: 6px;
-  background: rgba(255,255,255,.08);
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
-  font: 700 1.4vmin/1 system-ui, sans-serif;
+  border-radius: 10px;
+  background: radial-gradient(ellipse at 50% 20%, rgba(255,255,255,.13) 0%, rgba(30,30,48,.97) 80%);
+  box-shadow: 0 0 8px rgba(255,255,255,.05),
+              inset 0 1px 0 rgba(255,255,255,.13),
+              inset 0 -1px 3px rgba(0,0,0,.5);
+  border: 1px solid rgba(255,255,255,.10);
+  color: rgba(255,255,255,.6);
+  font: 700 2.4vmin/1 system-ui, sans-serif;
+  transition: filter 60ms, transform 60ms;
 }
-body.landscape .shoulder.pressed { background: rgba(255,255,255,.3); }
+body.landscape .shoulder.pressed { transform: scale(.92) !important; filter: brightness(1.6); }
 body.landscape #btn-l  { left: 5.5325vw;  top: 77.7308vh; width: 11.8005vw; height: 6.804vh; aspect-ratio: unset; bottom: auto; }
 body.landscape #btn-r  { left: 84.272vw;  top: 77.7308vh; width: 11.8005vw; height: 6.804vh; aspect-ratio: unset; bottom: auto; right: auto; }
 /* display:flex explicito aqui: #btn-l2/#btn-r2 tem display:none com
@@ -710,8 +777,13 @@ body.landscape.layout-edit .rh { display: block; }
     <button id="hide-all-toggle" title="Esconder/mostrar todos os controles">👁</button>
   </div>
 
-  <!-- D-PAD -->
+  <!-- D-PAD — cruz decorativa (dp-h/dp-v/dp-center) igual RemoteController.html;
+       so' aparece na paisagem (ver CSS), no retrato o D-pad usa a arte do
+       proprio shell-img por baixo, essas divs ficam invisiveis/sem estilo. -->
   <div id="dpad" data-draggable="dpad">
+    <div class="dp-h"></div>
+    <div class="dp-v"></div>
+    <div class="dp-center"></div>
     <div id="dp-up"    class="dp" data-dir="up"></div>
     <div id="dp-right" class="dp" data-dir="right"></div>
     <div id="dp-down"  class="dp" data-dir="down"></div>

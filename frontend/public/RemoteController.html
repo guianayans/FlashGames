@@ -3,7 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Controle remoto</title>
+<!-- Sem isso, "Adicionar a Tela de Inicio" a partir desta pagina (ex.:
+     abriu o QR pela camera nativa, caiu no #install-required abaixo)
+     instalava um ATALHO generico dessa pagina solta ("Controle remoto",
+     icone/nome default do navegador) em vez do MESMO PWA FlashGames que
+     instalar por index.html cria — manifest.webmanifest e' o que faz o
+     Chrome/Android reconhecer que essa pagina pertence ao MESMO app
+     instalavel (nome, icone, theme-color, start_url todos vem de la). No
+     iOS (sem beforeinstallprompt, sem manifest de verdade) e'
+     apple-mobile-web-app-title que decide o nome do atalho. -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="FlashGames">
+<meta name="theme-color" content="#0a0714">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/pwa/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>FlashGames — Controle remoto</title>
 <style>
 * {
   box-sizing: border-box; margin: 0; padding: 0;
@@ -1315,13 +1333,18 @@ document.querySelectorAll('.dp').forEach(el => {
 })();
 
 // ══════════════════════════════════════════
-//  ANALOG STICKS — traduz deflexao em up/down/left/right (mesmas chaves
-//  do d-pad), com suporte a diagonal (2 chaves simultaneas), igual
-//  elementos/GameScreen.html ja' faz pro jogo local (ver STICK_KEYS +
-//  calcKeys la'). Antes so' mexia o thumb visualmente e nunca mandava
-//  sendKey nenhum — analogico nao fazia NADA no jogo.
+//  ANALOG STICKS — esquerdo continua up/down/left/right (d-pad e
+//  navegacao da biblioteca), com diagonal, igual elementos/GameScreen.html
+//  ja' faz pro jogo local (ver STICK_KEYS + calcKeys la'). O DIREITO agora
+//  e' dedicado a ROLAR A PAGINA na biblioteca (mesmo papel que o
+//  analogico direito do controle FISICO ja tem, ver poll() em
+//  Library.tsx) — sem uso nenhum durante o jogo (o fisico tambem so' le o
+//  esquerdo pra mover personagem, ver useGamepadPlayer). Manda
+//  "scroll-up"/"scroll-down" (nomes DIFERENTES de up/down de proposito —
+//  sem isso o desktop nao teria como distinguir "segura pra navegar a
+//  grade" de "segura pra rolar a pagina", ver Library.tsx).
 // ══════════════════════════════════════════
-document.querySelectorAll('.stick-zone').forEach(stick=>{
+function wireDirectionalStick(stick){
   const thumb=stick.querySelector('.stick-thumb');
   const MAX=40;
   const DEAD=MAX*0.25;
@@ -1361,7 +1384,45 @@ document.querySelectorAll('.stick-zone').forEach(stick=>{
   });
   ['pointerup','pointercancel'].forEach(ev=>window.addEventListener(ev,e=>{if(e.pointerId===pid)release();}));
   stick.addEventListener('lostpointercapture',release);
-});
+}
+function wireScrollStick(stick){
+  const thumb=stick.querySelector('.stick-thumb');
+  const MAX=40;
+  const DEAD=MAX*0.3;
+  let pid=null,oy=0;
+  let heldKey=null;
+  function setScrollKey(dy){
+    let need=null;
+    if(Math.abs(dy)>=DEAD) need = dy<0 ? 'scroll-up' : 'scroll-down';
+    if(need===heldKey) return;
+    if(heldKey) sendKey(heldKey,'up');
+    heldKey=need;
+    if(heldKey) sendKey(heldKey,'down');
+  }
+  const release=()=>{
+    if(pid===null)return; pid=null; stick.classList.remove('active');
+    thumb.style.transform='translate(-50%,-50%)';
+    if(heldKey){ sendKey(heldKey,'up'); heldKey=null; }
+  };
+  activeReleasers.push(release);
+  stick.addEventListener('pointerdown',e=>{
+    e.preventDefault(); if(configMode)return;
+    pid=e.pointerId; stick.setPointerCapture(pid); stick.classList.add('active');
+    const r=stick.getBoundingClientRect(); oy=r.top+r.height/2;
+  });
+  window.addEventListener('pointermove',e=>{
+    if(e.pointerId!==pid)return;
+    const dy=e.clientY-oy,s=Math.abs(dy)>MAX?MAX/Math.abs(dy):1;
+    thumb.style.transform=`translate(-50%,calc(-50% + ${dy*s}px))`;
+    setScrollKey(dy);
+  });
+  ['pointerup','pointercancel'].forEach(ev=>window.addEventListener(ev,e=>{if(e.pointerId===pid)release();}));
+  stick.addEventListener('lostpointercapture',release);
+}
+const stickL=document.getElementById('stick-l');
+const stickR=document.getElementById('stick-r');
+if(stickL) wireDirectionalStick(stickL);
+if(stickR) wireScrollStick(stickR);
 
 // ══════════════════════════════════════════
 //  CC BUTTONS (start, shoulders) — FN/SEL NAO entram aqui, ver secao
