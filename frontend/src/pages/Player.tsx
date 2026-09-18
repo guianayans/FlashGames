@@ -243,27 +243,33 @@ const GAMEPAD_DPAD_MAP: Record<number, string> = { 12: "up", 13: "down", 14: "le
 const GAMEPAD_STICK_DEAD = 0.5;
 
 type GamepadSlot = {
-  player: 1 | 2;
+  player: 1 | 2 | 3 | 4;
   gpIndex: number | null;
   heldButtons: Record<number, boolean>;
   heldDirs: Record<string, boolean>;
 };
+const MAX_PLAYERS = 4;
 
-// Detecta ate 2 gamepads (pro badge no topo) E manda o input pro jogo via
+// Detecta ate 4 gamepads (pro badge no topo) E manda o input pro jogo via
 // nostalgist.pressDown/pressUp(button, player). Testado ao vivo: o
 // Nostalgist.js NAO pega o gamepad sozinho neste embed — por isso manda o
-// comando na mao, igual o GameScreen.html faz pro player mobile. O
-// PRIMEIRO controle detectado vira P1, o segundo vira P2 — com 1 controle
-// so, nunca se manda input de P2 (nao tem slot 2 ocupado pra isso).
+// comando na mao, igual o GameScreen.html faz pro player mobile. Os 4
+// slots (P1..P4) sao compartilhados com os celulares conectados por QR
+// code (ver RemoteControlContext) — cada controle FISICO que conecta pega
+// o menor numero ainda livre, pulando os que algum celular ja ocupa
+// (reportado via remoteControl.reservePhysicalSlots, pro sentido
+// contrario: um celular que entra depois nao pode pegar o numero de um
+// controle fisico ja conectado).
 function useGamepadPlayer(
   nostalgistRef: React.RefObject<Nostalgist | null>,
   onToggleFullscreen: () => void,
   onToggleSaveMenu: () => void,
   saveMenuOpen: boolean,
   onToggleExitConfirm: () => void,
-  exitConfirmOpen: boolean
+  exitConfirmOpen: boolean,
+  remoteControl: ReturnType<typeof useRemoteControlContext>
 ): (string | null)[] {
-  const [names, setNames] = useState<(string | null)[]>([null, null]);
+  const [names, setNames] = useState<(string | null)[]>([null, null, null, null]);
   // Ref pra sempre chamar a versao mais atual sem precisar recriar o
   // efeito (que reconectaria os listeners de gamepad) toda renderizacao.
   const onToggleFullscreenRef = useRef(onToggleFullscreen);
@@ -276,13 +282,25 @@ function useGamepadPlayer(
   onToggleExitConfirmRef.current = onToggleExitConfirm;
   const exitConfirmOpenRef = useRef(exitConfirmOpen);
   exitConfirmOpenRef.current = exitConfirmOpen;
+  const remotePlayersRef = useRef<Set<number>>(new Set());
+  remotePlayersRef.current = new Set(remoteControl.phones.map((p) => p.player));
+  const reservePhysicalSlotsRef = useRef(remoteControl.reservePhysicalSlots);
+  reservePhysicalSlotsRef.current = remoteControl.reservePhysicalSlots;
 
   useEffect(() => {
-    const slots: GamepadSlot[] = [
-      { player: 1, gpIndex: null, heldButtons: {}, heldDirs: { up: false, down: false, left: false, right: false } },
-      { player: 2, gpIndex: null, heldButtons: {}, heldDirs: { up: false, down: false, left: false, right: false } },
-    ];
+    const slots: GamepadSlot[] = ([1, 2, 3, 4] as const).map((player) => ({
+      player,
+      gpIndex: null,
+      heldButtons: {},
+      heldDirs: { up: false, down: false, left: false, right: false },
+    }));
     let raf = 0;
+
+    function reportReservedSlots() {
+      const taken = new Set<number>();
+      for (const s of slots) if (s.gpIndex !== null) taken.add(s.player);
+      reservePhysicalSlotsRef.current(taken);
+    }
 
     function press(slot: GamepadSlot, button: string, down: boolean) {
       const inst = nostalgistRef.current;
@@ -291,7 +309,7 @@ function useGamepadPlayer(
       else inst.pressUp({ button, player: slot.player });
     }
 
-    function setName(player: 1 | 2, name: string | null) {
+    function setName(player: 1 | 2 | 3 | 4, name: string | null) {
       setNames((prev) => {
         const next = [...prev] as (string | null)[];
         next[player - 1] = name;
@@ -304,10 +322,14 @@ function useGamepadPlayer(
     }
     function assignSlot(gp: Gamepad | null) {
       if (!gp || slotForIndex(gp.index)) return;
-      const slot = slots.find((s) => s.gpIndex === null);
-      if (!slot) return; // ja tem 2 controles ocupados
+      // Pula os numeros que algum celular ja' ocupa (ver remotePlayersRef)
+      // — o slot fisico livre e' o menor numero que ninguem (fisico ou
+      // celular) esta usando ainda.
+      const slot = slots.find((s) => s.gpIndex === null && !remotePlayersRef.current.has(s.player));
+      if (!slot) return; // ja tem MAX_PLAYERS ocupados entre fisico e celular
       slot.gpIndex = gp.index;
       setName(slot.player, gp.id || "Controle");
+      reportReservedSlots();
     }
 
     function clearSlot(slot: GamepadSlot) {
@@ -330,9 +352,11 @@ function useGamepadPlayer(
       slot.gpIndex = null;
       setName(slot.player, null);
       clearSlot(slot);
+      reportReservedSlots();
     }
     window.addEventListener("gamepadconnected", onConnected);
     window.addEventListener("gamepaddisconnected", onDisconnected);
+    reportReservedSlots();
 
     // Segurar R2 (botao 7 — gatilho direito) por R2_HOLD_MS liga/desliga
     // tela cheia, so no controle do P1. Botao 7 nao entra no
@@ -508,12 +532,16 @@ function useRemoteControlForPlayer(
   useEffect(() => {
     return remote.subscribe((msg) => {
       if ("type" in msg) {
-        // Mesmos gestos que L2/Select do controle fisico disparam — ver
-        // useGamepadPlayer acima, mesma mutua exclusao: FN (sair) so' se
-        // o menu de save state nao estiver aberto, SEL (save state) so'
-        // se o dialogo de sair nao estiver aberto.
-        if (msg.type === "exit" && !saveMenuOpenRef.current) onToggleExitConfirmRef.current();
-        else if (msg.type === "toggleSaveMenu" && !exitConfirmOpenRef.current) onToggleSaveMenuRef.current();
+        // FN/SEL sao controles GLOBAIS da sessao (sair/save-state), nao
+        // de um jogador especifico — so' o celular assumido como P1
+        // dispara, mesmo criterio do controle fisico (useGamepadPlayer so'
+        // le R2/L2/Select do slot.player===1). Sem essa trava, o P2/P3/P4
+        // tambem poderiam abrir/fechar o menu do jogo do P1 sem querer.
+        if (msg.type === "exit" && msg.player === 1 && !saveMenuOpenRef.current) onToggleExitConfirmRef.current();
+        else if (msg.type === "toggleSaveMenu" && msg.player === 1 && !exitConfirmOpenRef.current) onToggleSaveMenuRef.current();
+        // phoneJoined/phoneLeft/phoneRejected: nada pra fazer aqui, o
+        // badge/modal ja reagem sozinhos via remoteControl.phones (estado
+        // no proprio context, nao passa por aqui).
         return;
       }
       // Menu de save state ou dialogo de sair aberto: o celular vira
@@ -524,8 +552,8 @@ function useRemoteControlForPlayer(
       if (saveMenuOpenRef.current || exitConfirmOpenRef.current) return;
       const inst = nostalgistRef.current;
       if (!inst) return;
-      if (msg.down) inst.pressDown({ button: msg.button, player: 1 });
-      else inst.pressUp({ button: msg.button, player: 1 });
+      if (msg.down) inst.pressDown({ button: msg.button, player: msg.player });
+      else inst.pressUp({ button: msg.button, player: msg.player });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1020,13 +1048,15 @@ function DesktopPlayer({ slug }: { slug: string }) {
     else requestExit();
   }
 
-  const [gamepad1Name, gamepad2Name] = useGamepadPlayer(
+  const remoteControlValue = useRemoteControlContext();
+  const [gamepad1Name, gamepad2Name, gamepad3Name, gamepad4Name] = useGamepadPlayer(
     nostalgistRef,
     toggleFullscreen,
     toggleSaveMenu,
     saveMenuOpen,
     toggleExitConfirmViaL2,
-    exitConfirmOpen
+    exitConfirmOpen,
+    remoteControlValue
   );
 
   const remoteControl = useRemoteControlForPlayer(
@@ -1149,6 +1179,8 @@ function DesktopPlayer({ slug }: { slug: string }) {
         <h1>{game?.title ?? "Carregando..."}</h1>
         {gamepad1Name && <span className="gamepad-badge">🎮 P1: {gamepad1Name}</span>}
         {gamepad2Name && <span className="gamepad-badge">🎮 P2: {gamepad2Name}</span>}
+        {gamepad3Name && <span className="gamepad-badge">🎮 P3: {gamepad3Name}</span>}
+        {gamepad4Name && <span className="gamepad-badge">🎮 P4: {gamepad4Name}</span>}
         {remoteControl.status === "idle" && (
           <button
             type="button"
@@ -1166,7 +1198,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
       {/* Fixo na tela (fora do topbar) — nunca some sozinho enquanto uma
           sessao remota existir (conectando, esperando ou ja conectado),
           ver RemoteControlBadge. Tocar reabre o modal do QR. */}
-      <RemoteControlBadge status={remoteControl.status} onClick={() => setPairingModalOpen(true)} />
+      <RemoteControlBadge status={remoteControl.status} phones={remoteControl.phones} onClick={() => setPairingModalOpen(true)} />
 
       {error && <p className="error-text">{error}</p>}
 
@@ -1224,6 +1256,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
           <RemotePairingModal
             status={remoteControl.status}
             remoteUrl={remoteControl.remoteUrl}
+            phones={remoteControl.phones}
             onClose={() => setPairingModalOpen(false)}
             onDisconnect={() => {
               setPairingModalOpen(false);

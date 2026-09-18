@@ -151,6 +151,32 @@ body.landscape #status-bar { display: flex; }
 #status-bar.connected #status-dot { background: #39ff8f; }
 #status-bar.disconnected #status-dot { background: #ff5050; }
 
+/* ── NUMERO DE JOGADOR (P1..P4) — multiplayer, ver assignSlot no
+   RemoteControlContext do desktop. So' aparece depois que o desktop
+   atribui um numero (varios celulares podem escanear o MESMO QR e virar
+   jogadores diferentes, ver comentario da CONEXAO abaixo); fica no centro
+   da tela, sem bloquear toque (pointer-events:none), com brilho tipo LED
+   na cor do jogador — cada numero pisca uma vez ao ser atribuido pra
+   confirmar visualmente que "pegou". ── */
+#player-badge {
+  display: none;
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 80; pointer-events: none;
+  width: 15vmin; height: 15vmin; min-width: 64px; min-height: 64px;
+  border-radius: 50%; align-items: center; justify-content: center;
+  font: 800 6vmin/1 "Chakra Petch", system-ui, sans-serif; color: #fff;
+  animation: player-badge-pulse 1.8s ease-in-out infinite;
+}
+#player-badge.visible { display: flex; }
+#player-badge.p1 { background: radial-gradient(circle, rgba(0,229,255,.35), rgba(0,229,255,.05) 70%); box-shadow: 0 0 4vmin 1vmin rgba(0,229,255,.55), inset 0 0 2vmin rgba(0,229,255,.4); text-shadow: 0 0 1.2vmin #00e5ff; }
+#player-badge.p2 { background: radial-gradient(circle, rgba(255,46,154,.35), rgba(255,46,154,.05) 70%); box-shadow: 0 0 4vmin 1vmin rgba(255,46,154,.55), inset 0 0 2vmin rgba(255,46,154,.4); text-shadow: 0 0 1.2vmin #ff2e9a; }
+#player-badge.p3 { background: radial-gradient(circle, rgba(57,255,143,.35), rgba(57,255,143,.05) 70%); box-shadow: 0 0 4vmin 1vmin rgba(57,255,143,.55), inset 0 0 2vmin rgba(57,255,143,.4); text-shadow: 0 0 1.2vmin #39ff8f; }
+#player-badge.p4 { background: radial-gradient(circle, rgba(255,176,32,.35), rgba(255,176,32,.05) 70%); box-shadow: 0 0 4vmin 1vmin rgba(255,176,32,.55), inset 0 0 2vmin rgba(255,176,32,.4); text-shadow: 0 0 1.2vmin #ffb020; }
+@keyframes player-badge-pulse {
+  0%, 100% { opacity: .78; }
+  50% { opacity: 1; }
+}
+
 /* ═══════════════════════════
    BUTTONS — all position:fixed (identico a elementos/gamepad-atualizado.html)
 ═══════════════════════════ */
@@ -452,6 +478,7 @@ body.config-mode .gc-hidden { opacity: .25; pointer-events: auto !important; }
 </div>
 
 <div id="status-bar"><span id="status-dot"></span><span id="status-text">Conectando...</span></div>
+<div id="player-badge"></div>
 
 <div id="shell-controls">
   <!-- ── FACE CLUSTER ── -->
@@ -573,32 +600,67 @@ if (!IS_STANDALONE) {
   //  Sem login: o token do QR e' o unico segredo (mesmo modelo do
   //  Chromecast/AirPlay) — ver useRemoteControl em frontend/src/pages/
   //  Player.tsx do lado do desktop.
+  //
+  //  MULTIPLAYER (ate' 4, misturando controle fisico + celular): o MESMO
+  //  QR/token aceita ate' 4 celulares escaneando (like Jackbox) — cada um
+  //  manda um "clientId" proprio (gerado uma vez so', guardado no
+  //  localStorage DESTE navegador) que sobrevive a reconexao/refresh, pra
+  //  o desktop reconhecer "e' o mesmo celular de antes" e devolver o
+  //  MESMO numero de jogador em vez de sortear um novo.
   // ══════════════════════════════════════════
   var TOKEN = location.pathname.split('/').filter(Boolean)[1] || '';
+  var CLIENT_ID_KEY = 'gc_client_id';
+  var CLIENT_ID = (function () {
+    try {
+      var id = localStorage.getItem(CLIENT_ID_KEY);
+      if (!id) {
+        id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2)));
+        localStorage.setItem(CLIENT_ID_KEY, id);
+      }
+      return id;
+    } catch (e) {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2);
+    }
+  })();
   var statusBar = document.getElementById('status-bar');
   var statusText = document.getElementById('status-text');
+  var playerBadge = document.getElementById('player-badge');
 
   var setStatus = function (state, text) {
     statusBar.className = state;
     statusText.textContent = text;
   };
+  var setPlayerBadge = function (player) {
+    playerBadge.className = player ? 'visible p' + player : '';
+    playerBadge.textContent = player ? 'P' + player : '';
+  };
 
   var ws = null;
   var reconnectTimer = null;
+  // Sala cheia (4/4 jogadores) e' definitivo (o desktop so' manda isso pra
+  // um clientId NOVO sem slot livre) — sem essa trava, o loop de
+  // reconexao (linha de baixo) ficava tentando de novo a cada 1.5s pra
+  // sempre, mostrando "Sala cheia" -> "Reconectando..." num piscar
+  // confuso em vez de simplesmente parar e avisar.
+  var gaveUp = false;
 
   var connect = function () {
     if (!TOKEN) { setStatus('disconnected', 'Link invalido'); return; }
+    if (gaveUp) return;
     setStatus('', 'Conectando...');
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${proto}//${location.host}/ws/remote?token=${encodeURIComponent(TOKEN)}&role=phone`);
+    ws = new WebSocket(`${proto}//${location.host}/ws/remote?token=${encodeURIComponent(TOKEN)}&role=phone&clientId=${encodeURIComponent(CLIENT_ID)}`);
     ws.addEventListener('open', () => setStatus('', 'Aguardando o desktop...'));
     ws.addEventListener('message', e => {
       let data;
       try { data = JSON.parse(e.data); } catch { return; }
       if (data.type === 'paired') setStatus('connected', 'Conectado');
-      else if (data.type === 'peer-disconnected') setStatus('disconnected', 'Desktop desconectou');
+      else if (data.type === 'peer-disconnected') { setStatus('disconnected', 'Desktop desconectou'); setPlayerBadge(null); }
+      else if (data.type === 'assignSlot') setPlayerBadge(data.player);
+      else if (data.type === 'roomFull') { gaveUp = true; setStatus('disconnected', 'Sala cheia (4/4 jogadores)'); setPlayerBadge(null); }
     });
     ws.addEventListener('close', () => {
+      if (gaveUp) return;
       setStatus('disconnected', 'Reconectando...');
       clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(connect, 1500);

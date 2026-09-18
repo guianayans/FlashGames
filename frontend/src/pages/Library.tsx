@@ -1516,11 +1516,12 @@ export default function Library() {
       {/* Fixo na tela, fora do header (que pode ficar atras da busca ao
           rolar, ver .library-header sticky) — nunca some sozinho enquanto
           uma sessao remota existir. Tocar reabre o modal do QR. */}
-      <RemoteControlBadge status={remoteControl.status} onClick={() => setPairingModalOpen(true)} />
+      <RemoteControlBadge status={remoteControl.status} phones={remoteControl.phones} onClick={() => setPairingModalOpen(true)} />
       {pairingModalOpen && (
         <RemotePairingModal
           status={remoteControl.status}
           remoteUrl={remoteControl.remoteUrl}
+          phones={remoteControl.phones}
           onClose={() => setPairingModalOpen(false)}
           onDisconnect={() => {
             setPairingModalOpen(false);

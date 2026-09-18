@@ -97,6 +97,36 @@ async function prefetchWithProgress(
   return results;
 }
 
+// RetroArch so' vem com bind de TECLADO pronto pro Player 1 (confirmado
+// lendo o retroarch.cfg de verdade via getCurrentRetroarchConfig() em
+// tempo de execucao: input_player2_* e' tudo "nul" por padrao — so' os
+// gamepads FISICOS teriam bind nativo de fabrica pro P2, e nem isso a
+// gente usa, ja que manda tudo via pressDown/pressUp "fingindo" teclado,
+// ver comentario em useGamepadPlayer no Player.tsx). Sem isso, P2/P3/P4
+// (fisico OU celular remoto, ver RemoteControlContext) nunca chegava a
+// mandar nenhum input pro jogo de verdade. Cada player recebe um grupo de
+// teclas SINTETICAS proprio (nunca digitadas de verdade por ninguem, so'
+// existem como "code" de KeyboardEvent fabricado — ver fireKeyboardEvent
+// no Nostalgist), sem colidir entre si nem com o bind nativo do P1.
+const MULTIPLAYER_BUTTON_ORDER = [
+  "up", "down", "left", "right", "a", "b", "x", "y", "l", "r", "l2", "r2", "select", "start",
+] as const;
+const MULTIPLAYER_KEY_POOLS: Record<2 | 3 | 4, string[]> = {
+  2: ["num0", "num1", "num2", "num3", "num4", "num5", "num6", "num7", "num8", "num9", "b", "c", "d", "e"],
+  3: ["keypad0", "keypad1", "keypad2", "keypad3", "keypad4", "keypad5", "keypad6", "keypad7", "keypad8", "keypad9", "f", "g", "h", "j"],
+  4: ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "k", "l", "m", "n"],
+};
+function multiplayerRetroarchConfig(): Record<string, string> {
+  const cfg: Record<string, string> = {};
+  for (const player of [2, 3, 4] as const) {
+    const pool = MULTIPLAYER_KEY_POOLS[player];
+    MULTIPLAYER_BUTTON_ORDER.forEach((button, i) => {
+      cfg[`input_player${player}_${button}`] = pool[i];
+    });
+  }
+  return cfg;
+}
+
 // Nostalgist.js roda os mesmos cores libretro/RetroArch que o EmulatorJS
 // usava por baixo dos panos, mas SEM nenhuma UI propria (sem menu, sem
 // gamepad de toque) — a gente e quem desenha/controla tudo. Cada metodo
@@ -107,7 +137,7 @@ async function prefetchWithProgress(
 export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> {
   const rom =
     config.romExtras && config.romExtras.length > 0 ? [config.romUrl, ...config.romExtras] : config.romUrl;
-  const opts = { rom, element: config.canvas };
+  const opts = { rom, element: config.canvas, retroarchConfig: multiplayerRetroarchConfig() };
   switch (config.launcher) {
     case "snes":
       return Nostalgist.snes(opts);
@@ -185,6 +215,8 @@ export async function loadEmulator(config: EmulatorConfig): Promise<Nostalgist> 
           // game-wrapper.ts.
           input_player1_l2: "u",
           input_player1_r2: "i",
+          // P2/P3/P4 (fisico ou celular remoto) — ver multiplayerRetroarchConfig acima.
+          ...multiplayerRetroarchConfig(),
         },
         // Por padrao o core pula direto pro jogo — essa opcao liga a
         // animacao/logo de boot de verdade da BIOS (a mesma tela que
