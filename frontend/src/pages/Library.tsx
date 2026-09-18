@@ -1082,6 +1082,40 @@ export default function Library() {
       if (!msg.down) return; // so' reage no toque (down), igual botao fisico faz na borda de subida
       if (!bigPictureOnRef.current) setBigPictureOn(true);
       if (!gamepadActiveRef.current) { setGamepadActive(true); setGamepadName("Celular (controle remoto)"); }
+
+      // Dialogo de confirmar desfavoritar aberto: o controle vira dele,
+      // igual o poll() do controle fisico ja faz (ver confirmUnfavoriteRef
+      // ali em cima) — sem esse gate, apertar um botao no celular
+      // continuava mexendo na grade de fundo por TRAS do dialogo. Como o
+      // ConfirmDialog le o gamepad fisico sozinho (navigator.getGamepads,
+      // ver comentario dele) mas o remoto so' tem UM handler por vez
+      // (RemoteControlContext.subscribe), reaproveita direto o
+      // onConfirm/onCancel que o JSX da' pro dialogo em vez de tentar
+      // fazer o ConfirmDialog escutar o remoto tambem.
+      if (confirmUnfavoriteRef.current) {
+        const slug = confirmUnfavoriteRef.current;
+        if (msg.button === "b") { toggleFavorite(slug); setConfirmUnfavoriteSlug(null); }
+        else if (msg.button === "a" || msg.button === "start") setConfirmUnfavoriteSlug(null);
+        return;
+      }
+
+      // Overlay A-Z aberto: mesmo gate/mapeamento do poll() do controle
+      // fisico (ver "alphaOpenRef.current && keyboardModeRef.current" la'
+      // em cima) — sem isso, navegar no overlay pelo celular continuava
+      // mexendo na grade de jogos atras dele.
+      if (alphaOpenRef.current) {
+        switch (msg.button) {
+          case "up": case "down": case "left": case "right":
+            moveOverlayFocus(msg.button);
+            break;
+          case "b": confirmOverlayFocus(); break;
+          case "y": confirmOverlaySelectFilter(); break;
+          case "x": updateFilters({ q: null }); break;
+          case "a": case "start": setAlphaOpen(false); break;
+        }
+        return;
+      }
+
       switch (msg.button) {
         case "up": case "down": case "left": case "right":
           moveFocus(msg.button);
@@ -1432,6 +1466,20 @@ export default function Library() {
           {pointerCoarse && (
             <button type="button" className="remote-connect-btn" onClick={() => setQrScannerOpen(true)}>
               📷 Ler QR Code
+            </button>
+          )}
+          {/* TEMPORARIO — so' pra abrir a tela do gamepad direto no
+              celular e ajustar os botoes pelo inspecionar do navegador,
+              sem precisar parear de verdade. REMOVER depois. */}
+          {pointerCoarse && (
+            <button
+              type="button"
+              className="remote-connect-btn"
+              onClick={() => {
+                window.location.href = "/remote/teste";
+              }}
+            >
+              🧪 Abrir gamepad (teste)
             </button>
           )}
           <button

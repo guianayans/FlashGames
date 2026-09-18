@@ -474,7 +474,7 @@ body.landscape #log-label, body.landscape #log-keys { display: none; }
 /* ── D-PAD ── */
 body.landscape #dpad {
   position: fixed;
-  left: 26.872vw; top: 55.6022vh; width: 34.9326vmin; height: 34.9326vmin;
+  left: 28.9373vw; top: 53.402vh; width: 34.9325vmin; height: 34.9325vmin;
   right: auto; bottom: auto; transform: none; aspect-ratio: unset;
   background: rgba(255,255,255,.08);
   border-radius: 10px;
@@ -490,7 +490,7 @@ body.landscape .dp.pressed { background: rgba(255,255,255,.22); }
    em tempo real. ── */
 body.landscape #face-cluster {
   position: fixed;
-  left: 71.6682vw; top: 14.8632vh; width: 41.026vmin; height: 41.026vmin;
+  left: 77.1983vw; top: 9.1264vh; width: 41.0085vmin; height: 41.0085vmin;
   touch-action: none; aspect-ratio: 1; overflow: visible;
 }
 body.landscape .facebtn {
@@ -551,12 +551,12 @@ body.landscape.layout-edit #gap-pill.visible { display: flex; }
 /* ── ANALÓGICOS ── */
 body.landscape .stick-zone {
   position: fixed;
-  width: 38.8044vmin; height: 38.8044vmin; aspect-ratio: unset;
+  width: 38.8vmin; height: 38.8vmin; aspect-ratio: unset;
   background: rgba(255,255,255,.08);
   box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
 }
-body.landscape #stick-l { left: 5.2203vw; top: 14.8632vh; }
-body.landscape #stick-r { left: 53.1774vw; top: 53.6676vh; }
+body.landscape #stick-l { left: 3.4911vw; top: 11.3352vh; }
+body.landscape #stick-r { left: 57.4693vw; top: 51.4666vh; }
 body.landscape #stick-l .stick-thumb,
 body.landscape #stick-r .stick-thumb { background: rgba(255,255,255,.18); }
 body.landscape #stick-l.active .stick-thumb,
@@ -572,9 +572,9 @@ body.landscape .cbtn {
   font: 700 1.6vmin/1 system-ui, sans-serif;
 }
 body.landscape .cbtn.pressed { background: rgba(255,255,255,.3); }
-body.landscape #btn-fn     { left: 46.8908vw; top: 17.5621vh; width: 10.9701vmin; height: 10.9701vmin; aspect-ratio: unset; }
-body.landscape #btn-select { left: 36.8803vw; top: 28.5335vh; width: 10.9701vmin; height: 10.9701vmin; aspect-ratio: unset; }
-body.landscape #btn-start  { left: 56.6155vw; top: 28.5335vh; width: 10.9701vmin; height: 10.9701vmin; aspect-ratio: unset; }
+body.landscape #btn-fn     { left: 47.0139vw; top: 14.5526vh; width: 12.9759vmin; height: 12.9759vmin; aspect-ratio: unset; }
+body.landscape #btn-select { left: 36.977vw;  top: 27.5284vh; width: 12.9759vmin; height: 12.9759vmin; aspect-ratio: unset; }
+body.landscape #btn-start  { left: 56.134vw;  top: 27.5284vh; width: 12.9759vmin; height: 12.9759vmin; aspect-ratio: unset; }
 
 /* ── GATILHOS (L/R/L2/R2) — retangulares, vw/vh (nao vmin) pra nao
    esticar em quadrado. Mesma especificidade de .cbtn (ambas classes tem
@@ -587,15 +587,15 @@ body.landscape .shoulder {
   font: 700 1.4vmin/1 system-ui, sans-serif;
 }
 body.landscape .shoulder.pressed { background: rgba(255,255,255,.3); }
-body.landscape #btn-l  { left: 7.6265vw;  top: 85.3523vh; width: 8.9858vw;  height: 5.1824vh; aspect-ratio: unset; bottom: auto; }
-body.landscape #btn-r  { left: 85.6833vw; top: 85.3523vh; width: 8.9858vw;  height: 5.1824vh; aspect-ratio: unset; bottom: auto; right: auto; }
+body.landscape #btn-l  { left: 5.5325vw;  top: 77.7308vh; width: 11.8005vw; height: 6.804vh; aspect-ratio: unset; bottom: auto; }
+body.landscape #btn-r  { left: 84.272vw;  top: 77.7308vh; width: 11.8005vw; height: 6.804vh; aspect-ratio: unset; bottom: auto; right: auto; }
 /* display:flex explicito aqui: #btn-l2/#btn-r2 tem display:none com
    especificidade de ID no retrato (ver acima) — precisa de outra regra
    TAMBEM com ID pra vencer especificamente essa propriedade na
    paisagem, a posicao sozinha (sem "display") nao disputa a cascata
    pra essa propriedade especifica. */
-body.landscape #btn-l2 { display: flex; left: 6.813vw;   top: 92.4719vh; width: 10.6129vw; height: 6.1222vh; aspect-ratio: unset; bottom: auto; }
-body.landscape #btn-r2 { display: flex; left: 84.8697vw; top: 92.4719vh; width: 10.6129vw; height: 6.1222vh; aspect-ratio: unset; bottom: auto; right: auto; }
+body.landscape #btn-l2 { display: flex; left: 4.9555vw;  top: 88.3345vh; width: 12.9544vw; height: 7.468vh; aspect-ratio: unset; bottom: auto; }
+body.landscape #btn-r2 { display: flex; left: 83.6934vw; top: 88.3345vh; width: 12.9544vw; height: 7.468vh; aspect-ratio: unset; bottom: auto; right: auto; }
 
 body.landscape #remap-btn { top: 10px; bottom: auto; right: 10px; }
 
