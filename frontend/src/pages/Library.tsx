@@ -855,7 +855,13 @@ export default function Library() {
         remoteControl.start();
       }
     } else if (id === "controller-badge") {
+      // O badge pode estar visivel so' por causa de um controle FISICO
+      // (sem nenhuma sessao remota iniciada ainda, status "idle") — nesse
+      // caso precisa iniciar a sessao igual o botao "Conectar controle",
+      // senao o modal abre sem QR nenhum pra escanear (bug reportado:
+      // "o qrcode nao carrega").
       setPairingModalOpen(true);
+      if (remoteControl.status === "idle") remoteControl.start();
     } else if (id === "covers-toggle") {
       toggleOriginalCovers();
     } else if (id === "logout") {
@@ -952,12 +958,22 @@ export default function Library() {
       right: { held: false, nextAt: 0 },
     };
     const btnState: Record<number, boolean> = {};
-    // Segurar o analogico direito pra rolar (ver poll() mais abaixo):
-    // comeca devagar e acelera exponencialmente quanto mais tempo fica
-    // segurado numa MESMA direcao (scrollHoldStart guarda quando a
-    // direcao atual comecou; zera se soltar ou trocar de sentido).
-    let scrollHoldStart: number | null = null;
-    let scrollHoldSign = 0;
+    // Analogico direito: MESMA navegacao por foco do esquerdo/D-pad
+    // (moveFocus), so' que bem mais rapido (repete a cada
+    // RIGHT_STICK_REPEAT_RATE_MS em vez de REPEAT_RATE_MS) — pedido
+    // explicito. Antes rolava a pagina livremente por pixel, SEM mexer
+    // no foco — soltar o analogico e mexer no esquerdo de novo fazia a
+    // tela "voltar" pra onde o item focado (que nunca tinha mudado)
+    // ainda estava, desfazendo a rolagem manual. Unificando os dois no
+    // mesmo mecanismo (moveFocus muda o foco E ja rola a tela pra
+    // manter ele visivel, sempre em sincronia) resolve o problema na
+    // raiz em vez de so' tentar "acompanhar" a rolagem depois.
+    const RIGHT_STICK_REPEAT_DELAY_MS = 90;
+    const RIGHT_STICK_REPEAT_RATE_MS = 40;
+    const rightDirState: Record<"up" | "down", { held: boolean; nextAt: number }> = {
+      up: { held: false, nextAt: 0 },
+      down: { held: false, nextAt: 0 },
+    };
     // Enquanto o dialogo de confirmar desfavoritar esta aberto, o poll
     // abaixo retorna cedo (ver confirmUnfavoriteRef) sem NUNCA atualizar
     // btnState — se o botao que confirmou la dentro (X/Sim) ainda
@@ -1094,32 +1110,30 @@ export default function Library() {
         const up = !!gp.buttons[12]?.pressed || (typeof ay === "number" && ay < -dead);
         const down = !!gp.buttons[13]?.pressed || (typeof ay === "number" && ay > dead);
 
-        // Analogico direito rola a pagina livremente, independente do foco
-        // (D-pad/analogico esquerdo pulam de card em card e ja arrastam a
-        // tela pro foco ficar visivel — isso aqui e' pra passar o olho
-        // pela lista toda direto, sem trocar o que esta focado). So faz
-        // sentido fora do overlay A-Z (ele cobre a tela inteira). Comeca
-        // devagar e acelera EXPONENCIALMENTE quanto mais tempo fica
-        // segurado numa mesma direcao (scrollHoldStart), multiplicado
-        // ainda pela deflexao (empurrar mais fundo tambem comeca mais
-        // rapido) — pedido explicito, antes so' escalava com a deflexao.
+        // Analogico direito: mesma navegacao por foco do esquerdo/D-pad
+        // (moveFocus), bem mais rapido — ver RIGHT_STICK_REPEAT_*
+        // la' em cima. So' faz sentido fora do overlay A-Z (ele cobre a
+        // tela inteira, tem a propria navegacao).
         const SCROLL_DEAD = 0.15;
-        const SCROLL_BASE_PX = 3;
-        const SCROLL_MAX_PX = 60;
-        const SCROLL_RAMP_MS = 350; // dobra de velocidade a cada 350ms segurando
-        if (!alphaOpenRef.current && typeof ry === "number" && Math.abs(ry) > SCROLL_DEAD) {
-          const sign = Math.sign(ry);
-          if (scrollHoldSign !== sign) {
-            scrollHoldStart = now;
-            scrollHoldSign = sign;
-          }
-          const magnitude = (Math.abs(ry) - SCROLL_DEAD) / (1 - SCROLL_DEAD);
-          const elapsed = now - (scrollHoldStart ?? now);
-          const speed = Math.min(SCROLL_BASE_PX * 2 ** (elapsed / SCROLL_RAMP_MS), SCROLL_MAX_PX) * magnitude;
-          window.scrollBy(0, sign * speed);
-        } else {
-          scrollHoldStart = null;
-          scrollHoldSign = 0;
+        if (!alphaOpenRef.current) {
+          const ryUp = !alphaOpenRef.current && typeof ry === "number" && ry < -SCROLL_DEAD;
+          const ryDown = !alphaOpenRef.current && typeof ry === "number" && ry > SCROLL_DEAD;
+          (["up", "down"] as const).forEach((dir) => {
+            const pressed = dir === "up" ? ryUp : ryDown;
+            const s = rightDirState[dir];
+            if (!pressed) {
+              s.held = false;
+              return;
+            }
+            if (!s.held) {
+              s.held = true;
+              s.nextAt = now + RIGHT_STICK_REPEAT_DELAY_MS;
+              moveFocus(dir);
+            } else if (now >= s.nextAt) {
+              s.nextAt = now + RIGHT_STICK_REPEAT_RATE_MS;
+              moveFocus(dir);
+            }
+          });
         }
 
         // Overlay A-Z aberto (qualquer um dos dois: filtro normal OU
@@ -1271,28 +1285,32 @@ export default function Library() {
     // Analogico direito do celular manda "scroll-up"/"scroll-down" (ver
     // RemoteController.html — nome diferente do d-pad de proposito, senao
     // nao daria pra distinguir "segurar pra navegar a grade" de "segurar
-    // pra rolar a pagina"). Mesma formula de aceleracao exponencial do
-    // controle fisico (ver poll() acima, SCROLL_RAMP_MS) — sem deflexao
-    // continua aqui (o celular so' manda um toque digital), entao so' o
-    // tempo segurado acelera.
-    const SCROLL_BASE_PX = 3;
-    const SCROLL_MAX_PX = 60;
-    const SCROLL_RAMP_MS = 350;
-    let scrollTimer: ReturnType<typeof setInterval> | null = null;
+    // pra rolar a pagina"). MESMA navegacao por foco do D-pad/analogico
+    // esquerdo (moveFocus), so' que bem mais rapido — mesmo criterio do
+    // controle fisico (ver RIGHT_STICK_REPEAT_* no poll() acima): antes
+    // rolava a pagina livremente por pixel sem mexer no foco, e soltar
+    // pra mexer no D-pad fazia a tela "voltar" pra onde o item focado
+    // (nunca tinha mudado) ainda estava, desfazendo a rolagem manual.
+    const RIGHT_STICK_REPEAT_DELAY_MS = 90;
+    const RIGHT_STICK_REPEAT_RATE_MS = 40;
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
     function stopScroll() {
       if (scrollTimer !== null) {
-        clearInterval(scrollTimer);
+        clearTimeout(scrollTimer);
         scrollTimer = null;
       }
     }
     function startScroll(sign: 1 | -1) {
       stopScroll();
-      const start = performance.now();
-      scrollTimer = setInterval(() => {
-        const elapsed = performance.now() - start;
-        const speed = Math.min(SCROLL_BASE_PX * 2 ** (elapsed / SCROLL_RAMP_MS), SCROLL_MAX_PX);
-        window.scrollBy(0, sign * speed);
-      }, 16);
+      const dir = sign === -1 ? "up" : "down";
+      moveFocus(dir);
+      const tick = (delay: number) => {
+        scrollTimer = setTimeout(() => {
+          moveFocus(dir);
+          tick(RIGHT_STICK_REPEAT_RATE_MS);
+        }, delay);
+      };
+      tick(RIGHT_STICK_REPEAT_DELAY_MS);
     }
 
     const unsubscribe = remoteControl.subscribe((msg) => {
@@ -1845,7 +1863,13 @@ export default function Library() {
         slots={controllerSlots}
         floating
         pendingLabel={REMOTE_PENDING_LABEL[remoteControl.status]}
-        onClick={() => setPairingModalOpen(true)}
+        onClick={() => {
+          // Mesmo caso do branch "controller-badge" em confirmFocused
+          // acima (gamepad) — o badge pode aparecer so' com um controle
+          // fisico conectado, sessao remota ainda "idle"/sem QR gerado.
+          setPairingModalOpen(true);
+          if (remoteControl.status === "idle") remoteControl.start();
+        }}
         dataBpId="controller-badge"
         focused={focusVisible && focusedId === "controller-badge"}
       />

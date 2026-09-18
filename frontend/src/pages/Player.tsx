@@ -1281,7 +1281,15 @@ function DesktopPlayer({ slug }: { slug: string }) {
           slots={controllerSlots}
           variant="dots"
           pendingLabel={REMOTE_PENDING_LABEL[remoteControl.status]}
-          onClick={() => setPairingModalOpen(true)}
+          onClick={() => {
+            // O indicador pode estar visivel so' por causa do controle
+            // FISICO (sempre presente no Player), sem sessao remota
+            // iniciada ainda ("idle") — precisa chamar start() igual o
+            // botao "Conectar controle", senao o modal abre sem QR pra
+            // escanear (mesmo bug corrigido na Biblioteca).
+            setPairingModalOpen(true);
+            if (remoteControl.status === "idle") remoteControl.start();
+          }}
         />
         {remoteControl.status === "idle" && (
           <button
