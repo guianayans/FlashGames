@@ -1434,20 +1434,6 @@ export default function Library() {
               📷 Ler QR Code
             </button>
           )}
-          {/* TEMPORARIO — so' pra abrir a tela do gamepad direto no
-              celular e ajustar os botoes pelo inspecionar do navegador,
-              sem precisar parear de verdade. REMOVER depois. */}
-          {pointerCoarse && (
-            <button
-              type="button"
-              className="remote-connect-btn"
-              onClick={() => {
-                window.location.href = "/remote/teste";
-              }}
-            >
-              🧪 Abrir gamepad (teste)
-            </button>
-          )}
           <button
             type="button"
             className={`library-covers-toggle${originalCovers ? " active" : ""}`}
