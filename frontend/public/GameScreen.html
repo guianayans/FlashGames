@@ -450,10 +450,15 @@ body {
 }
 
 /* ── PAISAGEM: gamepad some, jogo em tela cheia na resolucao nativa,
-   controles vao pras bordas esquerda/direita — ficam fora da area do
-   jogo quando sobra faixa de letterbox, ou sobrepondo quando nao sobra
-   (o emulador sempre letterboxa sem cortar, entao a faixa, quando existe,
-   fica exatamente nas bordas onde os controles estao ancorados). ── */
+   controles flutuam por cima como um overlay transparente. Posicao,
+   tamanho e desenho dos botoes replicados 1:1 do prototipo que o usuario
+   desenhou em elementos/gamepad.html (calibrado visualmente por cima de
+   uma imagem de shell landscape) — la as coordenadas ja sao vw/vh
+   relativas a viewport INTEIRA, e aqui o #screen tambem ocupa 100% da
+   viewport na paisagem, entao os numeros batem sem nenhuma conversao.
+   NAO mostra a imagem do shell aqui (unico ponto em que diverge do
+   prototipo) — o jogo continua em tela cheia, so os controles (posicao,
+   tamanho, forma de redimensionar) vem de la. ── */
 body.landscape #shell-img { display: none; }
 body.landscape #shell {
   width: 100%; height: 100%; max-height: none; aspect-ratio: unset;
@@ -462,63 +467,72 @@ body.landscape #screen { top: 0; left: 0; width: 100%; height: 100%; }
 body.landscape #log-label, body.landscape #log-keys { display: none; }
 
 body.landscape #dpad {
-  top: 50%; left: 14px; right: auto; bottom: auto;
-  transform: translateY(-50%);
-  /* MESMO tamanho que o retrato renderiza (16% de um shell ~390px de
-     largura) — nao um valor novo pra paisagem. */
-  width: 62px;
-  /* Caixa unica e limpa ao redor do d-pad inteiro — as 4 sub-areas (.dp)
-     se sobrepoem entre si (de proposito, pro toque em diagonal), entao dar
-     fundo individual a cada uma criava um "borrao" com bordas visiveis se
-     sobrepondo em vez de um d-pad encaixotado direito. */
+  top: 36.065vh; left: 11.941vw; width: 16.12vw; height: 12.665vh;
+  right: auto; bottom: auto; transform: none; aspect-ratio: unset;
   background: rgba(255,255,255,.10);
   border-radius: 10px;
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.08);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
 }
-/* Ajuste fino dos 4 quadrantes do d-pad SO na paisagem (retrato fica com os
-   offsets originais, acima) — valores calibrados pelo usuario testando no
-   aparelho de verdade. */
+/* Sub-areas do d-pad (%, relativas ao proprio #dpad) — iguais nos dois
+   arquivos, mantidas como ja estavam. */
 body.landscape #dp-up    { top:-4px;  left:30%; width:42%; height:42%; border-radius:3px 3px 0 0; }
 body.landscape #dp-down  { bottom:-3px; left:30%; width:42%; height:42%; border-radius:0 0 3px 3px; }
 body.landscape #dp-right { top:30%;  right:-5px; width:42%; height:42%; border-radius:0 3px 3px 0; }
 body.landscape #dp-left  { top:29%;  left:-3px;  width:42%; height:42%; border-radius:3px 0 0 3px; }
-body.landscape .stick-zone { width: 92px; }
-body.landscape #stick-l { top:80.6%; left:12%;   }
-body.landscape #stick-r { top:80.6%; left:73.5%; }
 
-body.landscape #btn-x, body.landscape #btn-y, body.landscape #btn-a, body.landscape #btn-b { top:69.6%; left:75%;   width:12%; aspect-ratio:1; }
-body.landscape #btn-x { top:58.7%; left:75%; width:12%; aspect-ratio:1; }
-body.landscape #btn-y { top:64.4%; left:64.5%; width:12%; aspect-ratio:1; }
-body.landscape #btn-a { top:64.4%; left:85%;   width:12%; aspect-ratio:1; }
-body.landscape #btn-b { top:69.6%; left:75%;   width:12%; aspect-ratio:1; }
+body.landscape .stick-zone {
+  width: auto; aspect-ratio: unset;
+  background: rgba(255,255,255,.10);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.10);
+}
+body.landscape #stick-l { top:50.519vh; left:20.372vw; width:12.666vw; height:9.952vh; }
+body.landscape #stick-r { top:50.682vh; left:66.923vw; width:12.517vw; height:9.835vh; }
+/* Mesmo motivo do .active abaixo: precisa repetir os IDs pra ganhar de
+   #stick-l/#stick-r .stick-thumb (linha ~211, tambem com ID). */
+body.landscape #stick-l .stick-thumb,
+body.landscape #stick-r .stick-thumb { background: rgba(255,255,255,.20); }
+/* Precisa repetir os IDs (nao so' .stick-zone.active) pra especificidade
+   bater a regra do retrato (#stick-l.active/#stick-r.active, linha ~216)
+   — um seletor so' de classe perderia pra um com ID, mesmo dentro da
+   paisagem. */
+body.landscape #stick-l.active .stick-thumb,
+body.landscape #stick-r.active .stick-thumb { background: rgba(255,255,255,.38); }
 
-body.landscape #btn-fn, body.landscape #btn-select, body.landscape #btn-start  { top:71.6%; left:54%;   width:10%; height:5%; }
-/* left comeca em 64px (nao 14px) — deixa o canto superior esquerdo livre
-   pro botao de "voltar" da pagina (fora deste arquivo, ver Player.tsx) */
-body.landscape #btn-fn     { top:66.4%; left:45%;   width:10%; aspect-ratio:1; border-radius:50%; }
-body.landscape #btn-select { top:71.6%; left:35.6%; width:10%; height:5%; }
-body.landscape #btn-start  { top:71.6%; left:54%;   width:10%; height:5%; }
+body.landscape #btn-x { top:35.335vh; left:77.025vw; width:6.596vw; height:5.182vh; aspect-ratio:unset; }
+body.landscape #btn-y { top:40.263vh; left:71.519vw; width:6.432vw; height:5.053vh; aspect-ratio:unset; }
+body.landscape #btn-a { top:40.366vh; left:83.165vw; width:6.324vw; height:4.969vh; aspect-ratio:unset; }
+body.landscape #btn-b { top:44.656vh; left:77.435vw; width:6.358vw; height:4.995vh; aspect-ratio:unset; }
 
-/* Gatilhos: cantos externos, uma fileira abaixo do topo (top:10px ali em
-   cima ja tem o botao de voltar a esquerda e o cluster de icones ⚙/✥/👁 a
-   direita) — simetrico com os analogicos, que ficam nos cantos inferiores. */
-body.landscape .shoulder { top: 56px; bottom: auto; width: 52px; height: 28px; }
-body.landscape #btn-l { top:93.2%; left:10%;  width:18%; height:3%; }
-body.landscape #btn-r { top:93.2%; right:10%; left:auto; width:18%; height:3%; }
+body.landscape #btn-fn     { top:47.397vh; left:47.125vw; width:5.855vw; height:4.406vh; aspect-ratio:unset; }
+body.landscape #btn-select { top:52.32vh;  left:41.344vw; width:5.099vw; height:4.006vh; aspect-ratio:unset; }
+body.landscape #btn-start  { top:52.331vh; left:53.431vw; width:5.204vw; height:4.089vh; aspect-ratio:unset; }
+
+body.landscape #btn-l { top:62.744vh; left:9.076vw;  width:7.154vw; height:4.47vh;  bottom:auto; }
+body.landscape #btn-r { top:62.983vh; left:83.842vw; width:7.322vw; height:4.576vh; bottom:auto; right:auto; }
 
 body.landscape #remap-btn { top: 10px; bottom: auto; right: 10px; }
 
 /* No retrato os botoes ficam invisiveis de proposito (o desenho impresso
    no shell ja mostra onde estao). Na paisagem nao tem desenho embaixo —
    tela cheia, so os controles soltos — entao aqui eles ganham o MESMO
-   fundo bem sutil que os analogicos ja usam, so pra dar uma referencia de
-   onde tocar, sem atrapalhar o jogo por baixo quando sobrepoe a tela. */
+   fundo/formato do prototipo gamepad.html: circulo translucido (o .cbtn
+   do retrato e' um retangulo arredondado — 20px — so' na paisagem vira
+   circulo de verdade, igual la). */
 body.landscape .btn,
 body.landscape .cbtn {
   background: rgba(255,255,255,.10);
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.08);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.12);
+  border-radius: 50%;
 }
-/* especificidade maior que a regra acima, senao o toque nao mudaria nada
+/* especificidade igual a` regra acima (mesmo tanto de classes), entao
+   por vir DEPOIS no arquivo ganha — precisa disso pro gatilho voltar a
+   ser a pilula preta (nao o circulo branco) mesmo sendo tambem um .cbtn,
+   igual ja acontecia no gamepad.html (mesmo criterio de ordem la). */
+body.landscape .shoulder {
+  background: rgba(0,0,0,.55);
+  border-radius: 6px;
+}
+/* especificidade maior que as regras acima, senao o toque nao mudaria nada
    visualmente na paisagem (o fundo sutil ganharia da cor de "pressionado") */
 body.landscape .dp.pressed,
 body.landscape .btn.pressed,
@@ -573,6 +587,36 @@ body.layout-edit [data-draggable] {
 [data-draggable].dragging {
   outline: 2px solid rgba(0,229,255,.95) !important;
 }
+
+/* Alca de redimensionar (canto inferior-direito, proporcao travada — ver
+   startResize no <script>) — mesmo desenho do elementos/gamepad.html.
+   Escondida por padrao (display:none) e SO aparece em
+   body.landscape.layout-edit (nao so' .layout-edit) de proposito: o botao
+   que liga o modo de layout ja so' existe na paisagem (#layout-btn, ver
+   acima), mas blindar aqui tambem garante que o retrato nunca mostra a
+   alca mesmo num caso extremo de girar a tela no meio do modo de editar
+   layout — o retrato continua 100% intocado, layout sempre fixo do shell. */
+.rh {
+  display: none;
+  position: absolute;
+  width: 18px; height: 18px;
+  right: -9px; bottom: -9px;
+  border-radius: 4px;
+  background: #00e5ff;
+  border: 2px solid rgba(0,0,0,.7);
+  z-index: 60;
+  touch-action: none;
+  cursor: nwse-resize;
+}
+.rh::after {
+  content: '↗';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: #000; font-weight: 900;
+  transform: rotate(90deg);
+  pointer-events: none;
+}
+body.landscape.layout-edit .rh { display: block; }
 </style>
 </head>
 <body>
@@ -595,30 +639,33 @@ body.layout-edit [data-draggable] {
     <div id="dp-right" class="dp" data-dir="right"></div>
     <div id="dp-down"  class="dp" data-dir="down"></div>
     <div id="dp-left"  class="dp" data-dir="left"></div>
+    <div class="rh" data-rh="dpad"></div>
   </div>
 
   <!-- FACE -->
-  <div id="btn-x" class="btn" data-key="x"     data-label="X" data-draggable="btn-x"></div>
-  <div id="btn-y" class="btn" data-key="y"     data-label="Y" data-draggable="btn-y"></div>
-  <div id="btn-a" class="btn" data-key="z"     data-label="A" data-draggable="btn-a"></div>
-  <div id="btn-b" class="btn" data-key="Shift" data-label="B" data-draggable="btn-b"></div>
+  <div id="btn-x" class="btn" data-key="x"     data-label="X" data-draggable="btn-x"><div class="rh"></div></div>
+  <div id="btn-y" class="btn" data-key="y"     data-label="Y" data-draggable="btn-y"><div class="rh"></div></div>
+  <div id="btn-a" class="btn" data-key="z"     data-label="A" data-draggable="btn-a"><div class="rh"></div></div>
+  <div id="btn-b" class="btn" data-key="Shift" data-label="B" data-draggable="btn-b"><div class="rh"></div></div>
 
   <!-- GATILHOS (L/R) -->
-  <div id="btn-l" class="cbtn shoulder" data-key="q" data-label="L" data-draggable="btn-l"></div>
-  <div id="btn-r" class="cbtn shoulder" data-key="e" data-label="R" data-draggable="btn-r"></div>
+  <div id="btn-l" class="cbtn shoulder" data-key="q" data-label="L" data-draggable="btn-l"><div class="rh"></div></div>
+  <div id="btn-r" class="cbtn shoulder" data-key="e" data-label="R" data-draggable="btn-r"><div class="rh"></div></div>
 
   <!-- ANALÓGICOS -->
   <div id="stick-l" class="stick-zone" data-stick="left" data-draggable="stick-l">
     <div class="stick-thumb"></div>
+    <div class="rh"></div>
   </div>
   <div id="stick-r" class="stick-zone" data-stick="right" data-draggable="stick-r">
     <div class="stick-thumb"></div>
+    <div class="rh"></div>
   </div>
 
   <!-- CENTRO -->
-  <div id="btn-fn"     class="cbtn" data-key="Escape" data-label="FN"    data-draggable="btn-fn"></div>
-  <div id="btn-select" class="cbtn" data-key="Tab"    data-label="SEL"   data-draggable="btn-select"></div>
-  <div id="btn-start"  class="cbtn" data-key="k"  data-label="START" data-draggable="btn-start"></div>
+  <div id="btn-fn"     class="cbtn" data-key="Escape" data-label="FN"    data-draggable="btn-fn"><div class="rh"></div></div>
+  <div id="btn-select" class="cbtn" data-key="Tab"    data-label="SEL"   data-draggable="btn-select"><div class="rh"></div></div>
+  <div id="btn-start"  class="cbtn" data-key="k"  data-label="START" data-draggable="btn-start"><div class="rh"></div></div>
 </div>
 
 <!-- Confirmar saida — abre quando L2 e segurado por ~0.7s no
@@ -1646,19 +1693,30 @@ fetch('/api/controls/layout', { credentials: 'include' })
   })
   .catch(() => {});
 
-function applyPosition(el, xPct, yPct) {
+// wPct/hPct sao opcionais (fracao da LARGURA/ALTURA da viewport, mesmo
+// criterio de xPct/yPct pro centro) — layout salvo antes do redimensionar
+// existir so tem x/y, entao continua funcionando com o tamanho padrao do
+// CSS (comportamento aditivo, ver startResize mais abaixo).
+function applyPosition(el, xPct, yPct, wPct, hPct) {
   el.style.position = 'fixed';
   el.style.left = (xPct * 100) + '%';
   el.style.top = (yPct * 100) + '%';
   el.style.right = 'auto';
   el.style.bottom = 'auto';
   el.style.transform = 'translate(-50%, -50%)';
+  if (typeof wPct === 'number') {
+    el.style.width = (wPct * 100) + '%';
+    el.style.aspectRatio = 'unset';
+  }
+  if (typeof hPct === 'number') {
+    el.style.height = (hPct * 100) + '%';
+  }
 }
 
 function applyCustomLayout() {
   draggableEls.forEach(el => {
     const pos = customLayout[el.dataset.draggable];
-    if (pos) applyPosition(el, pos.x, pos.y);
+    if (pos) applyPosition(el, pos.x, pos.y, pos.w, pos.h);
   });
 }
 
@@ -1670,6 +1728,9 @@ function clearCustomLayoutPositions() {
     el.style.right = '';
     el.style.bottom = '';
     el.style.transform = '';
+    el.style.width = '';
+    el.style.height = '';
+    el.style.aspectRatio = '';
   });
 }
 
@@ -1765,9 +1826,20 @@ syncControlsVisibility();
 
 // Intercepta o toque ANTES de qualquer handler normal de botao/d-pad/
 // analogico (capture na raiz) — assim nao precisa mexer em nenhum desses
-// handlers pra saber sobre o modo de layout.
+// handlers pra saber sobre o modo de layout. A alca de redimensionar
+// (.rh) tem prioridade sobre o proprio arrastar — senao o pointerdown
+// nela seria capturado pelo "closest('[data-draggable]')" do drag antes
+// de chegar no handler dela (mesma ordem usada no elementos/gamepad.html).
 document.addEventListener('pointerdown', e => {
   if (!layoutEditMode) return;
+  if (e.target.classList.contains('rh')) {
+    const el = e.target.closest('[data-draggable]');
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    startResize(el, e.target, e);
+    return;
+  }
   const el = e.target.closest('[data-draggable]');
   if (!el) return;
   e.preventDefault();
@@ -1782,7 +1854,8 @@ function startDrag(el, downEvent) {
 
   const move = e => {
     if (e.pointerId !== pid) return;
-    applyPosition(el, e.clientX / window.innerWidth, e.clientY / window.innerHeight);
+    const prev = customLayout[el.dataset.draggable];
+    applyPosition(el, e.clientX / window.innerWidth, e.clientY / window.innerHeight, prev && prev.w, prev && prev.h);
   };
   const end = e => {
     if (e.pointerId !== pid) return;
@@ -1792,9 +1865,11 @@ function startDrag(el, downEvent) {
     el.removeEventListener('pointercancel', end);
     el.removeEventListener('lostpointercapture', end);
     const r = el.getBoundingClientRect();
+    const prev = customLayout[el.dataset.draggable];
     customLayout[el.dataset.draggable] = {
       x: (r.left + r.width / 2) / window.innerWidth,
       y: (r.top + r.height / 2) / window.innerHeight,
+      ...(prev && typeof prev.w === 'number' ? { w: prev.w, h: prev.h } : {}),
     };
     saveLayout();
   };
@@ -1804,6 +1879,76 @@ function startDrag(el, downEvent) {
   el.addEventListener('pointercancel', end);
   el.addEventListener('lostpointercapture', end);
   move(downEvent);
+}
+
+// ═══════════════════════════════════════════
+//  REDIMENSIONAR — alca .rh, proporcao travada (mesma logica do
+//  elementos/gamepad.html). O canto SUPERIOR-ESQUERDO fica fixo durante o
+//  arraste (like a maioria dos editores) e o eixo que o dedo moveu mais
+//  manda no tamanho, escalando o outro pra manter a proporcao original —
+//  senao um arraste na diagonal distorceria o botao (vira oval/retangulo
+//  torto em vez de crescer/encolher proporcional). No final, converte de
+//  volta pro modelo de CENTRO que applyPosition/customLayout ja usam (nao
+//  guarda em canto-fixo — ia desalinhar do jeito que o drag entende
+//  posicao), senao os dois sistemas (mover vs redimensionar) ficariam
+//  gravando formatos diferentes no mesmo customLayout.
+// ═══════════════════════════════════════════
+function startResize(el, handle, downEvent) {
+  const pid = downEvent.pointerId;
+  handle.setPointerCapture(pid);
+  el.classList.add('dragging');
+
+  const r0 = el.getBoundingClientRect();
+  const ratio = r0.width / r0.height;
+  const fixL = r0.left;
+  const fixT = r0.top;
+  const MIN = 20; // tamanho minimo em px, pra nao desaparecer de tao pequeno
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Durante o arraste, ancora pelo canto (transform:none) — mais simples
+  // de calcular crescimento a partir de um ponto fixo do que a partir do
+  // centro. Volta pro modelo de centro no fim (ver "end" abaixo).
+  el.style.position = 'fixed';
+  el.style.left = (fixL / vw * 100) + '%';
+  el.style.top = (fixT / vh * 100) + '%';
+  el.style.right = 'auto';
+  el.style.bottom = 'auto';
+  el.style.transform = 'none';
+  el.style.aspectRatio = 'unset';
+
+  const move = e => {
+    if (e.pointerId !== pid) return;
+    const dw = Math.max(MIN, e.clientX - fixL);
+    const dh = Math.max(MIN, e.clientY - fixT);
+    let nw, nh;
+    if (dw / ratio >= dh) { nw = dw; nh = dw / ratio; }
+    else { nh = dh; nw = dh * ratio; }
+    el.style.width = (nw / vw * 100) + '%';
+    el.style.height = (nh / vh * 100) + '%';
+  };
+
+  const end = e => {
+    if (e.pointerId !== pid) return;
+    el.classList.remove('dragging');
+    handle.removeEventListener('pointermove', move);
+    handle.removeEventListener('pointerup', end);
+    handle.removeEventListener('pointercancel', end);
+    handle.removeEventListener('lostpointercapture', end);
+    const r = el.getBoundingClientRect();
+    const x = (r.left + r.width / 2) / vw;
+    const y = (r.top + r.height / 2) / vh;
+    const w = r.width / vw;
+    const h = r.height / vh;
+    applyPosition(el, x, y, w, h); // volta pro modelo de centro
+    customLayout[el.dataset.draggable] = { x, y, w, h };
+    saveLayout();
+  };
+
+  handle.addEventListener('pointermove', move);
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+  handle.addEventListener('lostpointercapture', end);
 }
 
 syncOrientation();
