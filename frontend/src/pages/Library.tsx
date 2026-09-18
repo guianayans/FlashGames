@@ -8,7 +8,20 @@ import { systemMeta } from "../categories";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RemotePairingModal from "../components/RemotePairingModal";
 import RemoteControlBadge from "../components/RemoteControlBadge";
+import QrScannerModal from "../components/QrScannerModal";
 import { useRemoteControlContext } from "../remoteControl/RemoteControlContext";
+
+// Aparelho de toque (celular) vs desktop com mouse — decide se mostra
+// "Ler QR Code" (o CELULAR escaneia pra virar controle remoto de um
+// desktop) ou "Conectar controle" (o DESKTOP gera o QR), ver .library-user
+// mais abaixo. Mesmo criterio de Player.tsx (detectPointerCoarse) —
+// duplicado aqui de proposito (arquivo diferente, checagem de 2 linhas,
+// nao vale criar um modulo compartilhado so' pra isso).
+function detectPointerCoarse(): boolean {
+  if (typeof window === "undefined") return false;
+  const shortSide = Math.min(window.innerWidth, window.innerHeight);
+  return window.matchMedia("(pointer: coarse)").matches || shortSide <= 560;
+}
 
 // Tela pequena (mesmo corte de 700px usado no resto do CSS pra layout
 // mobile) — cards expansiveis (Favoritos/Top Games/Recentes) comecam
@@ -1051,6 +1064,8 @@ export default function Library() {
   // pra-repetir.
   const remoteControl = useRemoteControlContext();
   const [pairingModalOpen, setPairingModalOpen] = useState(false);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [pointerCoarse] = useState(detectPointerCoarse);
   // Assim que parear, fecha o modal grande sozinho — sobra so' o
   // indicador pequeno (RemoteControlBadge, sempre visivel), sem tampar a
   // biblioteca. Mesmo criterio do Player.tsx.
@@ -1397,7 +1412,7 @@ export default function Library() {
 
         <div className="library-user">
           {gamepadActive && <span className="gamepad-badge">🎮 {gamepadName}</span>}
-          {remoteControl.status === "idle" && (
+          {remoteControl.status === "idle" && !pointerCoarse && (
             <button
               type="button"
               className="remote-connect-btn"
@@ -1407,6 +1422,16 @@ export default function Library() {
               }}
             >
               📱 Conectar controle
+            </button>
+          )}
+          {/* Celular: em vez de GERAR um QR (nao faz sentido virar
+              controle de si mesmo), oferece LER o QR de um desktop —
+              abre a camera de DENTRO do PWA (ver QrScannerModal), sem
+              precisar do app de camera nativo (que nunca abre o app
+              instalado, so' o navegador). */}
+          {pointerCoarse && (
+            <button type="button" className="remote-connect-btn" onClick={() => setQrScannerOpen(true)}>
+              📷 Ler QR Code
             </button>
           )}
           <button
@@ -1455,6 +1480,7 @@ export default function Library() {
           }}
         />
       )}
+      {qrScannerOpen && <QrScannerModal onClose={() => setQrScannerOpen(false)} />}
 
       {alphaOpen && (
         <div className="alpha-overlay" role="dialog" aria-modal="true" aria-label="Filtrar por letra" onClick={() => setAlphaOpen(false)}>
