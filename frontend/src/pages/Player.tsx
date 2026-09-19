@@ -8,6 +8,7 @@ import RemotePairingModal from "../components/RemotePairingModal";
 import ControllerIndicators, { REMOTE_PENDING_LABEL, type ControllerSlot } from "../components/ControllerIndicators";
 import { useRemoteControlContext } from "../remoteControl/RemoteControlContext";
 import type { GameDetail, SystemLauncher } from "../types";
+import { isRealGamepad } from "../gamepadUtils";
 
 // Proporcao nativa de cada console — usada pra dimensionar o palco do jogo
 // (ver DesktopPlayer) sem esticar/distorcer a imagem. object-fit:contain
@@ -334,7 +335,7 @@ function useGamepadPlayer(
       return slots.find((s) => s.gpIndex === gpIndex) ?? null;
     }
     function assignSlot(gp: Gamepad | null) {
-      if (!gp || slotForIndex(gp.index)) return;
+      if (!isRealGamepad(gp) || slotForIndex(gp.index)) return;
       // Pula os numeros que algum celular ja' ocupa (ver remotePlayersRef)
       // — o slot fisico livre e' o menor numero que ninguem (fisico ou
       // celular) esta usando ainda.
@@ -886,9 +887,10 @@ function SaveStateMenu({
       const now = performance.now();
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       let gp: Gamepad | null = gpIndex !== null ? pads[gpIndex] : null;
-      if (!gp) {
+      if (!isRealGamepad(gp)) {
+        gp = null;
         for (let i = 0; i < pads.length; i++) {
-          if (pads[i]) {
+          if (isRealGamepad(pads[i])) {
             gp = pads[i];
             gpIndex = i;
             break;
@@ -1237,8 +1239,12 @@ function DesktopPlayer({ slug }: { slug: string }) {
         // connectedPlayerCount em loadEmulatorScript.ts — so' navigator.
         // getGamepads() ignorava celular remoto, tratando "1 fisico + 1
         // celular" como sessao solo por engano e quebrando o PS1 em jogo
-        // de 2P de verdade).
-        const physicalCount = (navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean).length;
+        // de 2P de verdade). isRealGamepad filtra o "gamepad fantasma" do
+        // acelerometro/giroscopio que alguns controles expoem junto (ver
+        // comentario dela mais acima) — sem isso, UM controle fisico
+        // sozinho contava como 2, e o PS1 nunca desligava a porta 2
+        // sozinho (ver singleControllerSession abaixo).
+        const physicalCount = (navigator.getGamepads ? navigator.getGamepads() : []).filter(isRealGamepad).length;
         const phoneCount = remoteControlValue.phones.filter((p) => p.connected).length;
         const instance = await loadEmulator({
           launcher: detail.launcher,

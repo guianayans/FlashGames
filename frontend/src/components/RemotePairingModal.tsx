@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import type { RemoteControlStatus, RemotePhone } from "../remoteControl/RemoteControlContext";
+import { isRealGamepad } from "../gamepadUtils";
 
 const STATUS_LABEL: Record<RemoteControlStatus, string> = {
   idle: "",
@@ -158,9 +159,10 @@ export default function RemotePairingModal({
       const now = performance.now();
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       let gp: Gamepad | null = gpIndex !== null ? pads[gpIndex] : null;
-      if (!gp) {
+      if (!isRealGamepad(gp)) {
+        gp = null;
         for (let i = 0; i < pads.length; i++) {
-          if (pads[i]) {
+          if (isRealGamepad(pads[i])) {
             gp = pads[i];
             gpIndex = i;
             break;

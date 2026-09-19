@@ -10,6 +10,7 @@ import RemotePairingModal from "../components/RemotePairingModal";
 import ControllerIndicators, { REMOTE_PENDING_LABEL, type ControllerSlot } from "../components/ControllerIndicators";
 import QrScannerModal from "../components/QrScannerModal";
 import { useRemoteControlContext } from "../remoteControl/RemoteControlContext";
+import { isRealGamepad } from "../gamepadUtils";
 
 // Aparelho de toque (celular) vs desktop com mouse — decide se mostra
 // "Ler QR Code" (o CELULAR escaneia pra virar controle remoto de um
@@ -991,6 +992,7 @@ export default function Library() {
     // o numero E promove quem tiver numero maior (mesmo criterio de
     // quando um celular sai, ver notifySlotVacated).
     function onConnected(e: GamepadEvent) {
+      if (!isRealGamepad(e.gamepad) || gpIndex !== null) return;
       gpIndex = e.gamepad.index;
       setGamepadActive(true);
       setGamepadName(e.gamepad.id || "Controle");
@@ -1034,9 +1036,10 @@ export default function Library() {
       const now = performance.now();
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       let gp = gpIndex !== null ? pads[gpIndex] : null;
-      if (!gp) {
+      if (!isRealGamepad(gp)) {
+        gp = null;
         for (let i = 0; i < pads.length; i++) {
-          if (pads[i]) {
+          if (isRealGamepad(pads[i])) {
             gp = pads[i];
             gpIndex = gp!.index;
             setGamepadActive(true);

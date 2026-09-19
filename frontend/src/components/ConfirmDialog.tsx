@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isRealGamepad } from "../gamepadUtils";
 
 const GAMEPAD_STICK_DEAD = 0.5;
 
@@ -58,9 +59,10 @@ export default function ConfirmDialog({
     function poll() {
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       let gp: Gamepad | null = gpIndex !== null ? pads[gpIndex] : null;
-      if (!gp) {
+      if (!isRealGamepad(gp)) {
+        gp = null;
         for (let i = 0; i < pads.length; i++) {
-          if (pads[i]) {
+          if (isRealGamepad(pads[i])) {
             gp = pads[i];
             gpIndex = i;
             break;
