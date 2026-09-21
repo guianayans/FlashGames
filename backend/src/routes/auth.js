@@ -7,7 +7,14 @@ const router = Router();
 
 const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
 
-const findUserByUsername = db.prepare("SELECT * FROM users WHERE username = ?");
+// COLLATE NOCASE pra' o login ser insensivel a maiuscula/minuscula — sem
+// isso, "yanviana" e "yanViana" contavam como usuarios DIFERENTES (a
+// coluna username so' tem UNIQUE simples, sem NOCASE), entao digitar com
+// capitalizacao diferente da primeira vez (autofill do navegador, celular
+// vs desktop, etc.) criava uma conta nova vazia na hora — bug real
+// reportado pelo usuario: favoritos/saves "sumiram" porque ele foi parar
+// numa conta duplicada, nao porque os dados se perderam de verdade.
+const findUserByUsername = db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE");
 const insertUser = db.prepare(
   "INSERT INTO users (username, password_hash) VALUES (?, ?)"
 );
