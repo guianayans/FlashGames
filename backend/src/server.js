@@ -32,6 +32,20 @@ app.use(readAuth);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
+// Express gera ETag fraco sozinho pra toda resposta JSON por padrao, mas
+// SEM nenhum Cache-Control junto — deixa o navegador livre pra decidir
+// (heuristica propria, varia por navegador/versao) se reusa uma resposta
+// "revalidada" em vez de buscar de novo. Pra dado dinamico por usuario
+// (favoritos, jogadas recentes, sessao) isso e' exatamente o tipo de
+// ambiguidade que causa "sumiu, precisei atualizar a pagina varias vezes".
+// So' aplica em /api/* — ROMs/capas (/roms) e os assets do frontend
+// (JS/CSS com hash no nome) continuam cacheaveis normalmente, isso aqui
+// e' so pra dado dinamico por usuario.
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
+
 // Save states montado ANTES do express.json() global de baixo: ele tem
 // o proprio parser com limite bem maior (state de PS1 passa de alguns MB
 // facil), e um body-parser so consegue ler o corpo da requisicao uma vez
