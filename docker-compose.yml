@@ -1,7 +1,10 @@
 # FlashGames — atras do Traefik (Coolify), no mesmo padrao dos outros apps em /pendriver.
 # Build a partir de /pendriver/FlashGames; as ROMs ficam em pastas por
 # sistema na raiz do projeto (/pendriver/FlashGames/SNES, /NES, /GENESIS,
-# /GBA, /PS1 — bind mount, da pra adicionar ROM nova sem rebuildar a imagem).
+# /GBA, /MASTERSYSTEM, /ATARI — bind mount, da pra adicionar ROM nova sem
+# rebuildar a imagem). PS1 e' EXCECAO: mora em /mnt/jogos_e_aplicativos
+# (disco separado, ver /etc/fstab) porque a colecao nao cabia mais no
+# disco principal.
 # /BIOS e' o dump de BIOS de console (ex: PS1) que o core precisa pra
 # rodar jogo comercial — ver backend/src/gamesLibrary.js (listBiosFiles).
 
@@ -17,7 +20,10 @@ services:
       - /pendriver/FlashGames/NES:/app/roms/NES
       - /pendriver/FlashGames/GENESIS:/app/roms/GENESIS
       - /pendriver/FlashGames/GBA:/app/roms/GBA
-      - /pendriver/FlashGames/PS1:/app/roms/PS1
+      # PS1 mora num disco a parte (/mnt/jogos_e_aplicativos, ver /etc/fstab)
+      # — a colecao (65GB+) nao cabia mais no disco principal. O resto dos
+      # sistemas continua em /pendriver/FlashGames normalmente.
+      - /mnt/jogos_e_aplicativos/FlashGames-PS1:/app/roms/PS1
       - /pendriver/FlashGames/MASTERSYSTEM:/app/roms/MASTERSYSTEM
       - /pendriver/FlashGames/ATARI:/app/roms/ATARI
       - /pendriver/FlashGames/BIOS:/app/roms/BIOS
