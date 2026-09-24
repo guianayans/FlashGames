@@ -136,6 +136,15 @@ Abra `http://localhost:5173`.
 
 ## Rodando com Docker
 
+> **NO SERVIDOR DE PRODUCAO NAO RODE `docker compose up` NESTA PASTA.** O
+> app e' gerenciado pelo Coolify (container
+> `flashgames-<uuid>`, volume `<uuid>_flashgames-data`). Um `docker compose
+> up` manual aqui cria um SEGUNDO container `flashgames` com o mesmo
+> dominio e um banco separado — o Traefik alterna entre os dois e
+> favoritos/saves "somem e voltam" (aconteceu em 2026-09). Pra publicar uma
+> mudanca: commit e **Redeploy no Coolify**. Os comandos abaixo sao so' pra
+> uma maquina de desenvolvimento.
+
 ```bash
 cd /pendriver/FlashGames
 cp .env.example .env   # edite o SESSION_SECRET
