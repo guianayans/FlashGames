@@ -1600,7 +1600,7 @@ function wireSimpleBtn(el) {
   el.addEventListener('pointerleave',release);
   el.addEventListener('lostpointercapture',release);
 }
-['btn-start','btn-l','btn-r'].forEach(id=>wireSimpleBtn(document.getElementById(id)));
+['btn-start','btn-l','btn-r','btn-l2','btn-r2'].forEach(id=>wireSimpleBtn(document.getElementById(id)));
 
 // ══════════════════════════════════════════
 //  FN (segurar 700ms = sair) / SEL (segurar 350ms = menu de save state) /
@@ -1646,8 +1646,7 @@ function wireHoldGesture(id, holdMs, message) {
 }
 wireHoldGesture('btn-fn', 700, { type: 'exit' });
 wireHoldGesture('btn-select', 350, { type: 'toggleSaveMenu' });
-wireHoldGesture('btn-l2', 700, { type: 'exit' });
-wireHoldGesture('btn-r2', 700, { type: 'toggleFullscreen' });
+// L2/R2 vao pro jogo como botao normal (PS1 usa) — sair continua no FN.
 
 // Select TAMBEM manda um sinal INSTANTANEO (sem segurar) — pedido
 // explicito pra abrir o teclado de busca da Biblioteca sem atraso. O

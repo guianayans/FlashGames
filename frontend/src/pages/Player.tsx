@@ -243,6 +243,13 @@ const GAMEPAD_BUTTON_MAP: Record<number, string> = {
   // save state em vez de ir pro jogo, ver useGamepadPlayer mais abaixo.
 };
 const GAMEPAD_DPAD_MAP: Record<number, string> = { 12: "up", 13: "down", 14: "left", 15: "right" };
+// Gatilhos L2/R2 (botoes 6/7): so' vao pro jogo quando o console usa
+// (PS1, ver forwardTriggers em useGamepadPlayer) — nos outros sistemas
+// continuam livres pros gestos de segurar (sair/tela cheia).
+const GAMEPAD_TRIGGER_MAP: Record<number, string> = { 6: "l2", 7: "r2" };
+function gamepadButtonName(idx: number): string {
+  return GAMEPAD_BUTTON_MAP[idx] ?? GAMEPAD_TRIGGER_MAP[idx];
+}
 const GAMEPAD_STICK_DEAD = 0.5;
 
 // Todo nome de botao que um celular remoto pode mandar (ver
@@ -279,7 +286,8 @@ function useGamepadPlayer(
   onToggleExitConfirm: () => void,
   exitConfirmOpen: boolean,
   pairingModalOpen: boolean,
-  remoteControl: ReturnType<typeof useRemoteControlContext>
+  remoteControl: ReturnType<typeof useRemoteControlContext>,
+  forwardTriggers: boolean
 ): (string | null)[] {
   const [names, setNames] = useState<(string | null)[]>([null, null, null, null]);
   // Ref pra sempre chamar a versao mais atual sem precisar recriar o
@@ -296,6 +304,8 @@ function useGamepadPlayer(
   exitConfirmOpenRef.current = exitConfirmOpen;
   const pairingModalOpenRef = useRef(pairingModalOpen);
   pairingModalOpenRef.current = pairingModalOpen;
+  const forwardTriggersRef = useRef(forwardTriggers);
+  forwardTriggersRef.current = forwardTriggers;
   const remotePlayersRef = useRef<Set<number>>(new Set());
   remotePlayersRef.current = new Set(remoteControl.phones.map((p) => p.player));
   const reservePhysicalSlotsRef = useRef(remoteControl.reservePhysicalSlots);
@@ -348,7 +358,7 @@ function useGamepadPlayer(
 
     function clearSlot(slot: GamepadSlot) {
       Object.keys(slot.heldButtons).forEach((idx) => {
-        if (slot.heldButtons[Number(idx)]) press(slot, GAMEPAD_BUTTON_MAP[Number(idx)], false);
+        if (slot.heldButtons[Number(idx)]) press(slot, gamepadButtonName(Number(idx)), false);
       });
       slot.heldButtons = {};
       Object.keys(slot.heldDirs).forEach((d) => {
@@ -442,24 +452,17 @@ function useGamepadPlayer(
         if (slot.player === 1) {
           const r2 = gp.buttons[7];
           const r2Pressed = !!(r2 && (r2.pressed || r2.value > 0.5));
-          if (r2Pressed) {
-            if (r2HoldStart === null) r2HoldStart = now;
-            else if (!r2HoldFired && now - r2HoldStart >= R2_HOLD_MS) {
-              r2HoldFired = true;
-              onToggleFullscreenRef.current();
-            }
-          } else {
+          const l2 = gp.buttons[6];
+          const l2Pressed = !!(l2 && (l2.pressed || l2.value > 0.5));
+          if (forwardTriggersRef.current) {
+            // L2/R2 sao botoes de jogo (PS1) — nao da' pra reservar
+            // cada um pra um gesto de segurar sem estragar o jogo
+            // (segurar L2 pra frear abriria o "Sair do jogo?"). Sair
+            // vira L2+R2 juntos por L2_HOLD_MS; tela cheia fica so' no
+            // botao da tela.
             r2HoldStart = null;
             r2HoldFired = false;
-          }
-
-          // L2 e Select sao mutuamente exclusivos — nao processa um
-          // enquanto o dialogo/menu do outro ja esta aberto (mesmo
-          // criterio do GameScreen.html mobile).
-          if (!saveMenuOpenRef.current) {
-            const l2 = gp.buttons[6];
-            const l2Pressed = !!(l2 && (l2.pressed || l2.value > 0.5));
-            if (l2Pressed) {
+            if (!saveMenuOpenRef.current && l2Pressed && r2Pressed) {
               if (l2HoldStart === null) l2HoldStart = now;
               else if (!l2HoldFired && now - l2HoldStart >= L2_HOLD_MS) {
                 l2HoldFired = true;
@@ -468,6 +471,33 @@ function useGamepadPlayer(
             } else {
               l2HoldStart = null;
               l2HoldFired = false;
+            }
+          } else {
+            if (r2Pressed) {
+              if (r2HoldStart === null) r2HoldStart = now;
+              else if (!r2HoldFired && now - r2HoldStart >= R2_HOLD_MS) {
+                r2HoldFired = true;
+                onToggleFullscreenRef.current();
+              }
+            } else {
+              r2HoldStart = null;
+              r2HoldFired = false;
+            }
+
+            // L2 e Select sao mutuamente exclusivos — nao processa um
+            // enquanto o dialogo/menu do outro ja esta aberto (mesmo
+            // criterio do GameScreen.html mobile).
+            if (!saveMenuOpenRef.current) {
+              if (l2Pressed) {
+                if (l2HoldStart === null) l2HoldStart = now;
+                else if (!l2HoldFired && now - l2HoldStart >= L2_HOLD_MS) {
+                  l2HoldFired = true;
+                  onToggleExitConfirmRef.current();
+                }
+              } else {
+                l2HoldStart = null;
+                l2HoldFired = false;
+              }
             }
           }
 
@@ -505,12 +535,17 @@ function useGamepadPlayer(
           continue;
         }
 
-        for (const idxStr of Object.keys(GAMEPAD_BUTTON_MAP)) {
+        const buttonIdxs = [
+          ...Object.keys(GAMEPAD_BUTTON_MAP),
+          ...(forwardTriggersRef.current ? Object.keys(GAMEPAD_TRIGGER_MAP) : []),
+        ];
+        for (const idxStr of buttonIdxs) {
           const idx = Number(idxStr);
-          const pressed = !!gp.buttons[idx]?.pressed;
+          const b = gp.buttons[idx];
+          const pressed = !!(b && (b.pressed || (idx in GAMEPAD_TRIGGER_MAP && b.value > 0.5)));
           if (pressed !== !!slot.heldButtons[idx]) {
             slot.heldButtons[idx] = pressed;
-            press(slot, GAMEPAD_BUTTON_MAP[idx], pressed);
+            press(slot, gamepadButtonName(idx), pressed);
           }
         }
         const activeDirs: Record<string, boolean> = { up: false, down: false, left: false, right: false };
@@ -1143,7 +1178,8 @@ function DesktopPlayer({ slug }: { slug: string }) {
     toggleExitConfirmViaL2,
     exitConfirmOpen,
     pairingModalOpen,
-    remoteControlValue
+    remoteControlValue,
+    game?.launcher === "psx"
   );
 
   const controllerSlots: ControllerSlot[] = [
