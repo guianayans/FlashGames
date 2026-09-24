@@ -412,11 +412,9 @@ function useGamepadPlayer(
     window.addEventListener("gamepaddisconnected", onDisconnected);
     reportReservedSlots();
 
-    // Segurar R2 (botao 7 — gatilho direito) por R2_HOLD_MS liga/desliga
-    // tela cheia, so no controle do P1. Botao 7 nao entra no
-    // GAMEPAD_BUTTON_MAP (nenhum console suportado usa gatilho analogico
-    // separado), entao fica livre pra isso sem mandar nada indevido pro
-    // jogo — mesmo criterio do L2 no GameScreen.html (ver "Sair do jogo?").
+    // Segurar L1+R1 (botoes 4+5) por R2_HOLD_MS liga/desliga tela cheia,
+    // so' no controle do P1 (o nome R2_HOLD_MS e' herdado de quando o gesto
+    // era R2 — agora R2 vai pro jogo no PS1).
     const R2_HOLD_MS = 700;
     let r2HoldStart: number | null = null;
     let r2HoldFired = false;
@@ -454,15 +452,26 @@ function useGamepadPlayer(
           const r2Pressed = !!(r2 && (r2.pressed || r2.value > 0.5));
           const l2 = gp.buttons[6];
           const l2Pressed = !!(l2 && (l2.pressed || l2.value > 0.5));
-          if (forwardTriggersRef.current) {
-            // L2/R2 sao botoes de jogo (PS1) — nao da' pra reservar
-            // cada um pra um gesto de segurar sem estragar o jogo
-            // (segurar L2 pra frear abriria o "Sair do jogo?"). Sair
-            // vira L2+R2 juntos por L2_HOLD_MS; tela cheia fica so' no
-            // botao da tela.
+
+          // Tela cheia (liga/desliga): L1+R1 juntos por R2_HOLD_MS, em
+          // qualquer console. Os dois continuam indo pro jogo enquanto
+          // seguram (nao da' pra separar sem perder o L1/R1 do jogo).
+          if (gp.buttons[4]?.pressed && gp.buttons[5]?.pressed) {
+            if (r2HoldStart === null) r2HoldStart = now;
+            else if (!r2HoldFired && now - r2HoldStart >= R2_HOLD_MS) {
+              r2HoldFired = true;
+              onToggleFullscreenRef.current();
+            }
+          } else {
             r2HoldStart = null;
             r2HoldFired = false;
-            if (!saveMenuOpenRef.current && l2Pressed && r2Pressed) {
+          }
+
+          if (!saveMenuOpenRef.current) {
+            // Sair: no PS1 L2/R2 sao botoes de jogo (ver forwardTriggers),
+            // entao vira L2+R2 juntos; nos outros consoles, so' L2 segurado.
+            const exitHeld = forwardTriggersRef.current ? l2Pressed && r2Pressed : l2Pressed;
+            if (exitHeld) {
               if (l2HoldStart === null) l2HoldStart = now;
               else if (!l2HoldFired && now - l2HoldStart >= L2_HOLD_MS) {
                 l2HoldFired = true;
@@ -471,33 +480,6 @@ function useGamepadPlayer(
             } else {
               l2HoldStart = null;
               l2HoldFired = false;
-            }
-          } else {
-            if (r2Pressed) {
-              if (r2HoldStart === null) r2HoldStart = now;
-              else if (!r2HoldFired && now - r2HoldStart >= R2_HOLD_MS) {
-                r2HoldFired = true;
-                onToggleFullscreenRef.current();
-              }
-            } else {
-              r2HoldStart = null;
-              r2HoldFired = false;
-            }
-
-            // L2 e Select sao mutuamente exclusivos — nao processa um
-            // enquanto o dialogo/menu do outro ja esta aberto (mesmo
-            // criterio do GameScreen.html mobile).
-            if (!saveMenuOpenRef.current) {
-              if (l2Pressed) {
-                if (l2HoldStart === null) l2HoldStart = now;
-                else if (!l2HoldFired && now - l2HoldStart >= L2_HOLD_MS) {
-                  l2HoldFired = true;
-                  onToggleExitConfirmRef.current();
-                }
-              } else {
-                l2HoldStart = null;
-                l2HoldFired = false;
-              }
             }
           }
 
@@ -1377,7 +1359,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
           className="player-fullscreen-btn"
           onClick={toggleFullscreen}
           aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
-          title={isFullscreen ? "Sair da tela cheia (segure R2)" : "Tela cheia (segure R2)"}
+          title={isFullscreen ? "Sair da tela cheia (segure L1+R1)" : "Tela cheia (segure L1+R1)"}
         >
           {isFullscreen ? (
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
