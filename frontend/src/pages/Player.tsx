@@ -412,9 +412,9 @@ function useGamepadPlayer(
     window.addEventListener("gamepaddisconnected", onDisconnected);
     reportReservedSlots();
 
-    // Segurar L1+R1 (botoes 4+5) por R2_HOLD_MS liga/desliga tela cheia,
-    // so' no controle do P1 (o nome R2_HOLD_MS e' herdado de quando o gesto
-    // era R2 — agora R2 vai pro jogo no PS1).
+    // Segurar L2+R2 (botoes 6+7) por R2_HOLD_MS liga/desliga tela cheia,
+    // e L1+R1 (botoes 4+5) por L2_HOLD_MS abre o "Sair do jogo?",
+    // so' no controle do P1 (os nomes R2_HOLD_MS/L2_HOLD_MS sao historicos).
     const R2_HOLD_MS = 700;
     let r2HoldStart: number | null = null;
     let r2HoldFired = false;
@@ -453,10 +453,10 @@ function useGamepadPlayer(
           const l2 = gp.buttons[6];
           const l2Pressed = !!(l2 && (l2.pressed || l2.value > 0.5));
 
-          // Tela cheia (liga/desliga): L1+R1 juntos por R2_HOLD_MS, em
-          // qualquer console. Os dois continuam indo pro jogo enquanto
-          // seguram (nao da' pra separar sem perder o L1/R1 do jogo).
-          if (gp.buttons[4]?.pressed && gp.buttons[5]?.pressed) {
+          // Tela cheia (liga/desliga): L2+R2 juntos por R2_HOLD_MS, em
+          // qualquer console. Os dois continuam indo pro jogo no PS1
+          // enquanto seguram (nao da' pra separar sem perder L2/R2 do jogo).
+          if (l2Pressed && r2Pressed) {
             if (r2HoldStart === null) r2HoldStart = now;
             else if (!r2HoldFired && now - r2HoldStart >= R2_HOLD_MS) {
               r2HoldFired = true;
@@ -467,11 +467,9 @@ function useGamepadPlayer(
             r2HoldFired = false;
           }
 
+          // Sair do jogo: L1+R1 juntos por L2_HOLD_MS, em qualquer console.
           if (!saveMenuOpenRef.current) {
-            // Sair: no PS1 L2/R2 sao botoes de jogo (ver forwardTriggers),
-            // entao vira L2+R2 juntos; nos outros consoles, so' L2 segurado.
-            const exitHeld = forwardTriggersRef.current ? l2Pressed && r2Pressed : l2Pressed;
-            if (exitHeld) {
+            if (gp.buttons[4]?.pressed && gp.buttons[5]?.pressed) {
               if (l2HoldStart === null) l2HoldStart = now;
               else if (!l2HoldFired && now - l2HoldStart >= L2_HOLD_MS) {
                 l2HoldFired = true;
@@ -1359,7 +1357,7 @@ function DesktopPlayer({ slug }: { slug: string }) {
           className="player-fullscreen-btn"
           onClick={toggleFullscreen}
           aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
-          title={isFullscreen ? "Sair da tela cheia (segure L1+R1)" : "Tela cheia (segure L1+R1)"}
+          title={isFullscreen ? "Sair da tela cheia (segure L2+R2)" : "Tela cheia (segure L2+R2)"}
         >
           {isFullscreen ? (
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
