@@ -35,6 +35,17 @@ services:
       ROMS_DIR: /app/roms
       SESSION_SECRET: ${SESSION_SECRET:?Defina SESSION_SECRET no Coolify/.env (string aleatoria longa)}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://flashgames.gvtserver.online}
+      # Painel admin (/admin): o codigo de login vai pra ADMIN_EMAILS. Sem SMTP_HOST
+      # o codigo so aparece no log do container.
+      PUBLIC_URL: ${PUBLIC_URL:-https://flashgames.gvtserver.online}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-yanguimaraesviana@gmail.com}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-FlashGames}
     restart: unless-stopped
     healthcheck:
       test:

@@ -45,6 +45,10 @@ router.post("/login", (req, res) => {
     if (!ok) {
       return res.status(401).json({ error: "wrong_password", message: "Senha incorreta." });
     }
+    // Depois da senha, pra nao contar a quem nao e' o dono que a conta existe/foi bloqueada
+    if (existing.blocked_at !== null) {
+      return res.status(403).json({ error: "blocked", message: "Esta conta esta bloqueada." });
+    }
     const token = signSession(existing);
     setSessionCookie(res, token);
     return res.json({ user: { id: existing.id, username: existing.username } });

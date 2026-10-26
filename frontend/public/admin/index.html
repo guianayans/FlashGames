@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Painel FlashGames</title>
+  <link rel="icon" type="image/png" href="/pwa/icon-192.png">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <!-- fundo: luz ambiente com as cores da marca -->
+  <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <!-- Login: só o código; o e-mail do admin nunca aparece aqui. O cartão é um notch que se abre. -->
+  <main id="login" class="login" hidden>
+    <form id="login-code" class="login-notch">
+      <img src="/pwa/icon-192.png" alt="" width="44" height="44">
+      <h1>Painel FlashGames</h1>
+      <p class="muted" data-hint>Peça um código e digite-o abaixo. Ele vale por 10 minutos.</p>
+      <label>Código<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required></label>
+      <button class="btn primary" type="submit">Entrar</button>
+      <button class="btn" type="button" data-send>Enviar código</button>
+      <p class="error" data-error></p>
+    </form>
+  </main>
+
+  <!-- App -->
+  <div id="app" hidden>
+    <header class="top">
+      <div class="brand"><img src="/pwa/icon-192.png" alt="" width="24" height="24">FlashGames <span class="muted">Admin</span></div>
+      <nav class="tabs" role="tablist">
+        <span class="tab-ind" aria-hidden="true"></span>
+        <button role="tab" data-tab="overview" aria-selected="true">Visão geral</button>
+        <!-- as abas de dados (panel.js) entram aqui -->
+        <button role="tab" data-tab="audit">Auditoria</button>
+      </nav>
+      <div class="who"><span data-links></span><button class="btn small" data-logout>Sair</button></div>
+    </header>
+
+    <section data-panel="overview" class="panel">
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <!-- abas de dados: uma cópia deste modelo por recurso de panel.js -->
+    <template id="resource-panel">
+      <section class="panel" hidden>
+        <form class="toolbar" data-filters>
+          <input name="q" type="search">
+          <select name="filter"></select>
+          <button class="btn primary" type="button" data-new>Novo</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead><tr></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="pager"><span class="muted" data-count></span><button class="btn small" data-more hidden>Carregar mais</button></div>
+      </section>
+    </template>
+
+    <section data-panel="audit" class="panel" hidden>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Alvo</th><th>Detalhe</th><th>IP</th></tr></thead>
+          <tbody id="audit-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Detalhe de um registro -->
+  <dialog id="detail" class="sheet">
+    <div class="sheet-head">
+      <div>
+        <h2 data-f="title"></h2>
+        <p class="mono"><span data-f="subtitle"></span> <button class="btn small" data-copy hidden>Copiar</button></p>
+      </div>
+      <button class="btn small" data-close aria-label="Fechar">✕</button>
+    </div>
+    <div class="badges" data-f="badges"></div>
+
+    <form id="edit" class="grid-form">
+      <div class="row-end"><button class="btn primary" type="submit">Salvar alterações</button></div>
+    </form>
+
+    <h3 data-f="actions-title">Ações</h3>
+    <div class="actions" data-f="actions"></div>
+
+    <div class="related" data-f="related"></div>
+
+    <h3>Histórico no painel</h3>
+    <ul class="list compact" data-f="history"></ul>
+    <p class="error" data-error></p>
+  </dialog>
+
+  <!-- Novo registro -->
+  <dialog id="create" class="modal">
+    <form method="dialog" id="create-form" class="stack">
+      <h2 data-f="create-title">Novo</h2>
+      <div class="stack" data-f="create-fields"></div>
+      <div class="row-end">
+        <button class="btn" value="cancel" formnovalidate>Cancelar</button>
+        <button class="btn primary" value="ok">Criar</button>
+      </div>
+      <p class="error" data-error></p>
+    </form>
+  </dialog>
+
+  <!-- avisos descem do topo como uma atividade do notch -->
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="/admin/admin.js" defer></script>
+</body>
+</html>

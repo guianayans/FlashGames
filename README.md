@@ -75,6 +75,22 @@ FlashGames/
   resto (API, HTML, JS do app) sempre vai direto pra rede, pra nunca mostrar
   tela ou save desatualizado.
 
+## Painel admin (`/admin`)
+
+Painel no modelo do Notchly: `backend/src/admin/` (api) e `frontend/public/admin/` (front sem build).
+O que e' do FlashGames fica so em `backend/src/admin/panel.js`.
+
+- **Login**: "Enviar codigo" manda um codigo de 6 digitos pros e-mails de `ADMIN_EMAILS`
+  (padrao: yanguimaraesviana@gmail.com). Sem `SMTP_*` configurado, o codigo sai so no log do container.
+- **Visao geral**: contas, novas, quem jogou na semana, jogadas, jogos, save states, favoritos, bloqueadas.
+- **Contas**: busca/filtros, renomear, criar conta, trocar senha, encerrar sessoes, bloquear/desbloquear,
+  excluir save states, excluir conta (leva saves, favoritos e historico junto).
+- **Jogos**: ranking de jogadas e quem mais jogou cada um.
+- **Auditoria**: tudo que foi feito pelo painel.
+
+Bloquear, trocar senha e "encerrar sessoes" derrubam os logins ja abertos: o JWT carrega
+`users.session_version` e `auth.js` recusa quando o numero muda.
+
 ## Jogos inclusos
 
 22 jogos originais (sem IP de terceiros tipo Disney/Nintendo/Sega): 10 vieram

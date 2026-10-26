@@ -100,4 +100,47 @@ db.exec(`
   );
 `);
 
+// Colunas do painel admin (/admin) em users, adicionadas depois: blocked_at (epoch,
+// NULL = ativa) barra o login, e session_version invalida os JWT ja emitidos — o
+// token carrega a versao (sv) e auth.js recusa quando ela nao bate mais (bloquear,
+// trocar senha ou "encerrar sessoes" sobem o numero).
+const userColumns = new Set(db.prepare("PRAGMA table_info(users)").all().map((c) => c.name));
+if (!userColumns.has("blocked_at")) db.exec("ALTER TABLE users ADD COLUMN blocked_at INTEGER");
+if (!userColumns.has("session_version")) {
+  db.exec("ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0");
+}
+
+// Views so de leitura pras abas do painel: datas em epoch (o painel formata epoch;
+// o "2026-09-18 12:00:00" do datetime('now') e' UTC sem fuso e sairia com hora
+// errada) e os totais de cada conta. Recriadas a cada boot, pra mudanca aqui valer
+// no proximo deploy. Edicao/acoes do painel escrevem nas tabelas reais.
+db.exec(`
+  DROP VIEW IF EXISTS admin_users;
+  CREATE VIEW admin_users AS
+  SELECT
+    u.id,
+    u.username,
+    CAST(strftime('%s', u.created_at) AS INTEGER) AS created_at,
+    u.blocked_at,
+    CASE WHEN u.blocked_at IS NULL THEN 'active' ELSE 'blocked' END AS status,
+    (SELECT COUNT(*) FROM user_play_history p WHERE p.user_id = u.id) AS games_played,
+    (SELECT COALESCE(SUM(play_count), 0) FROM user_play_history p WHERE p.user_id = u.id) AS plays,
+    (SELECT CAST(strftime('%s', MAX(last_played_at)) AS INTEGER) FROM user_play_history p WHERE p.user_id = u.id) AS last_played_at,
+    (SELECT COUNT(*) FROM user_favorites f WHERE f.user_id = u.id) AS favorites,
+    (SELECT COUNT(*) FROM user_save_states s WHERE s.user_id = u.id) AS save_states,
+    (SELECT COALESCE(SUM(length(state)), 0) FROM user_save_states s WHERE s.user_id = u.id) AS save_bytes
+  FROM users u;
+
+  DROP VIEW IF EXISTS admin_games;
+  CREATE VIEW admin_games AS
+  SELECT
+    game_slug,
+    COUNT(*) AS players,
+    SUM(play_count) AS plays,
+    CAST(strftime('%s', MAX(last_played_at)) AS INTEGER) AS last_played_at,
+    (SELECT COUNT(*) FROM user_favorites f WHERE f.game_slug = p.game_slug) AS favorites
+  FROM user_play_history p
+  GROUP BY game_slug;
+`);
+
 export default db;

@@ -15,12 +15,20 @@ import preferencesRoutes from "./routes/preferences.js";
 import { ROMS_DIR } from "./gamesLibrary.js";
 import { readAuth } from "./auth.js";
 import { remoteRouter, attachRemoteWebSocket } from "./remoteRelay.js";
+import { adminRoute } from "./admin/index.js";
 
 const app = express();
 const PORT = process.env.PORT || 4070;
 const PUBLIC_DIR = process.env.PUBLIC_DIR || "/app/public";
 
 app.disable("x-powered-by");
+
+// Painel admin (/admin, modelo Notchly — ver admin/panel.js). Antes de tudo:
+// o painel le o proprio corpo JSON (nao pode passar por express.json) e antes do cors(), pra que um preflight em /api/admin
+// nunca seja liberado (as escritas exigem o cabecalho x-flashgames-admin).
+app.use(async (req, res, next) => {
+  if (!(await adminRoute(req, res, new URL(req.originalUrl, "http://x")))) next();
+});
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN || true,
@@ -63,6 +71,22 @@ app.use("/api/favorites", favoritesRoutes);
 app.use("/api/plays", playsRoutes);
 app.use("/api/preferences", preferencesRoutes);
 app.use("/api/remote", remoteRouter);
+
+// O que o nginx do Notchly faz pro painel, aqui no Express: /admin/ so com
+// recursos proprios (CSP estrita), sem cache, fora dos buscadores.
+const ADMIN_DIR = path.join(PUBLIC_DIR, "admin");
+app.use("/admin", (_req, res, next) => {
+  res.set({
+    "Content-Security-Policy":
+      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+    "X-Robots-Tag": "noindex, nofollow",
+    "Cache-Control": "no-store",
+    "Referrer-Policy": "no-referrer",
+  });
+  next();
+});
+app.use("/admin", express.static(ADMIN_DIR));
+app.get("/admin/*", (_req, res) => res.sendFile(path.join(ADMIN_DIR, "index.html")));
 
 // As ROMs (e capas) de cada sistema, servidas diretamente das pastas
 // SNES/NES/GENESIS/GBA
