@@ -47,8 +47,9 @@ export async function readJson(req, limit = 64 * 1024) {
   }
 }
 
-// atrás de nginx/Traefik o IP real vem no X-Real-IP (o nginx do painel sobrescreve o valor do cliente)
-export const clientIp = (req) => req.headers["x-real-ip"] || req.socket.remoteAddress || "?";
+// atrás da Cloudflare e do Traefik, o IP real vem no CF-Connecting-IP; o X-Real-IP que o Traefik
+// põe é o do gateway do Docker (10.0.1.1), igual para todo mundo (como no website-manager)
+export const clientIp = (req) => req.headers["cf-connecting-ip"] || req.headers["x-real-ip"] || req.socket.remoteAddress || "?";
 
 // Limite simples em memória: N requisições por chave a cada janela
 const hits = new Map();
